@@ -1,5 +1,8 @@
 using CarRacer.Game;
 using UnityEditor;
+#if UNITY_ANDROID
+using UnityEditor.Android;
+#endif
 using UnityEditor.Build;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -48,10 +51,59 @@ namespace CarRacer.Editor
             PlayerSettings.SetUseDefaultGraphicsAPIs(BuildTarget.Android, false);
             PlayerSettings.SetGraphicsAPIs(BuildTarget.Android, new[] { GraphicsDeviceType.Vulkan, GraphicsDeviceType.OpenGLES3 });
 
+#if UNITY_ANDROID
+            ApplyIcons();
+#endif
             EditorUserBuildSettings.buildAppBundle = false;
             EnsureAlwaysIncludedShader(SimpleMaterials.ShaderName);
             AssetDatabase.SaveAssets();
         }
+
+        /// <summary>The app icon's textures, rendered by <c>tools/icon/generate_icon.py</c>.</summary>
+        public const string IconFolder = "Assets/CarRacer/Icon/";
+        public const string IconBackgroundPath = IconFolder + "icon-background.png";
+        public const string IconForegroundPath = IconFolder + "icon-foreground.png";
+        public const string IconRoundPath = IconFolder + "icon-round.png";
+        public const string IconLegacyPath = IconFolder + "icon-legacy.png";
+
+#if UNITY_ANDROID
+        /// <summary>
+        /// Sets the launcher icon for every Android density: the adaptive icon's two layers (which
+        /// the launcher masks to its own shape), and pre-masked round and legacy icons for launchers
+        /// that ask for those. Unity scales each texture down to the density's size. Android-only, like
+        /// <see cref="AndroidManifestPostProcessor"/>: other editors don't have the Android module.
+        /// </summary>
+        private static void ApplyIcons()
+        {
+            var background = AssetDatabase.LoadAssetAtPath<Texture2D>(IconBackgroundPath);
+            var foreground = AssetDatabase.LoadAssetAtPath<Texture2D>(IconForegroundPath);
+            var round = AssetDatabase.LoadAssetAtPath<Texture2D>(IconRoundPath);
+            var legacy = AssetDatabase.LoadAssetAtPath<Texture2D>(IconLegacyPath);
+            if (background == null || foreground == null || round == null || legacy == null)
+            {
+                Debug.LogError($"Couldn't load the app icon from {IconFolder}.");
+                return;
+            }
+
+            var android = NamedBuildTarget.Android;
+            SetIcons(android, AndroidPlatformIconKind.Adaptive, background, foreground);
+            SetIcons(android, AndroidPlatformIconKind.Round, round);
+            SetIcons(android, AndroidPlatformIconKind.Legacy, legacy);
+            PlayerSettings.SetIcons(NamedBuildTarget.Unknown, new[] { legacy }, IconKind.Any);
+        }
+
+        /// <summary>Gives every density of an icon kind the same layers (adaptive icons: background, then foreground).</summary>
+        private static void SetIcons(NamedBuildTarget target, PlatformIconKind kind, params Texture2D[] layers)
+        {
+            var icons = PlayerSettings.GetPlatformIcons(target, kind);
+            foreach (var icon in icons)
+            {
+                icon.SetTextures(layers);
+            }
+
+            PlayerSettings.SetPlatformIcons(target, kind, icons);
+        }
+#endif
 
         public const string GraphicsSettingsPath = "ProjectSettings/GraphicsSettings.asset";
 
