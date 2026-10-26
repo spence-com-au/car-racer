@@ -34,12 +34,14 @@ csharp_new_line_before_catch = true
 csharp_new_line_before_finally = true
 csharp_new_line_before_members_in_object_initializers = false
 csharp_prefer_braces = true:warning
+dotnet_diagnostic.IDE0011.severity = warning
 dotnet_style_namespace_match_folder = false
 
 # Usings
 dotnet_sort_system_directives_first = true
 dotnet_separate_import_directive_groups = false
 csharp_using_directive_placement = outside_namespace:warning
+dotnet_diagnostic.IDE0065.severity = warning
 
 # Unnecessary code
 dotnet_diagnostic.IDE0005.severity = warning # unused using
@@ -52,8 +54,6 @@ dotnet_style_require_accessibility_modifiers = for_non_interface_members:warning
 dotnet_diagnostic.IDE0040.severity = warning
 dotnet_style_readonly_field = true:warning
 dotnet_diagnostic.IDE0044.severity = warning
-dotnet_diagnostic.IDE0011.severity = warning # braces
-dotnet_diagnostic.IDE0065.severity = warning # using placement
 
 # Naming: PascalCase types and members, _camelCase private fields, camelCase locals and parameters.
 dotnet_naming_symbols.types_and_members.applicable_kinds = class, struct, interface, enum, delegate, method, property, event
