@@ -67,7 +67,8 @@ namespace CarRacer.Game.Ui
             {
                 GameAudio.Play(tick);
                 onClick?.Invoke();
-            }) { text = text };
+            });
+            button.text = text;
             Color normal = primary ? Accent : ButtonColour;
             Color pressed = primary ? AccentPressed : ButtonPressed;
             button.style.height = ButtonHeight;

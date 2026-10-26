@@ -16,3 +16,37 @@ jobs:
     steps:
       - uses: 'actions/checkout@v4.4.0'
       - run: 'python3 tools/generate_unity_meta.py --check'
+
+  csharp:
+    name: 'C# Format'
+    runs-on: 'ubuntu-latest'
+    steps:
+      - uses: 'actions/checkout@v4.4.0'
+
+      - uses: 'actions/setup-dotnet@v4.3.1'
+        with:
+          dotnet-version: '8.0.x'
+
+      # Style, naming and analyser rules from .editorconfig for the code dotnet can compile.
+      - run: 'dotnet format dotnet/CarRacer.sln --verify-no-changes --severity warn'
+
+      # Game, Editor and the Unity tests need Unity to compile, so only their layout is checked.
+      - run: 'dotnet format whitespace --folder Unity/Assets/CarRacer --verify-no-changes'
+
+  python:
+    name: 'Python'
+    runs-on: 'ubuntu-latest'
+    steps:
+      - uses: 'actions/checkout@v4.4.0'
+      - run: 'pipx run ruff==0.16.9 check tools'
+      - run: 'pipx run ruff==0.16.9 format --check tools'
+
+  shell:
+    name: 'Shell and Workflows'
+    runs-on: 'ubuntu-latest'
+    steps:
+      - uses: 'actions/checkout@v4.4.0'
+      - run: 'shellcheck server/run-server.sh'
+
+      # actionlint also runs shellcheck over each workflow's `run:` scripts.
+      - run: 'docker run --rm -v "${PWD}:/repo" -w /repo rhysd/actionlint:1.7.7 -color'

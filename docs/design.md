@@ -671,8 +671,10 @@ leader).
 
 ## 15. CI, builds and distribution
 
-- **`Lint` and `Test` workflows** (no secrets): a `.meta` file check and `dotnet test` on every
-  push and PR.
+- **`Lint` and `Test` workflows** (no secrets): a `.meta` file check, linters (`dotnet format`
+  against `.editorconfig` for C#, `ruff`, `shellcheck`, `actionlint`) and `dotnet test` on every
+  push and PR. Unity-only C# (`Game`, `Editor`, Unity tests) can't be compiled outside Unity, so
+  it gets only the whitespace check; the analyser and naming rules cover `Core` and its tests.
 - **`Build` workflow** (GameCI): Unity tests and a **development APK artifact** on every PR.
   Needs `UNITY_LICENSE`, `UNITY_EMAIL`, `UNITY_PASSWORD`; skipped with a notice if they're absent.
 - **`Release` workflow:** pushing a `v*` tag (or running it by hand with a version, which tags
