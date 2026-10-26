@@ -1,0 +1,8 @@
+# Python tooling under tools/. Checked by `ruff check` and `ruff format --check` in the Lint workflow.
+line-length = 120
+target-version = "py310"
+
+[lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM"]
+# `ruff format` wraps code; long SVG and string literals it can't wrap are fine.
+ignore = ["E501"]

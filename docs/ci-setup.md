@@ -4,7 +4,7 @@ Four GitHub Actions workflows live in `.github/workflows/`:
 
 | Workflow | Runs on | Needs secrets? | What it does |
 |---|---|---|---|
-| `lint.yaml` | every push to `master`, every PR | No | Checks every file under `Unity/Assets` has its `.meta` file |
+| `lint.yaml` | every push to `master`, every PR | No | Checks every file under `Unity/Assets` has its `.meta` file; lints C# (`dotnet format` against `.editorconfig`), Python (`ruff`), shell (`shellcheck`) and the workflows themselves (`actionlint`) |
 | `test.yaml` | every push to `master`, every PR | No | `dotnet test` for the engine-independent core |
 | `build.yaml` | every push to `master`, every PR | Unity licence | Unity EditMode/PlayMode tests; builds a development APK and the Linux server (started briefly to check it hosts) and attaches them to the run |
 | `release.yaml` | pushing a `v*` tag, or run by hand with a version | Unity licence + keystore | Builds a release-signed APK and the Linux server, publishes them to GitHub Releases, and pushes the server's Docker image to GHCR ([`server.md`](server.md)) |

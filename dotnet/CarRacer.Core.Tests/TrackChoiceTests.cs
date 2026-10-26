@@ -104,7 +104,7 @@ namespace CarRacer.Core.Tests
             }
         }
 
-        private long _now = 10_000;
+        private readonly long _now = 10_000;
         private readonly HostSession _host;
         private readonly HostRace _race;
         private readonly GuestRace _guestRace;

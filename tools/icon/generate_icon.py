@@ -52,16 +52,22 @@ def streaks():
     colours = [YELLOW, BLUE, VERMILION, GREEN, PURPLE, SKY]
     return "".join(
         f'<path d="M{150 - ln} {210 + i * 26} H150" stroke="{c}" stroke-width="13" stroke-linecap="round"/>'
-        for i, (c, ln) in enumerate(zip(colours, lengths)))
+        for i, (c, ln) in enumerate(zip(colours, lengths, strict=True))
+    )
 
 
 def flag():
     cells = "".join(
         f'<rect x="{c * 14}" y="{r * 14}" width="14" height="14"/>'
-        for r in range(4) for c in range(6) if (r + c) % 2 == 0)
-    return (f'<g transform="translate(350 92) rotate(12)">'
-            f'<path d="M0 0 V124" stroke="#D9DDE3" stroke-width="8" stroke-linecap="round"/>'
-            f'<g transform="translate(4 4)"><rect width="84" height="56" fill="#fff"/><g fill="{INK}">{cells}</g></g></g>')
+        for r in range(4)
+        for c in range(6)
+        if (r + c) % 2 == 0
+    )
+    return (
+        f'<g transform="translate(350 92) rotate(12)">'
+        f'<path d="M0 0 V124" stroke="#D9DDE3" stroke-width="8" stroke-linecap="round"/>'
+        f'<g transform="translate(4 4)"><rect width="84" height="56" fill="#fff"/><g fill="{INK}">{cells}</g></g></g>'
+    )
 
 
 # Artwork in a 512 square, centred on (256, 256).
@@ -85,8 +91,10 @@ def scaled(content, scale):
 def svg(body, clip=None):
     clip_def = f'<clipPath id="clip">{clip}</clipPath>' if clip else ""
     inner = f'<g clip-path="url(#clip)">{body}</g>' if clip else body
-    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">'
-            f'<defs>{clip_def}</defs>{inner}</svg>\n')
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">'
+        f"<defs>{clip_def}</defs>{inner}</svg>\n"
+    )
 
 
 ICONS = {
@@ -94,7 +102,9 @@ ICONS = {
     "icon-background": svg(SKY_LAYER + scaled(SCENE_BACK, ADAPTIVE_SCALE)),
     "icon-foreground": svg(scaled(SCENE_FRONT, ADAPTIVE_SCALE)),
     # Pre-masked icons for launchers that ask for a round or a plain one.
-    "icon-round": svg(SKY_LAYER + scaled(SCENE_BACK + SCENE_FRONT, ROUND_SCALE), clip='<circle cx="256" cy="256" r="256"/>'),
+    "icon-round": svg(
+        SKY_LAYER + scaled(SCENE_BACK + SCENE_FRONT, ROUND_SCALE), clip='<circle cx="256" cy="256" r="256"/>'
+    ),
     "icon-legacy": svg(SKY_LAYER + SCENE_BACK + SCENE_FRONT, clip='<rect width="512" height="512" rx="112"/>'),
 }
 

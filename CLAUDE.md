@@ -39,7 +39,16 @@ and the milestone plan. Update it in the same PR when a decision changes.
 dotnet test dotnet/CarRacer.sln          # core unit tests
 python3 tools/generate_unity_meta.py     # create .meta files for any new Unity assets
 python3 tools/generate_unity_meta.py --check
+
+# linters (the Lint workflow runs the same)
+dotnet format dotnet/CarRacer.sln --severity warn                   # C# style and naming, Core + tests
+dotnet format whitespace --folder Unity/Assets/CarRacer             # C# layout, Game/Editor/Unity tests
+ruff check tools && ruff format tools                               # Python
+shellcheck server/run-server.sh
 ```
+
+- **C# style lives in `.editorconfig`**: Allman braces, braces always, `_camelCase` private
+  fields, no unused usings. The commands above fix in place; CI checks with `--verify-no-changes`.
 
 - **Every file under `Unity/Assets` needs a `.meta` file.** Files written outside the editor get
   one from `tools/generate_unity_meta.py` (deterministic GUIDs); CI fails if any are missing.

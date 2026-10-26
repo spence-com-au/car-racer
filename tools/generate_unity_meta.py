@@ -85,8 +85,13 @@ AudioImporter:
 """
 
 # Music (anything under a Music folder): streamed rather than held in memory, stereo, 2D.
-MUSIC = AUDIO.replace("loadType: 0", "loadType: 2").replace("quality: 0.7", "quality: 0.5").replace(
-    "preloadAudioData: 1", "preloadAudioData: 0").replace("forceToMono: 1", "forceToMono: 0").replace("3D: 1", "3D: 0")
+MUSIC = (
+    AUDIO.replace("loadType: 0", "loadType: 2")
+    .replace("quality: 0.7", "quality: 0.5")
+    .replace("preloadAudioData: 1", "preloadAudioData: 0")
+    .replace("forceToMono: 1", "forceToMono: 0")
+    .replace("3D: 1", "3D: 0")
+)
 
 # Images (the app icon): no mipmaps, alpha kept as transparency; Unity fills in the rest.
 TEXTURE = """fileFormatVersion: 2
@@ -136,7 +141,7 @@ def template_for(path: Path) -> str:
 
 def guid_for(path: Path) -> str:
     relative = path.relative_to(ROOT).as_posix()
-    return hashlib.md5(f"car-racer:{relative}".encode("utf-8")).hexdigest()
+    return hashlib.md5(f"car-racer:{relative}".encode()).hexdigest()
 
 
 def assets():
@@ -159,9 +164,7 @@ def main() -> int:
             meta.write_text(template.format(guid=guid_for(path)), encoding="utf-8")
 
     orphaned = [
-        meta
-        for meta in sorted(ASSETS.rglob("*.meta"))
-        if not meta.with_name(meta.name[: -len(".meta")]).exists()
+        meta for meta in sorted(ASSETS.rglob("*.meta")) if not meta.with_name(meta.name[: -len(".meta")]).exists()
     ]
 
     for meta in missing:
