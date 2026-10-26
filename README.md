@@ -1,19 +1,11 @@
 # Car Racer
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/logo/logo-dark.svg">
-    <img src="docs/logo/logo.svg" alt="Car Racer" width="520">
-  </picture>
-</p>
-
 An arcade, bump-heavy 3D kart racer for Android. 2 to 6 friends in the same room race on their
 own phones over local Wi-Fi: one phone hosts, the others find it automatically, and bots fill
 the empty slots. Built with Unity 6.3 LTS and Netcode for GameObjects.
 
 - **Design:** [`docs/design.md`](docs/design.md) records every decision so far and the milestone plan.
 - **CI and releases:** [`docs/ci-setup.md`](docs/ci-setup.md) covers secrets, signing and cutting a release.
-- **Logo:** [`docs/logo`](docs/logo) holds the app icon and wordmark (SVG sources, PNG renders).
 - **Linux host:** [`docs/server.md`](docs/server.md) covers hosting on a Linux server (Docker or a tarball) instead of a phone.
 
 ## Status

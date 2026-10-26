@@ -88,6 +88,22 @@ AudioImporter:
 MUSIC = AUDIO.replace("loadType: 0", "loadType: 2").replace("quality: 0.7", "quality: 0.5").replace(
     "preloadAudioData: 1", "preloadAudioData: 0").replace("forceToMono: 1", "forceToMono: 0").replace("3D: 1", "3D: 0")
 
+# Images (the app icon): no mipmaps, alpha kept as transparency; Unity fills in the rest.
+TEXTURE = """fileFormatVersion: 2
+guid: {guid}
+TextureImporter:
+  internalIDToNameTable: []
+  externalObjects: {{}}
+  serializedVersion: 13
+  mipmaps:
+    enableMipMap: 0
+  textureType: 0
+  alphaIsTransparency: 1
+  userData:
+  assetBundleName:
+  assetBundleVariant:
+"""
+
 DEFAULT = """fileFormatVersion: 2
 guid: {guid}
 DefaultImporter:
@@ -108,6 +124,7 @@ TEMPLATES = {
     ".bytes": TEXT_SCRIPT,
     ".ogg": AUDIO,
     ".wav": AUDIO,
+    ".png": TEXTURE,
 }
 
 
