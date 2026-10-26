@@ -43,12 +43,13 @@ python3 tools/generate_unity_meta.py --check
 # linters (the Lint workflow runs the same)
 dotnet format dotnet/CarRacer.sln --severity warn                   # C# style and naming, Core + tests
 dotnet format whitespace --folder Unity/Assets/CarRacer             # C# layout, Game/Editor/Unity tests
-ruff check tools && ruff format tools                               # Python
+ruff check --fix tools && ruff format tools                         # Python
 shellcheck server/run-server.sh
+docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7    # workflows
 ```
 
 - **C# style lives in `.editorconfig`**: Allman braces, braces always, `_camelCase` private
-  fields, no unused usings. The commands above fix in place; CI checks with `--verify-no-changes`.
+  fields, no unused usings. `dotnet format` and `ruff` fix what they can in place; CI runs them in check mode.
 
 - **Every file under `Unity/Assets` needs a `.meta` file.** Files written outside the editor get
   one from `tools/generate_unity_meta.py` (deterministic GUIDs); CI fails if any are missing.
