@@ -54,3 +54,6 @@ TestResults/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Claude
+/.claude/worktrees/
