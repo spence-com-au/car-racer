@@ -1,0 +1,9 @@
+{
+  "icons": [
+    {
+      "src": "../tools/icon/icon-legacy.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
