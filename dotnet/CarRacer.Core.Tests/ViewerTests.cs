@@ -191,9 +191,37 @@ namespace CarRacer.Core.Tests
             var scene = ViewerScene.Build(Racing(race, 0));
             Assert.Equal(ViewerPhase.Results, scene.Phase);
             Assert.StartsWith("Results: ", scene.Title);
-            Assert.Equal(new[] { "1:23.4", "DNF" }, scene.Rows.Select(r => r.Detail));
+            Assert.Equal(new[] { RaceFormat.Time(83_456), "DNF" }, scene.Rows.Select(r => r.Detail));
             Assert.True(scene.Rows[1].Dim);
             Assert.Equal("Rules: no damage, equal cars", scene.Footer);
+        }
+    }
+
+    public class EventTextTests
+    {
+        [Fact]
+        public void NamesModesEventsAndRules()
+        {
+            Assert.Equal(new[] { "Race", "Sumo", "Battle", "Monster Jam" }, new[] { GameMode.Race, GameMode.Sumo, GameMode.Battle, GameMode.Monster }.Select(EventText.ModeName));
+            Assert.Equal(TrackCatalog.Layouts[0].Definition.DisplayName, EventText.EventName(GameMode.Race, 99));
+            Assert.Equal("Battle", EventText.EventName(GameMode.Battle, 3));
+            Assert.Equal(string.Empty, EventText.RulesNote(EventRules.Default));
+            Assert.Equal("Rules: no items", EventText.RulesNote(new EventRules(true, false, true)));
+        }
+
+        [Fact]
+        public void SummarisesTheNextEventAndSurvivesABadCup()
+        {
+            var settings = LobbySettings.Default;
+            settings.Mode = GameMode.Sumo;
+            settings.Rules = new EventRules(false, true, true);
+            Assert.Equal("Sumo. Rules: no damage", EventText.SettingsSummary(settings));
+            settings.Cup = 1;
+            Assert.StartsWith(Scoring.Cups.All[0].Name, EventText.SettingsSummary(settings));
+            settings.Cup = 99;
+            settings.Mode = GameMode.Race;
+            settings.Track = -5;
+            Assert.StartsWith("Race, ", EventText.SettingsSummary(settings));
         }
     }
 

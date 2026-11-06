@@ -6,7 +6,6 @@ using CarRacer.Core.Items;
 using CarRacer.Core.Net;
 using CarRacer.Core.Numerics;
 using CarRacer.Core.Race;
-using CarRacer.Core.Scoring;
 using CarRacer.Core.Session;
 using CarRacer.Core.Track;
 
@@ -121,7 +120,7 @@ namespace CarRacer.Core.Viewer
             scene.TrackIndex = TrackCatalog.Clamp(race.TrackIndex);
             long sinceStartMs = inputs.NowMs - race.StartAtLocalMs;
             scene.PlatformRadius = SumoRules.PlatformRadius(Math.Max(0, sinceStartMs) / 1000f);
-            scene.Footer = RulesNote(race.Rules);
+            scene.Footer = EventText.RulesNote(race.Rules);
             var names = new Dictionary<byte, RosterEntry>();
             foreach (var p in players)
             {
@@ -131,7 +130,7 @@ namespace CarRacer.Core.Viewer
             if (phase == RacePhase.Results && race.Results != null)
             {
                 scene.Phase = ViewerPhase.Results;
-                scene.Title = "Results: " + EventName(race.Mode, scene.TrackIndex);
+                scene.Title = "Results: " + EventText.EventName(race.Mode, scene.TrackIndex);
                 foreach (var result in race.Results.Results)
                 {
                     scene.Rows.Add(new ViewerRow
@@ -148,7 +147,7 @@ namespace CarRacer.Core.Viewer
             }
 
             scene.Phase = phase == RacePhase.Countdown ? ViewerPhase.Countdown : ViewerPhase.Racing;
-            scene.Title = EventName(race.Mode, scene.TrackIndex);
+            scene.Title = EventText.EventName(race.Mode, scene.TrackIndex);
             scene.Clock = ClockText(race.Mode, sinceStartMs);
             scene.Countdown = CountdownText(sinceStartMs);
 
@@ -216,7 +215,7 @@ namespace CarRacer.Core.Viewer
             }
 
             scene.Clock = humans == 1 ? "1 player" : humans + " players";
-            scene.Footer = "Next: " + SettingsSummary(inputs.Settings);
+            scene.Footer = "Next: " + EventText.SettingsSummary(inputs.Settings);
             if (!string.IsNullOrEmpty(inputs.JoinAddress))
             {
                 scene.JoinLink = Discovery.JoinLink.Make(inputs.JoinAddress, inputs.Port);
@@ -224,52 +223,6 @@ namespace CarRacer.Core.Viewer
                     ? "Join " + inputs.JoinAddress
                     : $"Join {inputs.JoinAddress}:{inputs.Port}";
             }
-        }
-
-        public static string ModeName(GameMode mode) => mode switch
-        {
-            GameMode.Sumo => "Sumo",
-            GameMode.Battle => "Battle",
-            GameMode.Monster => "Monster Jam",
-            _ => "Race",
-        };
-
-        /// <summary>"Canyon Hairpins" for a race, or the arena's name.</summary>
-        public static string EventName(GameMode mode, int trackIndex) =>
-            mode == GameMode.Race ? TrackCatalog.Layouts[TrackCatalog.Clamp(trackIndex)].Definition.DisplayName : ModeName(mode);
-
-        /// <summary>What the next event will be: "Race, 3 laps, Canyon Hairpins" or the cup, and any rules turned off.</summary>
-        public static string SettingsSummary(LobbySettings settings)
-        {
-            string what = settings.CupChosen && settings.Cup <= Cups.All.Count
-                ? Cups.All[settings.Cup - 1].Name
-                : settings.Mode == GameMode.Race
-                    ? $"Race, {settings.Laps} laps, {EventName(GameMode.Race, settings.Track)}"
-                    : ModeName(settings.Mode);
-            string rules = RulesNote(settings.Rules);
-            return rules.Length == 0 ? what : what + ". " + rules;
-        }
-
-        /// <summary>Only the rules that are off: "Rules: no damage, equal cars", or nothing.</summary>
-        public static string RulesNote(EventRules rules)
-        {
-            var off = new List<string>();
-            if (!rules.Damage)
-            {
-                off.Add("no damage");
-            }
-
-            if (!rules.Items)
-            {
-                off.Add("no items");
-            }
-
-            if (!rules.CarStats)
-            {
-                off.Add("equal cars");
-            }
-
-            return off.Count == 0 ? string.Empty : "Rules: " + string.Join(", ", off);
         }
 
         /// <summary>"3", "2", "1" before the start, "GO!" for a second after it, otherwise null.</summary>
@@ -328,7 +281,7 @@ namespace CarRacer.Core.Viewer
                 return result.Points + " pts";
             }
 
-            return result.DidNotFinish ? "DNF" : Time(result.RaceTimeMs, tenths: true);
+            return result.DidNotFinish ? "DNF" : RaceFormat.Time(result.RaceTimeMs);
         }
 
         private static Rgb ColourOf(Dictionary<byte, RosterEntry> players, byte playerId) =>
