@@ -7,7 +7,6 @@ using CarRacer.Core.Discovery;
 using CarRacer.Core.Items;
 using CarRacer.Core.Net;
 using CarRacer.Core.Race;
-using CarRacer.Core.Scoring;
 using CarRacer.Core.Session;
 using CarRacer.Core.Track;
 using CarRacer.Game.Driving;
@@ -408,7 +407,7 @@ namespace CarRacer.Game.Net
                 }
                 else
                 {
-                    content.Add(UiKit.Enabled(UiKit.Button(canStart ? $"Start {ModeName(settings.Mode)}" : "Waiting for everyone to be ready", () =>
+                    content.Add(UiKit.Enabled(UiKit.Button(canStart ? $"Start {EventText.ModeName(settings.Mode)}" : "Waiting for everyone to be ready", () =>
                     {
                         if (_session.CanStart)
                         {
@@ -426,7 +425,7 @@ namespace CarRacer.Game.Net
                     Changed();
                 }, primary: !ready));
                 content.Add(UiKit.Hint(ready ? "Waiting for the race to start." : "Drive around, then tap Ready."));
-                content.Add(UiKit.Hint("Next: " + SettingsSummary(settings)));
+                content.Add(UiKit.Hint("Next: " + EventText.SettingsSummary(settings)));
                 AddTrackVote(content, me);
             }
 
@@ -521,7 +520,7 @@ namespace CarRacer.Game.Net
             void Change(System.Func<LobbySettings, LobbySettings> edit) => _session.ChangeSettings(edit(_session.Settings));
 
             var row = UiKit.Row();
-            var mode = UiKit.Button(ModeName(settings.Mode), () => Change(s =>
+            var mode = UiKit.Button(EventText.ModeName(settings.Mode), () => Change(s =>
             {
                 s.Mode = (GameMode)(((int)s.Mode + 1) % 4);
                 return s;
@@ -686,40 +685,6 @@ namespace CarRacer.Game.Net
             panel.Add(UiKit.Hint("Car stats off makes every car drive the same. Damage only counts in races."));
         }
 
-        /// <summary>What the next event will be, for guests who don't run the room: "Race, 3 laps, Canyon" or the cup, and any rules turned off.</summary>
-        private static string SettingsSummary(LobbySettings settings)
-        {
-            string what = settings.CupChosen
-                ? Cups.All[settings.Cup - 1].Name
-                : settings.Mode == GameMode.Race
-                    ? $"Race, {settings.Laps} laps, {TrackCatalog.Layouts[settings.Track].Definition.DisplayName}"
-                    : ModeName(settings.Mode);
-            string rules = RulesNote(settings.Rules);
-            return rules.Length == 0 ? what : what + ". " + rules;
-        }
-
-        /// <summary>The rules the event under way is played by, for guests who weren't in the lobby's settings: only what's off.</summary>
-        private static string RulesNote(EventRules rules)
-        {
-            var off = new System.Collections.Generic.List<string>();
-            if (!rules.Damage)
-            {
-                off.Add("no damage");
-            }
-
-            if (!rules.Items)
-            {
-                off.Add("no items");
-            }
-
-            if (!rules.CarStats)
-            {
-                off.Add("equal cars");
-            }
-
-            return off.Count == 0 ? string.Empty : "Rules: " + string.Join(", ", off);
-        }
-
         private static string[] TrackNames()
         {
             if (_trackNames == null)
@@ -824,7 +789,7 @@ namespace CarRacer.Game.Net
 
             Set(_corner1, position);
             Set(_corner2, $"Lap {lap} / {race.LapCount}");
-            Set(_corner3, RulesNote(race.Rules));
+            Set(_corner3, EventText.RulesNote(race.Rules));
         }
 
         /// <summary>The Monster Jam HUD (design doc §7.0): this phone's place and points, and the time left.</summary>
@@ -952,9 +917,6 @@ namespace CarRacer.Game.Net
 
             _view.Add(row);
         }
-
-        private static string ModeName(GameMode mode) =>
-            mode == GameMode.Race ? "Race" : mode == GameMode.Sumo ? "Sumo" : mode == GameMode.Monster ? "Monster Jam" : "Battle";
 
         /// <summary>False if the player has left the session since the race began.</summary>
         private bool TryFind(byte playerId, out RosterEntry player)

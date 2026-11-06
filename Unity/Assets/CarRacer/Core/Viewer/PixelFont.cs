@@ -3,9 +3,10 @@ using System;
 namespace CarRacer.Core.Viewer
 {
     /// <summary>
-    /// A 5×7 pixel font for printable ASCII, with descenders on g, j, p, q and y,, drawn at a whole-number scale (the TV viewer's text,
-    /// design doc §2.4). Each glyph is five columns of nine rows, lowest bit at the top; row 7 is the first below the baseline. Anything outside
-    /// printable ASCII draws as '?'.
+    /// A 5×7 pixel font for printable ASCII, drawn at a whole-number scale (the TV viewer's text,
+    /// design doc §2.4). Each glyph is five columns, lowest bit at the top: <see cref="GlyphHeight"/>
+    /// rows above the baseline and, for g, j, p, q and y, <see cref="DescenderRows"/> below it.
+    /// Anything outside printable ASCII draws as '?'.
     /// </summary>
     public static class PixelFont
     {
