@@ -3,8 +3,8 @@ using System;
 namespace CarRacer.Core.Viewer
 {
     /// <summary>
-    /// A 5×7 pixel font for printable ASCII, drawn at a whole-number scale (the TV viewer's text,
-    /// design doc §2.4). Each glyph is five columns, lowest bit at the top. Anything outside
+    /// A 5×7 pixel font for printable ASCII, with descenders on g, j, p, q and y,, drawn at a whole-number scale (the TV viewer's text,
+    /// design doc §2.4). Each glyph is five columns of nine rows, lowest bit at the top; row 7 is the first below the baseline. Anything outside
     /// printable ASCII draws as '?'.
     /// </summary>
     public static class PixelFont
@@ -12,12 +12,15 @@ namespace CarRacer.Core.Viewer
         public const int GlyphWidth = 5;
         public const int GlyphHeight = 7;
 
+        /// <summary>Rows below the baseline that g, j, p, q and y reach into.</summary>
+        public const int DescenderRows = 2;
+
         /// <summary>Columns between glyphs, before scaling.</summary>
         public const int Spacing = 1;
 
         private const char First = ' ';
 
-        private static readonly byte[] Glyphs =
+        private static readonly ushort[] Glyphs =
         {
             0x00, 0x00, 0x00, 0x00, 0x00, // space
             0x00, 0x00, 0x5F, 0x00, 0x00, // !
@@ -90,17 +93,17 @@ namespace CarRacer.Core.Viewer
             0x38, 0x44, 0x44, 0x48, 0x7F, // d
             0x38, 0x54, 0x54, 0x54, 0x18, // e
             0x08, 0x7E, 0x09, 0x01, 0x02, // f
-            0x0C, 0x52, 0x52, 0x52, 0x3E, // g
+            0x138, 0x144, 0x144, 0x144, 0x0FC, // g
             0x7F, 0x08, 0x04, 0x04, 0x78, // h
             0x00, 0x44, 0x7D, 0x40, 0x00, // i
-            0x20, 0x40, 0x44, 0x3D, 0x00, // j
+            0x100, 0x100, 0x104, 0x0FD, 0x000, // j
             0x7F, 0x10, 0x28, 0x44, 0x00, // k
             0x00, 0x41, 0x7F, 0x40, 0x00, // l
             0x7C, 0x04, 0x18, 0x04, 0x78, // m
             0x7C, 0x08, 0x04, 0x04, 0x78, // n
             0x38, 0x44, 0x44, 0x44, 0x38, // o
-            0x7C, 0x14, 0x14, 0x14, 0x08, // p
-            0x08, 0x14, 0x14, 0x18, 0x7C, // q
+            0x1FC, 0x044, 0x044, 0x044, 0x038, // p
+            0x038, 0x044, 0x044, 0x044, 0x1FC, // q
             0x7C, 0x08, 0x04, 0x04, 0x08, // r
             0x48, 0x54, 0x54, 0x54, 0x20, // s
             0x04, 0x3F, 0x44, 0x40, 0x20, // t
@@ -108,7 +111,7 @@ namespace CarRacer.Core.Viewer
             0x1C, 0x20, 0x40, 0x20, 0x1C, // v
             0x3C, 0x40, 0x30, 0x40, 0x3C, // w
             0x44, 0x28, 0x10, 0x28, 0x44, // x
-            0x0C, 0x50, 0x50, 0x50, 0x3C, // y
+            0x13C, 0x140, 0x140, 0x140, 0x0FC, // y
             0x44, 0x64, 0x54, 0x4C, 0x44, // z
             0x00, 0x08, 0x36, 0x41, 0x00, // {
             0x00, 0x00, 0x7F, 0x00, 0x00, // |
@@ -122,7 +125,7 @@ namespace CarRacer.Core.Viewer
         /// <summary>Whether the pixel at (<paramref name="column"/>, <paramref name="row"/>) of <paramref name="c"/>'s glyph is set.</summary>
         public static bool IsSet(char c, int column, int row)
         {
-            if (column < 0 || column >= GlyphWidth || row < 0 || row >= GlyphHeight)
+            if (column < 0 || column >= GlyphWidth || row < 0 || row >= GlyphHeight + DescenderRows)
             {
                 return false;
             }
@@ -154,8 +157,8 @@ namespace CarRacer.Core.Viewer
                 int glyph = GlyphIndex(c) * GlyphWidth;
                 for (int column = 0; column < GlyphWidth; column++)
                 {
-                    byte bits = Glyphs[glyph + column];
-                    for (int row = 0; row < GlyphHeight; row++)
+                    int bits = Glyphs[glyph + column];
+                    for (int row = 0; row < GlyphHeight + DescenderRows; row++)
                     {
                         if ((bits & (1 << row)) != 0)
                         {
