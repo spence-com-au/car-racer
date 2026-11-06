@@ -273,7 +273,7 @@ namespace CarRacer.Core.Tests
             foreach (var (name, scene) in Screens())
             {
                 renderer.Render(scene, frame);
-                Assert.True(Count(frame, ViewerRenderer.Background) < frame.Width * frame.Height / 2, name);
+                Assert.True(frame.Width * frame.Height - Count(frame, ViewerRenderer.Background) > 150_000, name);
 
                 // Set VIEWER_SCREENSHOTS to a folder to look at them.
                 string folder = Environment.GetEnvironmentVariable("VIEWER_SCREENSHOTS");
