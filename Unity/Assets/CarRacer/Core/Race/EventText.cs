@@ -1,0 +1,59 @@
+using System.Collections.Generic;
+using CarRacer.Core.Arena;
+using CarRacer.Core.Scoring;
+using CarRacer.Core.Session;
+using CarRacer.Core.Track;
+
+namespace CarRacer.Core.Race
+{
+    /// <summary>How events and their rules read on screen, the same on the phones' lobby and the TV viewer.</summary>
+    public static class EventText
+    {
+        /// <summary>"Race", "Sumo", "Battle" or "Monster Jam".</summary>
+        public static string ModeName(GameMode mode) => mode switch
+        {
+            GameMode.Sumo => "Sumo",
+            GameMode.Battle => "Battle",
+            GameMode.Monster => "Monster Jam",
+            _ => "Race",
+        };
+
+        /// <summary>The track's name for a race ("Canyon Hairpins"), or the arena's.</summary>
+        public static string EventName(GameMode mode, int trackIndex) =>
+            mode == GameMode.Race ? TrackCatalog.Layouts[TrackCatalog.Clamp(trackIndex)].Definition.DisplayName : ModeName(mode);
+
+        /// <summary>What the next event will be: "Race, 3 laps, Canyon Hairpins" or the cup, and any rules turned off.</summary>
+        public static string SettingsSummary(LobbySettings settings)
+        {
+            string what = settings.CupChosen && settings.Cup <= Cups.All.Count
+                ? Cups.All[settings.Cup - 1].Name
+                : settings.Mode == GameMode.Race
+                    ? $"Race, {settings.Laps} laps, {EventName(GameMode.Race, settings.Track)}"
+                    : ModeName(settings.Mode);
+            string rules = RulesNote(settings.Rules);
+            return rules.Length == 0 ? what : what + ". " + rules;
+        }
+
+        /// <summary>Only the rules that are off: "Rules: no damage, equal cars", or nothing.</summary>
+        public static string RulesNote(EventRules rules)
+        {
+            var off = new List<string>();
+            if (!rules.Damage)
+            {
+                off.Add("no damage");
+            }
+
+            if (!rules.Items)
+            {
+                off.Add("no items");
+            }
+
+            if (!rules.CarStats)
+            {
+                off.Add("equal cars");
+            }
+
+            return off.Count == 0 ? string.Empty : "Rules: " + string.Join(", ", off);
+        }
+    }
+}
