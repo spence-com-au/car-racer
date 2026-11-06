@@ -14,6 +14,9 @@ namespace CarRacer.Core.Cast
         private bool _pending;
         private bool _takeOver;
 
+        /// <summary>Whether a cast is waiting to start (for the stream to be ready, or the TV to be found).</summary>
+        public bool Pending => _pending && Wanted != null;
+
         /// <summary>The TV wanted: a name, id or address, or empty for the first one found; null for none.</summary>
         public string Wanted { get; private set; }
 

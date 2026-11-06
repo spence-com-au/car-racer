@@ -114,6 +114,18 @@ namespace CarRacer.Game.Net
         /// <summary>True when the room leader may start the event (everyone else is ready).</summary>
         public bool CanStart => IsHost ? HostSide.CanStart : LobbyRoster.ReadyToStart(GuestSide.Roster);
 
+        /// <summary>The host's TV viewer (design doc §2.4): whether it can cast, the TVs it found and how the cast is going.</summary>
+        public TvStatusMessage TvStatus => IsHost ? HostSide.TvStatus : GuestSide.TvStatus;
+
+        /// <summary>The room leader casts to <paramref name="device"/>, or stops casting (null); only a guest leading a server's room can.</summary>
+        public void CastTo(string device)
+        {
+            if (!IsHost && LeadsRoom)
+            {
+                GuestSide.SendCastCommand(device);
+            }
+        }
+
         /// <summary>Changes the next event's settings, if this phone runs the room; the host tells every phone.</summary>
         public void ChangeSettings(LobbySettings settings) => Command(LobbyCommand.ChangeSettings, settings);
 

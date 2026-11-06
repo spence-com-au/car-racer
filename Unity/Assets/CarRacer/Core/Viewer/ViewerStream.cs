@@ -108,6 +108,48 @@ namespace CarRacer.Core.Viewer
             return null;
         }
 
+        /// <summary>Whether <paramref name="ffmpegPath"/> runs, so the server only offers casting when it can (design doc §2.4).</summary>
+        public static bool IsAvailable(string ffmpegPath, out string error)
+        {
+            error = null;
+            try
+            {
+                var info = new ProcessStartInfo(ffmpegPath, "-hide_banner -version")
+                {
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true,
+                };
+                using (var process = Process.Start(info))
+                {
+                    if (process == null)
+                    {
+                        error = "ffmpeg didn't start";
+                        return false;
+                    }
+
+                    process.StandardOutput.ReadToEnd();
+                    if (!process.WaitForExit(5_000) || process.ExitCode != 0)
+                    {
+                        error = "ffmpeg didn't run (\"" + ffmpegPath + " -version\" failed)";
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+            catch (Win32Exception)
+            {
+                error = $"ffmpeg not found (\"{ffmpegPath}\"); install it, or point -ffmpeg at it";
+            }
+            catch (InvalidOperationException e)
+            {
+                error = "Couldn't run ffmpeg: " + e.Message;
+            }
+
+            return false;
+        }
+
         /// <summary>
         /// ffmpeg's arguments: raw RGB frames on stdin and a silent stereo track, encoded as H.264
         /// and AAC into 1-second HLS segments, each starting with a keyframe, keeping the last six.

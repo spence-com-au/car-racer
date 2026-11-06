@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using CarRacer.Core.Cast;
 using CarRacer.Core.Discovery;
+using CarRacer.Core.Net;
 using CarRacer.Core.Race;
 using CarRacer.Core.Session;
 using CarRacer.Core.Viewer;
@@ -11,9 +12,10 @@ namespace CarRacer.Game.Net
 {
     /// <summary>
     /// The TV viewer on a server (design doc §2.4): finds Chromecasts on the network, and while a TV
-    /// is wanted (<c>-cast</c>, or <see cref="CastTo"/>) streams the room's event as video with
-    /// ffmpeg, serves it over HTTP and casts it, trying again at each countdown if nothing is cast.
-    /// Logs what it finds and how each cast goes. Everything slow runs on background threads.
+    /// is wanted (<c>-cast</c>, or the room leader's Cast to TV) streams the room's event as video
+    /// with ffmpeg, serves it over HTTP and casts it, trying again at each countdown if nothing is
+    /// cast. It tells every phone what it found and how the cast is going (<see cref="TvStatusMessage"/>),
+    /// and logs the same. Everything slow runs on background threads.
     /// </summary>
     public sealed class TvViewer : MonoBehaviour
     {
@@ -46,6 +48,13 @@ namespace CarRacer.Game.Net
             viewer._options = options;
             viewer._session = session;
             viewer._cars = cars;
+            if (!ViewerStream.IsAvailable(options.FfmpegPath, out string ffmpegError))
+            {
+                Debug.LogWarning("TV viewer off: " + ffmpegError);
+                viewer._streamFailed = true;
+            }
+
+            session.HostSide.CastCommandReceived += viewer.OnCastCommand;
             var addresses = HostAddress.LocalIPv4Addresses();
             viewer._joinAddress = addresses.Count > 0 ? addresses[0] : null;
             try
@@ -79,6 +88,20 @@ namespace CarRacer.Game.Net
 
             _plan.Request(wanted, takeOver);
             Debug.Log(string.IsNullOrEmpty(wanted) ? "Casting to the first TV found" : $"Casting to \"{wanted}\"");
+        }
+
+        private void OnCastCommand(CastCommandMessage command)
+        {
+            if (command.Stop)
+            {
+                Debug.Log("The room leader stopped casting");
+                StopCasting();
+            }
+            else if (!_streamFailed)
+            {
+                Debug.Log($"The room leader picked \"{command.Device}\"");
+                CastTo(command.Device, takeOver: true);
+            }
         }
 
         /// <summary>Stops casting and streaming until asked again.</summary>
@@ -121,6 +144,7 @@ namespace CarRacer.Game.Net
             }
 
             LogCastState();
+            _session.HostSide.SetTvStatus(Status());
             if (_stream != null && _plan.Wanted == null && (_cast == null || _cast.Finished))
             {
                 StopStreaming();
@@ -221,8 +245,60 @@ namespace CarRacer.Game.Net
             }
         }
 
+        /// <summary>What the phones are told: whether casting works here, the TVs found and how the cast is going.</summary>
+        private TvStatusMessage Status()
+        {
+            var status = new TvStatusMessage { CanCast = !_streamFailed && _discovery != null };
+            foreach (var device in Devices)
+            {
+                if (status.Devices.Count < TvStatusMessage.MaxDevices && !status.Devices.Contains(device.Name))
+                {
+                    status.Devices.Add(device.Name);
+                }
+            }
+
+            if (_cast != null)
+            {
+                status.CastingTo = _cast.Device.Name;
+                status.Detail = _cast.Detail;
+                switch (_cast.State)
+                {
+                    case CastState.Playing:
+                        status.State = TvState.Playing;
+                        break;
+                    case CastState.Busy:
+                        status.State = TvState.Busy;
+                        break;
+                    case CastState.Failed:
+                        status.State = TvState.Failed;
+                        break;
+                    case CastState.Stopped:
+                        status.State = TvState.Off;
+                        break;
+                    default:
+                        status.State = TvState.Connecting;
+                        break;
+                }
+            }
+
+            // Waiting for the stream or the TV to turn up counts as connecting to it.
+            if (_plan.Wanted != null && (_cast == null || _cast.Finished) && status.State != TvState.Busy && status.State != TvState.Failed && _plan.Pending)
+            {
+                status.State = TvState.Connecting;
+                status.CastingTo = _plan.Wanted.Length > 0 ? _plan.Wanted : status.CastingTo;
+                status.Detail = string.Empty;
+            }
+
+            return status;
+        }
+
         private void OnDestroy()
         {
+            if (_session != null && _session.HostSide != null)
+            {
+                _session.HostSide.CastCommandReceived -= OnCastCommand;
+            }
+
             _cast?.Dispose();
             StopStreaming();
             _discovery?.Dispose();

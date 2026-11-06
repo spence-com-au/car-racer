@@ -32,6 +32,8 @@ namespace CarRacer.Core.Net
         LobbySettings = 24,
         LobbyCommand = 25,
         Stunt = 26,
+        TvStatus = 27,
+        CastCommand = 28,
     }
 
     [Flags]
@@ -361,6 +363,12 @@ namespace CarRacer.Core.Net
                     break;
                 case MessageType.Stunt:
                     message = StuntMessage.Read(reader);
+                    break;
+                case MessageType.TvStatus:
+                    message = TvStatusMessage.Read(reader);
+                    break;
+                case MessageType.CastCommand:
+                    message = CastCommandMessage.Read(reader);
                     break;
                 default:
                     throw new NetFormatException($"Unknown message type {(byte)type}.");

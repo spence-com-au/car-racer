@@ -96,6 +96,24 @@ namespace CarRacer.Core.Session
         /// <summary>True when the leader may start: everyone else is ready (the leader starting counts as their Ready).</summary>
         public bool CanStart => LobbyRoster.ReadyToStart(RosterMessage());
 
+        /// <summary>The TV viewer's state (design doc §2.4), as last set with <see cref="SetTvStatus"/>.</summary>
+        public TvStatusMessage TvStatus { get; private set; } = new TvStatusMessage();
+
+        /// <summary>The room leader picked a TV or stopped casting.</summary>
+        public event Action<CastCommandMessage> CastCommandReceived;
+
+        /// <summary>Tells every phone how the TV viewer is doing, if that changed.</summary>
+        public void SetTvStatus(TvStatusMessage status)
+        {
+            if (status == null || status.Equals(TvStatus))
+            {
+                return;
+            }
+
+            TvStatus = status;
+            Broadcast(status, reliable: true);
+        }
+
         /// <summary>A command from the room leader (or the host's own lobby, <see cref="RunCommand"/>) other than changing settings, for the game to carry out.</summary>
         public event Action<LobbyCommand> LobbyCommandReceived;
 
@@ -398,6 +416,9 @@ namespace CarRacer.Core.Session
                 case LobbyCommandMessage command when joined && playerId == LeaderId:
                     RunCommand(command.Command, command.Settings);
                     break;
+                case CastCommandMessage cast when joined && playerId == LeaderId:
+                    CastCommandReceived?.Invoke(cast);
+                    break;
             }
         }
 
@@ -451,6 +472,11 @@ namespace CarRacer.Core.Session
             _lastHeardMs[player.PlayerId] = _clockMs();
             _transport.Send(connection, new JoinReplyMessage { Result = JoinResult.Accepted, PlayerId = player.PlayerId }, reliable: true);
             _transport.Send(connection, SettingsMessage(), reliable: true);
+            if (TvStatus.CanCast)
+            {
+                _transport.Send(connection, TvStatus, reliable: true);
+            }
+
             BroadcastRoster();
         }
 
@@ -585,6 +611,9 @@ namespace CarRacer.Core.Session
         /// <summary>The host's settings for the next event and its saved cup (design doc §11).</summary>
         public LobbySettingsMessage Lobby { get; private set; } = new LobbySettingsMessage();
 
+        /// <summary>The host's TV viewer (design doc §2.4): whether it can cast, the TVs it found and how the cast is going.</summary>
+        public TvStatusMessage TvStatus { get; private set; } = new TvStatusMessage();
+
         /// <summary>True when this phone runs the room (design doc §2.3): a dedicated host made it the leader.</summary>
         public bool IsLeader => State == GuestState.Joined && Roster.LeaderId == PlayerId;
 
@@ -647,6 +676,10 @@ namespace CarRacer.Core.Session
                     break;
                 case LobbySettingsMessage lobby:
                     Lobby = lobby;
+                    LobbyChanged?.Invoke();
+                    break;
+                case TvStatusMessage tv:
+                    TvStatus = tv;
                     LobbyChanged?.Invoke();
                     break;
                 case ClockPongMessage pong:
@@ -722,6 +755,10 @@ namespace CarRacer.Core.Session
         public void SendCarState(CarStateMessage state) => SendToHost(state, reliable: false);
 
         /// <summary>The room leader's command to the host (design doc §2.3); the host ignores it from anyone else.</summary>
+        /// <summary>The room leader picks a TV to cast to (<paramref name="device"/>), or stops casting (null).</summary>
+        public void SendCastCommand(string device) =>
+            SendToHost(new CastCommandMessage { Stop = device == null, Device = device ?? string.Empty }, reliable: true);
+
         public void SendLobbyCommand(LobbyCommand command, LobbySettings settings = default) =>
             SendToHost(new LobbyCommandMessage { Command = command, Settings = settings }, reliable: true);
 

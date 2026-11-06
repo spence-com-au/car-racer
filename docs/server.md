@@ -74,7 +74,10 @@ network: a broadcast view with a map of the track and every car on it, the stand
 countdown and the results, and in the lobby a QR code to join (design doc §2.4). It plays in the
 TV's own media player, a few seconds behind the race.
 
-- Start it with **`-cast "Living Room TV"`** (the name the TV has in the Google Home app), or
+- The **room leader's phone** has a **Cast to TV** button in the lobby, listing the Chromecasts
+  the server found, with Stop casting. A leader's pick takes over the TV even if something else
+  is on it. Everyone else's lobby says "On TV: …".
+- Or start the server with **`-cast "Living Room TV"`** (the name the TV has in the Google Home app), or
   `-cast` alone for the first Chromecast found. The server casts once the stream is ready, and
   again at each event's countdown if nothing is being cast, but only while the TV is idle: it
   never takes over something someone else is watching.
