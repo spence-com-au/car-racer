@@ -171,8 +171,9 @@ people waiting their turn, or just watching, can follow it.
   never takes over something someone else is watching. Everyone else's lobby says "On TV: …".
   Only a server with `ffmpeg` offers it; phone hosts never do. The server tells every phone
   whether it can cast, the TVs it found (up to eight, by name) and how the cast is going
-  (`TvStatusMessage`, on change and to each guest as it joins), and the leader's pick or Stop
-  goes back as a `CastCommandMessage`, which the host ignores from anyone else (protocol 26). The
+  and whether the TV plays the music (`TvStatusMessage`, on change and to each guest as it
+  joins); the leader's pick, Stop, or TV music on or off goes back as a `CastCommandMessage`,
+  which the host ignores from anyone else (protocol 26). The
   button reads "Cast to TV", "Casting to Den...", "On TV: Den", "TV busy: Den" or "Can't reach
   Den" (`TvText`); with one TV found and nothing cast, a tap casts straight to it
   (`TvCastPanel`).

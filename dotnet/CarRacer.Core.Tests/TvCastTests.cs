@@ -54,17 +54,24 @@ namespace CarRacer.Core.Tests
                 CastingTo = "Living Room TV",
                 State = TvState.Busy,
                 Detail = "The TV is showing YouTube",
+                Music = true,
             })));
+            Assert.True(status.Music);
             Assert.True(status.CanCast);
             Assert.Equal(new[] { "Living Room TV", "Zoë's room" }, status.Devices);
             Assert.Equal(TvState.Busy, status.State);
             Assert.Equal("The TV is showing YouTube", status.Detail);
 
-            var stop = Assert.IsType<CastCommandMessage>(MessageCodec.Decode(MessageCodec.Encode(new CastCommandMessage { Stop = true })));
-            Assert.True(stop.Stop);
-            var cast = Assert.IsType<CastCommandMessage>(MessageCodec.Decode(MessageCodec.Encode(new CastCommandMessage { Device = "Den" })));
-            Assert.Equal("Den", cast.Device);
-            Assert.False(cast.Stop);
+            foreach (var command in new[] { CastCommand.Cast, CastCommand.Stop, CastCommand.MusicOn, CastCommand.MusicOff })
+            {
+                var back = Assert.IsType<CastCommandMessage>(MessageCodec.Decode(MessageCodec.Encode(new CastCommandMessage { Command = command, Device = "Den" })));
+                Assert.Equal(command, back.Command);
+                Assert.Equal("Den", back.Device);
+            }
+
+            var bad = MessageCodec.Encode(new CastCommandMessage { Command = CastCommand.MusicOff });
+            bad[System.Array.IndexOf(bad, (byte)CastCommand.MusicOff, 1)] = 9;
+            Assert.ThrowsAny<System.Exception>(() => MessageCodec.Decode(bad));
         }
 
         [Fact]
@@ -87,11 +94,11 @@ namespace CarRacer.Core.Tests
             Join(2, "Bob");
             _server.OnMessage(2, new CastCommandMessage { Device = "Den" });
             Assert.Empty(_commands);
-            _server.OnMessage(1, new CastCommandMessage { Device = "Den" });
+            _server.OnMessage(1, new CastCommandMessage { Command = CastCommand.Cast, Device = "Den" });
             Assert.Equal("Den", Assert.Single(_commands).Device);
 
             // Before joining, nobody's commands count.
-            _server.OnMessage(9, new CastCommandMessage { Stop = true });
+            _server.OnMessage(9, new CastCommandMessage { Command = CastCommand.Stop });
             Assert.Single(_commands);
         }
 
@@ -125,11 +132,12 @@ namespace CarRacer.Core.Tests
             Assert.Equal(GuestState.Joined, guest.State);
             guest.OnMessage(Playing());
             Assert.Equal("Den", guest.TvStatus.CastingTo);
-            guest.SendCastCommand("Kitchen");
-            guest.SendCastCommand(null);
+            guest.SendCastCommand(CastCommand.Cast, "Kitchen");
+            guest.SendCastCommand(CastCommand.MusicOn);
             var sent = toHost.Sent.Select(s => s.Message).OfType<CastCommandMessage>().ToList();
             Assert.Equal("Kitchen", sent[0].Device);
-            Assert.True(sent[1].Stop);
+            Assert.Equal(CastCommand.MusicOn, sent[1].Command);
+            Assert.Equal(string.Empty, sent[1].Device);
         }
 
         [Fact]

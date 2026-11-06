@@ -45,7 +45,7 @@ namespace CarRacer.Game.Net
                 string quick = _open ? null : TvText.QuickCast(status);
                 if (quick != null)
                 {
-                    _session.CastTo(quick);
+                    _session.Cast(CastCommand.Cast, quick);
                 }
                 else
                 {
@@ -74,7 +74,7 @@ namespace CarRacer.Game.Net
                 bool current = device == status.CastingTo && status.State == TvState.Playing;
                 content.Add(UiKit.Enabled(UiKit.Button(current ? device + " (on now)" : device, () =>
                 {
-                    _session.CastTo(device);
+                    _session.Cast(CastCommand.Cast, device);
                     _open = false;
                 }), !current));
             }
@@ -83,7 +83,7 @@ namespace CarRacer.Game.Net
             {
                 content.Add(UiKit.Button("Stop casting", () =>
                 {
-                    _session.CastTo(null);
+                    _session.Cast(CastCommand.Stop);
                     _open = false;
                 }, sound: UiSound.Back));
             }

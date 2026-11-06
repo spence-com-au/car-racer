@@ -37,6 +37,9 @@ namespace CarRacer.Core.Net
         /// <summary>Why it is busy or failed, or empty.</summary>
         public string Detail = string.Empty;
 
+        /// <summary>Whether the TV plays the music (design doc §2.4); phones fade theirs while it does.</summary>
+        public bool Music;
+
         public MessageType Type => MessageType.TvStatus;
 
         public void Write(NetWriter w)
@@ -52,6 +55,7 @@ namespace CarRacer.Core.Net
             w.WriteString(CastingTo ?? string.Empty);
             w.WriteByte((byte)State);
             w.WriteString(Detail ?? string.Empty);
+            w.WriteBool(Music);
         }
 
         public static TvStatusMessage Read(NetReader r)
@@ -77,11 +81,12 @@ namespace CarRacer.Core.Net
 
             message.State = (TvState)state;
             message.Detail = r.ReadString();
+            message.Music = r.ReadBool();
             return message;
         }
 
         public bool Equals(TvStatusMessage other) =>
-            other != null && CanCast == other.CanCast && State == other.State && CastingTo == other.CastingTo
+            other != null && CanCast == other.CanCast && Music == other.Music && State == other.State && CastingTo == other.CastingTo
             && Detail == other.Detail && Devices.Count == other.Devices.Count && Devices.TrueForAll(other.Devices.Contains);
 
         public override bool Equals(object obj) => Equals(obj as TvStatusMessage);
@@ -89,22 +94,42 @@ namespace CarRacer.Core.Net
         public override int GetHashCode() => HashCode.Combine(CanCast, State, CastingTo, Detail, Devices.Count);
     }
 
-    /// <summary>Guest → host: the room leader picked a TV to cast to, or stopped casting; the host ignores anyone else.</summary>
+    /// <summary>What the room leader asks of the TV viewer.</summary>
+    public enum CastCommand : byte
+    {
+        /// <summary>Cast to <see cref="CastCommandMessage.Device"/>, taking the TV over.</summary>
+        Cast = 0,
+        Stop = 1,
+        MusicOn = 2,
+        MusicOff = 3,
+    }
+
+    /// <summary>Guest → host: the room leader's pick of TV, Stop, or TV music on or off; the host ignores anyone else.</summary>
     public sealed class CastCommandMessage : IGameMessage
     {
-        /// <summary>Stop casting; otherwise cast to <see cref="Device"/>.</summary>
-        public bool Stop;
+        public CastCommand Command;
+
+        /// <summary>The TV, for <see cref="CastCommand.Cast"/>.</summary>
         public string Device = string.Empty;
 
         public MessageType Type => MessageType.CastCommand;
 
         public void Write(NetWriter w)
         {
-            w.WriteBool(Stop);
+            w.WriteByte((byte)Command);
             w.WriteString(Device ?? string.Empty);
         }
 
-        public static CastCommandMessage Read(NetReader r) => new CastCommandMessage { Stop = r.ReadBool(), Device = r.ReadString() };
+        public static CastCommandMessage Read(NetReader r)
+        {
+            byte command = r.ReadByte();
+            if (command > (byte)CastCommand.MusicOff)
+            {
+                throw new NetFormatException($"Unknown cast command {command}.");
+            }
+
+            return new CastCommandMessage { Command = (CastCommand)command, Device = r.ReadString() };
+        }
     }
 
     /// <summary>How the TV viewer's state reads in the lobby (design doc §2.4).</summary>
@@ -142,6 +167,6 @@ namespace CarRacer.Core.Net
 
         /// <summary>A short summary for rebuilding the lobby only when it changes.</summary>
         public static string Signature(TvStatusMessage status) =>
-            status.CanCast + "|" + status.State + "|" + status.CastingTo + "|" + string.Join(",", status.Devices);
+            status.CanCast + "|" + status.Music + "|" + status.State + "|" + status.CastingTo + "|" + string.Join(",", status.Devices);
     }
 }

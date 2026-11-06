@@ -117,12 +117,12 @@ namespace CarRacer.Game.Net
         /// <summary>The host's TV viewer (design doc §2.4): whether it can cast, the TVs it found and how the cast is going.</summary>
         public TvStatusMessage TvStatus => IsHost ? HostSide.TvStatus : GuestSide.TvStatus;
 
-        /// <summary>The room leader casts to <paramref name="device"/>, or stops casting (null); only a guest leading a server's room can.</summary>
-        public void CastTo(string device)
+        /// <summary>The room leader's TV command (cast to a TV, stop, music on or off); only a guest leading a server's room can.</summary>
+        public void Cast(CastCommand command, string device = null)
         {
             if (!IsHost && LeadsRoom)
             {
-                GuestSide.SendCastCommand(device);
+                GuestSide.SendCastCommand(command, device);
             }
         }
 

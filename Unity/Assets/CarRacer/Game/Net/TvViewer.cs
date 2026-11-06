@@ -92,17 +92,26 @@ namespace CarRacer.Game.Net
 
         private void OnCastCommand(CastCommandMessage command)
         {
-            if (command.Stop)
+            switch (command.Command)
             {
-                Debug.Log("The room leader stopped casting");
-                StopCasting();
-            }
-            else if (!_streamFailed)
-            {
-                Debug.Log($"The room leader picked \"{command.Device}\"");
-                CastTo(command.Device, takeOver: true);
+                case CastCommand.Stop:
+                    Debug.Log("The room leader stopped casting");
+                    StopCasting();
+                    break;
+                case CastCommand.Cast when !_streamFailed:
+                    Debug.Log($"The room leader picked \"{command.Device}\"");
+                    CastTo(command.Device, takeOver: true);
+                    break;
+                case CastCommand.MusicOn:
+                case CastCommand.MusicOff:
+                    Music = command.Command == CastCommand.MusicOn;
+                    Debug.Log(Music ? "TV music on" : "TV music off");
+                    break;
             }
         }
+
+        /// <summary>Whether the TV plays the music (design doc §2.4).</summary>
+        public bool Music { get; set; }
 
         /// <summary>Stops casting and streaming until asked again.</summary>
         public void StopCasting()
@@ -248,7 +257,7 @@ namespace CarRacer.Game.Net
         /// <summary>What the phones are told: whether casting works here, the TVs found and how the cast is going.</summary>
         private TvStatusMessage Status()
         {
-            var status = new TvStatusMessage { CanCast = !_streamFailed && _discovery != null };
+            var status = new TvStatusMessage { CanCast = !_streamFailed && _discovery != null, Music = Music };
             foreach (var device in Devices)
             {
                 if (status.Devices.Count < TvStatusMessage.MaxDevices && !status.Devices.Contains(device.Name))
