@@ -41,6 +41,7 @@ namespace CarRacer.Game.Net
             var server = new GameObject(nameof(DedicatedServer)).AddComponent<DedicatedServer>();
             server._screen = TrackScreen.CreateServer(() => NetworkSession.StartServer(options.Name, options.Port));
             server._session = server._screen.Session;
+            TvViewer.Create(server.gameObject, options, server._session, server._screen.GetComponent<NetworkedCars>());
             Debug.Log($"Car Racer server \"{options.Name}\" on port {options.Port} (protocol {DiscoveryConstants.ProtocolVersion})");
             return server;
         }

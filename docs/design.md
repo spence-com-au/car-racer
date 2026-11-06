@@ -173,6 +173,13 @@ people waiting their turn, or just watching, can follow it.
 - **Music:** optional (off by default; a toggle in the cast menu, or `-tv-music`). The TV plays
   the tune the phones would (`MusicChoice`), and while it does the phones fade theirs out. No
   sound effects go to the TV; they would land seconds after the phones'.
+- **On the server** (`TvViewer`, `ViewerStream`, `ViewerHttpServer`, `TvCastPlan`): Chromecasts
+  are looked for all along (an mDNS query from a port of its own every 10 s, so it never competes
+  with avahi for 5353), but ffmpeg and the HTTP server only run while a TV is wanted. Frames are
+  drawn on a background thread and piped raw to ffmpeg (H.264 at 2.5 Mbit/s, keyframes every
+  second, silent AAC); a frame that can't be drawn in time is repeated, so the stream keeps time.
+  The stream URL uses the address the TV was reached from. The HTTP server only serves bare file
+  names from the stream's folder, with the CORS headers the TV's player needs.
 - **Getting ffmpeg:** it is in the Docker image; with the tarball it is installed separately
   (`-ffmpeg <path>` for a non-standard place). Without it the server logs why and offers no casting.
 

@@ -57,12 +57,34 @@ WantedBy=multi-user.target
 |---|---|---|
 | `-name <name>` | `Car Racer server` | What phones list the game as (up to 24 characters) |
 | `-port <port>` | `47778` | The game port guests connect to (UDP) |
+| `-cast [TV]` | off | Show the room on a Chromecast by itself (see below): the TV's name, id or address, or none for the first one found |
+| `-ffmpeg <path>` | `ffmpeg` | The ffmpeg the TV stream is made with |
+| `-viewer-port <port>` | `47780` | The TCP port the TV fetches the stream from |
 
 Open UDP **47777** (discovery) and the game port in any firewall. If phones can't see the server
 (some networks block broadcast), they can still **join by IP** with the server's address.
 
 The server exits with a non-zero status if it can't host (for example, the port is taken), so a
 service manager or Docker restarts it.
+
+## Showing the race on a TV
+
+The server can cast the room to a **Chromecast** (or a TV with Chromecast built in) on the same
+network: a broadcast view with a map of the track and every car on it, the standings, the
+countdown and the results, and in the lobby a QR code to join (design doc §2.4). It plays in the
+TV's own media player, a few seconds behind the race.
+
+- Start it with **`-cast "Living Room TV"`** (the name the TV has in the Google Home app), or
+  `-cast` alone for the first Chromecast found. The server casts once the stream is ready, and
+  again at each event's countdown if nothing is being cast, but only while the TV is idle: it
+  never takes over something someone else is watching.
+- It needs **ffmpeg**. The Docker image has it; with the tarball, install it (`sudo apt install
+  ffmpeg`) or point `-ffmpeg` at one. Without it the server logs "TV viewer off" and carries on.
+- The TV fetches the stream over HTTP from TCP **47780** (`-viewer-port`), so allow that in any
+  firewall. Chromecasts are found by mDNS (UDP 5353 to `224.0.0.251`), which needs host
+  networking in Docker, as discovery already does. The log says which TVs it found and how each
+  cast goes.
+- Anything that plays HLS can watch too: `vlc http://<server>:47780/live.m3u8`.
 
 ## How it's built
 
