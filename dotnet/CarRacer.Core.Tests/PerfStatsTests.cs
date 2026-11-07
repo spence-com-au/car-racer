@@ -43,6 +43,54 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void TheWindowSurvivesTheBufferWrappingAround()
+        {
+            // At 240 fps the window holds about 480 of the buffer's 512 frames, so 600 frames
+            // then a spike puts the window across the end of the buffer.
+            var stats = new FrameStats();
+            for (int i = 0; i < 600; i++)
+            {
+                stats.Add(1f / 240f);
+            }
+
+            stats.Add(0.05f);
+            for (int i = 0; i < 100; i++)
+            {
+                stats.Add(1f / 240f);
+            }
+
+            // The spike takes the room of 12 ordinary frames.
+            Assert.InRange(stats.Frames, 467, 470);
+            Assert.Equal(50f, stats.WorstMs, 1);
+            Assert.Equal(1, stats.SlowFrames);
+
+            for (int i = 0; i < 500; i++)
+            {
+                stats.Add(1f / 240f);
+            }
+
+            Assert.Equal(4.2f, stats.WorstMs, 1);
+            Assert.Equal(0, stats.SlowFrames);
+        }
+
+        [Fact]
+        public void AFullBufferDropsTheOldestFrameBeforeTheWindowDoes()
+        {
+            // At 1000 fps the 2 s window would need 2000 frames, so the 512-frame buffer is the limit.
+            var stats = new FrameStats();
+            stats.Add(0.05f);
+            for (int i = 0; i < 2000; i++)
+            {
+                stats.Add(0.001f);
+            }
+
+            Assert.Equal(512, stats.Frames);
+            Assert.Equal(1000f, stats.Fps, 0);
+            Assert.Equal(1f, stats.WorstMs, 1);
+            Assert.Equal(0, stats.SlowFrames);
+        }
+
+        [Fact]
         public void AFrameLongerThanTheWindowIsStillCounted()
         {
             var stats = new FrameStats();
