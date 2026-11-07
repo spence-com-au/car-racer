@@ -41,10 +41,7 @@ namespace CarRacer.Core.Driving
         /// </summary>
         public static HapticPulse ForBump(float impulse, float reducedMass, BumpSettings settings)
         {
-            float perMass = reducedMass > 0f ? impulse / reducedMass : 0f;
-            float range = settings.MaxImpulsePerMass - settings.MinImpulsePerMass;
-            float t = range > 0f ? (perMass - settings.MinImpulsePerMass) / range : 1f;
-            t = Math.Max(0f, Math.Min(1f, t));
+            float t = settings.Severity(reducedMass > 0f ? impulse / reducedMass : 0f);
             return new HapticPulse(
                 (int)Math.Round(MinBumpMs + (MaxBumpMs - MinBumpMs) * t),
                 (int)Math.Round(MinBumpAmplitude + (MaxBumpAmplitude - MinBumpAmplitude) * t));
