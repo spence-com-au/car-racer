@@ -63,7 +63,15 @@ namespace CarRacer.Core.Track
             int previous = (nextCheckpoint - 1 + CheckpointCount) % CheckpointCount;
             float segment = Spline.Length / CheckpointCount;
             float travelled = Spline.WrapDistance(trackDistance - _checkpointDistances[previous]);
-            return Math.Max(0f, Math.Min(1f, travelled / segment));
+
+            // Outside the segment the car is either past the next gate or pushed back behind the
+            // previous one; trust whichever is nearer, so a car just behind its last gate counts as 0.
+            if (travelled > segment)
+            {
+                return travelled - segment < Spline.Length - travelled ? 1f : 0f;
+            }
+
+            return travelled / segment;
         }
 
         /// <summary>
