@@ -71,8 +71,8 @@ namespace CarRacer.Core.Tests
             }
 
             var bad = MessageCodec.Encode(new CastCommandMessage { Command = CastCommand.MusicOff });
-            bad[System.Array.IndexOf(bad, (byte)CastCommand.MusicOff, 1)] = 9;
-            Assert.ThrowsAny<System.Exception>(() => MessageCodec.Decode(bad));
+            bad[1] = 9;
+            Assert.Throws<NetFormatException>(() => MessageCodec.Decode(bad));
         }
 
         [Fact]
