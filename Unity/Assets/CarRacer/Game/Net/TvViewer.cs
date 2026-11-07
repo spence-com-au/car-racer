@@ -168,9 +168,7 @@ namespace CarRacer.Game.Net
         {
             if (_stream.Failure != null)
             {
-                Debug.LogError("TV viewer stopped: " + _stream.Failure);
-                StopStreaming();
-                _streamFailed = true;
+                GiveUp("TV viewer stopped: " + _stream.Failure);
                 return;
             }
 
@@ -203,22 +201,32 @@ namespace CarRacer.Game.Net
             }
             catch (System.Net.Sockets.SocketException e)
             {
-                Debug.LogError($"TV viewer off: can't serve on TCP port {_options.ViewerPort} ({e.Message}); choose another with {ServerOptions.ViewerPortFlag}");
-                _streamFailed = true;
+                GiveUp($"TV viewer off: can't serve on TCP port {_options.ViewerPort} ({e.Message}); choose another with {ServerOptions.ViewerPortFlag}");
                 return;
             }
 
             _stream = ViewerStream.Start(_options.FfmpegPath, folder, out string error);
             if (_stream == null)
             {
-                Debug.LogError("TV viewer off: " + error);
-                _http.Dispose();
-                _http = null;
-                _streamFailed = true;
+                GiveUp("TV viewer off: " + error);
                 return;
             }
 
             Debug.Log($"TV viewer streaming on port {_http.Port}");
+        }
+
+        /// <summary>
+        /// Streaming can't work here any more: stops it, and any cast with it, and forgets the TV,
+        /// so the phones go back to no TV rather than a cast nobody can stop (the leader's button
+        /// goes once casting is off).
+        /// </summary>
+        private void GiveUp(string reason)
+        {
+            Debug.LogError(reason);
+            _streamFailed = true;
+            _plan.Forget();
+            _cast?.Stop();
+            StopStreaming();
         }
 
         private void StopStreaming()

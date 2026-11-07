@@ -180,6 +180,24 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void AnFfmpegThatHangsIsGivenUpOn()
+        {
+            if (!File.Exists("/bin/sh"))
+            {
+                return;
+            }
+
+            string script = Path.Combine(Path.GetTempPath(), "hanging-ffmpeg-" + Guid.NewGuid().ToString("N") + ".sh");
+            File.WriteAllText(script, "#!/bin/sh\nsleep 30\n");
+            Run("chmod", "+x \"" + script + "\"");
+            var clock = Stopwatch.StartNew();
+            Assert.False(ViewerStream.IsAvailable(script, out string error, timeoutMs: 500));
+            Assert.True(clock.ElapsedMilliseconds < 5_000, clock.ElapsedMilliseconds + " ms");
+            Assert.Contains("didn't answer", error);
+            File.Delete(script);
+        }
+
+        [Fact]
         public void AMissingFfmpegIsReported()
         {
             string folder = Path.Combine(Path.GetTempPath(), "viewer-missing-" + Guid.NewGuid().ToString("N"));
