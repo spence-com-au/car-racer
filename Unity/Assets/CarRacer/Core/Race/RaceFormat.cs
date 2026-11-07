@@ -25,6 +25,17 @@ namespace CarRacer.Core.Race
             }
         }
 
+        /// <summary>A clock in whole seconds as minutes:seconds, e.g. 65400 ms → "1:05".</summary>
+        public static string Clock(long ms)
+        {
+            if (ms < 0)
+            {
+                ms = 0;
+            }
+
+            return $"{ms / 60000}:{ms / 1000 % 60:00}";
+        }
+
         /// <summary>Race time as minutes:seconds.hundredths, e.g. 83456 ms → "1:23.45".</summary>
         public static string Time(long ms)
         {
