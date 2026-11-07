@@ -10,7 +10,7 @@ namespace CarRacer.Tests
 {
     /// <summary>
     /// The core logic is tested thoroughly by `dotnet test`; these check it compiles and
-    /// behaves the same inside Unity's runtime (IL2CPP/Mono differences, JsonUtility, meshes).
+    /// behaves the same inside the Unity Editor's runtime (Mono, not IL2CPP: JsonUtility, meshes).
     /// </summary>
     public class CoreIntegrationTests
     {
