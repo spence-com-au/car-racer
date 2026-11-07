@@ -286,6 +286,88 @@ namespace CarRacer.Core.Tests
             listener.Stop();
         }
 
+        [Fact]
+        public void ReportsATvThatDropsTheConnectionMidCast()
+        {
+            using var cert = SelfSigned();
+            var listener = new TcpListener(IPAddress.Loopback, 0);
+            listener.Start();
+            var server = new Thread(() =>
+            {
+                using var client = listener.AcceptTcpClient();
+                using var tls = new SslStream(client.GetStream());
+                tls.AuthenticateAsServer(cert, false, System.Security.Authentication.SslProtocols.Tls12, false);
+                void Send(CastMessage m)
+                {
+                    var f = m.Frame();
+                    tls.Write(f, 0, f.Length);
+                }
+
+                try
+                {
+                    while (true)
+                    {
+                        var m = CastMessage.ReadFrom(tls);
+                        if (m == null)
+                        {
+                            break;
+                        }
+
+                        switch (m.PayloadType)
+                        {
+                            case "GET_STATUS":
+                                Send(CastSessionTests.Status(CastSessionTests.App("E8C28D3C", "Backdrop", idle: true)));
+                                break;
+                            case "LAUNCH":
+                                Send(CastSessionTests.Status(CastSessionTests.App(CastSession.MediaReceiverAppId, "Default Media Receiver", idle: false)));
+                                break;
+                            case "LOAD":
+                                Send(CastSessionTests.Media("{\"playerState\":\"PLAYING\"}"));
+                                return;
+                        }
+                    }
+                }
+                catch (IOException)
+                {
+                }
+            })
+            { IsBackground = true };
+            server.Start();
+
+            var device = new CastDevice { Name = "Flaky", Address = IPAddress.Loopback, Port = ((IPEndPoint)listener.LocalEndpoint).Port };
+            using var connection = new CastConnection(device, _ => "http://x/", "Lounge", takeOver: false);
+
+            // The fake closes the socket right after reporting PLAYING, so the cast starts and is then cut off.
+            Assert.True(SpinWait.SpinUntil(() => connection.Finished, 10_000), connection.Detail);
+            Assert.Equal(CastState.Failed, connection.State);
+            Assert.Equal("The TV dropped the connection", connection.Detail);
+            Assert.True(server.Join(5_000));
+            listener.Stop();
+        }
+
+        [Fact]
+        public void DisposingAbandonsAHandshakeThatNeverFinishes()
+        {
+            // Accepts the TCP connection, then says nothing.
+            var listener = new TcpListener(IPAddress.Loopback, 0);
+            listener.Start();
+            TcpClient held = null;
+            var accept = new Thread(() => held = listener.AcceptTcpClient()) { IsBackground = true };
+            accept.Start();
+            var device = new CastDevice { Name = "Mute", Address = IPAddress.Loopback, Port = ((IPEndPoint)listener.LocalEndpoint).Port };
+            var connection = new CastConnection(device, _ => "http://x/", "Lounge", takeOver: false);
+            Assert.True(accept.Join(5_000));
+
+            // Stopping can't interrupt the handshake, so Dispose gives up waiting and closes the socket instead.
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            connection.Dispose();
+            Assert.True(clock.ElapsedMilliseconds < CastConnection.ConnectTimeoutMs, $"Dispose took {clock.ElapsedMilliseconds} ms");
+            Assert.True(SpinWait.SpinUntil(() => connection.Finished, 2_000));
+            Assert.Equal(CastState.Failed, connection.State);
+            held?.Dispose();
+            listener.Stop();
+        }
+
         private static X509Certificate2 SelfSigned()
         {
             using var key = RSA.Create(2048);
