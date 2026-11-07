@@ -229,7 +229,7 @@ namespace CarRacer.Core.Tests
         [Fact]
         public void ATruckIsTheCarRaisedOnBigWheels()
         {
-            var car = ObjModel.Parse(File.ReadAllText(ModelPath("sedan.obj.bytes")));
+            var car = ObjModel.Parse(File.ReadAllText(ModelFiles.Resolve("sedan.obj.bytes")));
             var truck = MonsterTruck.Build(car);
             Assert.Equal(car.Parts.Count, truck.Parts.Count);
             for (int i = 0; i < car.Parts.Count; i++)
@@ -255,7 +255,7 @@ namespace CarRacer.Core.Tests
         {
             foreach (var body in CarModels.Bodies)
             {
-                var truck = MonsterTruck.Build(ObjModel.Parse(File.ReadAllText(ModelPath(body.Name + ".obj.bytes"))));
+                var truck = MonsterTruck.Build(ObjModel.Parse(File.ReadAllText(ModelFiles.Resolve(body.Name + ".obj.bytes"))));
                 Assert.Equal(4, truck.Parts.Count(MonsterTruck.IsRoadWheel));
                 Assert.True(truck.Max.Y > truck.Min.Y);
             }
@@ -310,17 +310,6 @@ namespace CarRacer.Core.Tests
             var ap = (p - a).Flattened;
             float t = Math.Max(0f, Math.Min(1f, Vec3.Dot(ap, ab) / ab.LengthSquared));
             return (ap - ab * t).Length;
-        }
-
-        private static string ModelPath(string file)
-        {
-            var dir = new DirectoryInfo(AppContext.BaseDirectory);
-            while (dir != null && !Directory.Exists(Path.Combine(dir.FullName, "Unity")))
-            {
-                dir = dir.Parent;
-            }
-
-            return Path.Combine(dir.FullName, "Unity", "Assets", "CarRacer", "Resources", "Models", file);
         }
     }
 }

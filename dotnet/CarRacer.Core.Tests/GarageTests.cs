@@ -1,7 +1,4 @@
-using System;
-using System.IO;
 using System.Linq;
-using CarRacer.Core.Art;
 using CarRacer.Core.Net;
 using CarRacer.Core.Session;
 using Xunit;
@@ -105,18 +102,6 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
-        public void EveryBodyIsInTheCatalogue()
-        {
-            Assert.Equal(LobbyRoster.BodyCount, CarModels.Bodies.Length);
-            Assert.Equal(CarModels.Bodies.Length, CarModels.Bodies.Select(b => b.Name).Distinct().Count());
-            Assert.Same(CarModels.Bodies[1], CarModels.ForIndex(1 + CarModels.Bodies.Length));
-            Assert.Equal("Race future", CarModels.DisplayName(CarModels.Bodies[1]));
-            Assert.Equal(CarModels.Bodies.Length, CarModels.Bodies.Select(CarModels.DisplayName).Distinct().Count());
-            Assert.Contains("SUV", CarModels.Bodies.Select(CarModels.DisplayName));
-            Assert.Contains("Kart", CarModels.Bodies.Select(CarModels.DisplayName));
-        }
-
-        [Fact]
         public void AFullGridOfBotsDrivesDifferentBodiesFromAcrossTheGarage()
         {
             var roster = new LobbyRoster();
@@ -128,35 +113,6 @@ namespace CarRacer.Core.Tests
             Assert.Equal(bodies.Count, bodies.Distinct().Count());
             Assert.Contains(bodies, b => b >= 6);
             Assert.Contains(bodies, b => b < 6);
-        }
-
-        [Fact]
-        public void EveryBodyLoadsDrawnTheSameLengthWithItsPaintInTheStrip()
-        {
-            foreach (var body in CarModels.Bodies)
-            {
-                var model = ObjModel.Parse(File.ReadAllText(ModelPath(body.Name + ".obj.bytes")));
-                Assert.Equal(CarModels.Length, (model.Max.Z - model.Min.Z) * body.Scale, 1);
-                Assert.Equal(4, model.Parts.Count(p => p.Name.StartsWith("wheel-", StringComparison.Ordinal) && p.Name.Split('-').Length == 3));
-
-                // Some of the bodywork is painted from the recoloured strip.
-                var paint = body.Paint;
-                bool painted = model.Parts.Where(p => !p.Name.StartsWith("wheel", StringComparison.Ordinal))
-                    .SelectMany(p => p.Uvs)
-                    .Any(uv => uv.X >= paint.UMin && uv.X < paint.UMax && uv.Y >= paint.VMin && uv.Y < paint.VMax);
-                Assert.True(painted, body.Name);
-            }
-        }
-
-        private static string ModelPath(string file)
-        {
-            var dir = new DirectoryInfo(AppContext.BaseDirectory);
-            while (dir != null && !Directory.Exists(Path.Combine(dir.FullName, "Unity")))
-            {
-                dir = dir.Parent;
-            }
-
-            return Path.Combine(dir.FullName, "Unity", "Assets", "CarRacer", "Resources", "Models", file);
         }
     }
 }

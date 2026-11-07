@@ -18,21 +18,10 @@ namespace CarRacer.Core.Tests
             var models = new Dictionary<string, ObjModel>();
             foreach (string name in TrackScenery.Models)
             {
-                models[name] = ObjModel.Parse(File.ReadAllText(ModelPath(name + ".obj.bytes")));
+                models[name] = ObjModel.Parse(File.ReadAllText(ModelFiles.Resolve(name + ".obj.bytes")));
             }
 
             return models;
-        }
-
-        private static string ModelPath(string file)
-        {
-            var dir = new DirectoryInfo(AppContext.BaseDirectory);
-            while (dir != null && !Directory.Exists(Path.Combine(dir.FullName, "Unity")))
-            {
-                dir = dir.Parent;
-            }
-
-            return Path.Combine(dir.FullName, "Unity", "Assets", "CarRacer", "Resources", "Models", file);
         }
 
         private static float Width(string name) => Models[name].Max.X - Models[name].Min.X;
@@ -178,7 +167,7 @@ namespace CarRacer.Core.Tests
             var colours = new Dictionary<string, Vec3>();
             foreach (string name in TrackScenery.Models)
             {
-                ObjMaterials.Parse(File.ReadAllText(ModelPath(name + ".mtl.bytes")), colours);
+                ObjMaterials.Parse(File.ReadAllText(ModelFiles.Resolve(name + ".mtl.bytes")), colours);
             }
 
             foreach (var model in Models.Values)
