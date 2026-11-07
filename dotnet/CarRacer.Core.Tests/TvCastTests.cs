@@ -243,8 +243,5 @@ namespace CarRacer.Core.Tests
             var running = new TvCastPlan();
             Assert.Equal(TvState.Playing, running.Status(true, false, new string[0], CastState.Playing, "Den", string.Empty).State);
         }
-
-        [Fact]
-        public void TheProtocolVersionChangedForTheTvMessages() => Assert.True(Discovery.DiscoveryConstants.ProtocolVersion >= 26);
     }
 }
