@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using CarRacer.Core.Net;
 using CarRacer.Core.Numerics;
@@ -86,23 +87,46 @@ namespace CarRacer.Core.Physics
 
         /// <summary>
         /// A hit addressed to this car arrived. Returns true (with the impulse to apply) unless it
-        /// is a car-to-car bump this phone already applied from its own view. Item hits always apply.
+        /// is a car-to-car bump this phone already applied from its own view, or its impulse is not
+        /// finite. Item hits always apply. A bump's impulse is clamped to what
+        /// <see cref="BumpResolver"/> could have produced, because it comes from another phone.
         /// </summary>
         public bool OnHit(HitMessage hit, byte selfId, long nowMs, out Vec3 impulse)
         {
             impulse = Vec3.Zero;
-            if (hit.TargetId != selfId)
+            if (hit.TargetId != selfId || !IsFinite(hit.Impulse))
             {
                 return false;
             }
 
-            if (!hit.IsItemHit && !_dedupe.TryApplyRemoteHit(hit.AttackerId, nowMs))
+            if (hit.IsItemHit)
+            {
+                impulse = hit.Impulse;
+                return true;
+            }
+
+            if (!_dedupe.TryApplyRemoteHit(hit.AttackerId, nowMs))
             {
                 return false;
             }
 
-            impulse = hit.Impulse;
+            impulse = LimitBump(hit.Impulse);
             return true;
         }
+
+        private Vec3 LimitBump(Vec3 impulse)
+        {
+            // All cars weigh CarMass, so the reduced mass BumpResolver clamps with is half of it.
+            float maxHorizontal = _settings.MaxImpulsePerMass * CarMass / 2f;
+            Vec3 horizontal = impulse.Flattened;
+            if (horizontal.Length > maxHorizontal)
+            {
+                horizontal = horizontal.Normalized * maxHorizontal;
+            }
+
+            return horizontal + Vec3.Up * Math.Clamp(impulse.Y, 0f, maxHorizontal * _settings.LiftFraction);
+        }
+
+        private static bool IsFinite(Vec3 v) => float.IsFinite(v.X) && float.IsFinite(v.Y) && float.IsFinite(v.Z);
     }
 }

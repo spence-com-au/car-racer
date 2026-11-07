@@ -101,7 +101,9 @@ cars exactly.
      clamped to [min, max] × reduced mass, plus a small equal upward "pop".
 3. **Fallback:** if A detects contact that B might miss because of timing, A sends `HitMessage`
    with the impulse for B. B applies it unless it already handled contact with A in the last
-   **100 ms** (`HitDeduplicator`), so contacts are neither missed nor doubled.
+   **100 ms** (`HitDeduplicator`), so contacts are neither missed nor doubled. B clamps the
+   impulse to the same max × reduced mass (and matching pop) and drops a non-finite one, so a
+   modified phone can't fling other cars off the map.
 4. Feel helpers that hide small disagreements: slightly larger car-to-car colliders, a short
    wobble or spin-out, crunch sound scaled by impact, screen shake, and haptics.
 
