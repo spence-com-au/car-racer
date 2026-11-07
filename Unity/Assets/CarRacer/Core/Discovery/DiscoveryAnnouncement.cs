@@ -1,5 +1,6 @@
 using System.Net;
 using CarRacer.Core.Net;
+using CarRacer.Core.Session;
 
 namespace CarRacer.Core.Discovery
 {
@@ -18,7 +19,6 @@ namespace CarRacer.Core.Discovery
         public const int DefaultGamePort = 47778;
         public const int AnnounceIntervalMs = 1000;
         public const int HostExpiryMs = 3000;
-        public const int MaxHostNameChars = 24;
 
         internal static readonly byte[] Magic = { (byte)'C', (byte)'R', (byte)'C', (byte)'R' };
     }
@@ -37,10 +37,12 @@ namespace CarRacer.Core.Discovery
         /// <summary>Random per hosted session; distinguishes two sessions from the same address.</summary>
         public uint SessionId;
 
+        /// <summary>Already limited by <see cref="LobbyRoster.CleanName"/>, so it always fits a packet.</summary>
         public string HostName = string.Empty;
+
         public ushort GamePort = DiscoveryConstants.DefaultGamePort;
         public byte PlayerCount;
-        public byte MaxPlayers = 6;
+        public byte MaxPlayers = LobbyRoster.MaxPlayers;
         public HostSessionState State;
 
         public byte[] Encode()
@@ -50,7 +52,7 @@ namespace CarRacer.Core.Discovery
             // Protocol version comes first after the magic so future layouts can still be identified.
             w.WriteUShort(ProtocolVersion);
             w.WriteUInt(SessionId);
-            w.WriteString(Truncate(HostName, DiscoveryConstants.MaxHostNameChars));
+            w.WriteString(HostName);
             w.WriteUShort(GamePort);
             w.WriteByte(PlayerCount);
             w.WriteByte(MaxPlayers);
@@ -104,16 +106,6 @@ namespace CarRacer.Core.Discovery
             {
                 return false;
             }
-        }
-
-        private static string Truncate(string value, int maxChars)
-        {
-            if (string.IsNullOrEmpty(value))
-            {
-                return string.Empty;
-            }
-
-            return value.Length <= maxChars ? value : value.Substring(0, maxChars);
         }
     }
 }
