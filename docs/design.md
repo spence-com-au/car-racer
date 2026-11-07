@@ -181,7 +181,7 @@ people waiting their turn, or just watching, can follow it.
   `-tv-music`). The TV plays the tune the phones would (`MusicChoice`), and while a TV is playing
   it every phone's own music fades out (`MusicDirector`). The build copies the tunes as files
   into a `Music` folder beside the server; `MusicFeed` decodes the wanted one with its own ffmpeg,
-  looping, and crossfades over the phones' 0.6 s, at 80% of full scale. The sound reaches the
+  looping, and crossfades into a new tune, the two overlapping for the phones' 0.6 s fade (the phones fade out first, then start the new one), at 80% of full scale. The sound reaches the
   stream's ffmpeg as raw PCM over a loopback TCP connection, paced by the clock like the frames;
   with the music off, or a tune missing, it is silence. No sound effects go to the TV; they
   would land seconds after the phones'.

@@ -8,8 +8,9 @@ namespace CarRacer.Core.Viewer
 {
     /// <summary>
     /// The TV viewer's optional music (design doc §2.4) as 48 kHz stereo 16-bit PCM: the tune asked
-    /// for, looping, decoded by its own <c>ffmpeg</c>, crossfading over
-    /// <see cref="SoundRules.MusicFadeSeconds"/> when it changes, the same as the phones; silence when
+    /// for, looping, decoded by its own <c>ffmpeg</c>. When it changes, the old and new tunes
+    /// overlap, one fading out as the other fades in over <see cref="SoundRules.MusicFadeSeconds"/>
+    /// (the phones' fade length; they fade out first and then start the new tune). Silence when
     /// none is asked for or it can't be decoded. <see cref="Play"/> may be called from any thread;
     /// <see cref="Fill"/> from one.
     /// </summary>
