@@ -1,6 +1,6 @@
 using System;
 
-namespace CarRacer.Core.Viewer
+namespace CarRacer.Core.Art
 {
     /// <summary>An 8-bit RGB colour.</summary>
     public readonly struct Rgb : IEquatable<Rgb>
@@ -22,9 +22,6 @@ namespace CarRacer.Core.Viewer
         /// <summary>Perceived brightness, 0..1, to pick dark or light text over this colour.</summary>
         public float Luma => (0.299f * R + 0.587f * G + 0.114f * B) / 255f;
 
-        /// <summary>This colour moved <paramref name="t"/> (0..1) of the way towards <paramref name="other"/>.</summary>
-        public Rgb Mix(Rgb other, float t) => new Rgb(Lerp(R, other.R, t), Lerp(G, other.G, t), Lerp(B, other.B, t));
-
         public bool Equals(Rgb other) => R == other.R && G == other.G && B == other.B;
 
         public override bool Equals(object obj) => obj is Rgb other && Equals(other);
@@ -34,7 +31,5 @@ namespace CarRacer.Core.Viewer
         public override string ToString() => $"#{R:x2}{G:x2}{B:x2}";
 
         private static byte ToByte(float v) => (byte)Math.Round(Math.Max(0f, Math.Min(1f, v)) * 255f);
-
-        private static byte Lerp(byte a, byte b, float t) => (byte)Math.Round(a + (b - a) * Math.Max(0f, Math.Min(1f, t)));
     }
 }
