@@ -11,7 +11,8 @@ Each release (`v*` tag) publishes the server two ways:
 - **Docker image:** `ghcr.io/spence-com-au/car-racer:<tag>` (and `:latest`)
 - **Tarball:** `CarRacer-server-<tag>-linux-x86_64.tar.gz` on the Releases page
 
-Use the same version as the phones: a different protocol version shows as "Update required".
+Use the same version as the phones: a different protocol version shows as "Update this app to
+join" or "Host needs updating".
 
 ## Docker
 

@@ -34,8 +34,9 @@ bugs and differs between phone makers, and it can't be tested on desktop.
   game port (default **47778**), player count, max players, state (lobby / in event).
 - Guests listen on 47777 and list hosts keyed by *(address, session id)*, so duplicates from
   multicast and broadcast merge. A host disappears after **3 s** without an announcement.
-- If the protocol version doesn't match, the host is listed as **"Update required"** and
-  can't be joined. **Bump `DiscoveryConstants.ProtocolVersion` whenever any network message changes.**
+- If the protocol version doesn't match, the host is listed as **"Update this app to join"**
+  (the host is newer) or **"Host needs updating"** (the host is older) and can't be joined.
+  **Bump `DiscoveryConstants.ProtocolVersion` whenever any network message changes.**
 - Android: the app holds a **`WifiManager.MulticastLock`** only while the lobby or join screen is
   open, and declares `CHANGE_WIFI_MULTICAST_STATE` (added by `AndroidManifestPostProcessor`).
 - Fallback for networks with client isolation: **join by IP**, or scan a **QR code** on the host
