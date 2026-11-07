@@ -1,5 +1,4 @@
 using CarRacer.Core.Session;
-using CarRacer.Core.Viewer;
 
 namespace CarRacer.Core.Art
 {
