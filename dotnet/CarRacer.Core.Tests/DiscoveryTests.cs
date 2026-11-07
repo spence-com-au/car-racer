@@ -66,12 +66,53 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void OtherProtocolVersionsKeepTheirSessionId()
+        {
+            var future = Sample(session: 7);
+            future.ProtocolVersion = DiscoveryConstants.ProtocolVersion + 1;
+            byte[] bytes = future.Encode();
+
+            Assert.True(DiscoveryAnnouncement.TryDecode(bytes, bytes.Length, out var decoded));
+            Assert.Equal(7u, decoded.SessionId);
+        }
+
+        [Fact]
+        public void VersionOnlyPacketFromAnotherProtocolDecodesWithoutASessionId()
+        {
+            byte[] bytes = Sample().Encode();
+            var future = (ushort)(DiscoveryConstants.ProtocolVersion + 1);
+            bytes[4] = (byte)(future & 0xFF);
+            bytes[5] = (byte)(future >> 8);
+
+            Assert.True(DiscoveryAnnouncement.TryDecode(bytes, 6, out var decoded));
+            Assert.Equal(future, decoded.ProtocolVersion);
+            Assert.Equal(0u, decoded.SessionId);
+        }
+
+        [Fact]
         public void DuplicateAnnouncementsFromMulticastAndBroadcastMerge()
         {
             var list = new DiscoveredHostList();
             Assert.True(list.Observe(Sample(), "192.168.1.20", 0));
             Assert.False(list.Observe(Sample(), "192.168.1.20", 5));
             Assert.Single(list.Hosts);
+        }
+
+        [Fact]
+        public void RepeatAnnouncementsRefreshTheHost()
+        {
+            var list = new DiscoveredHostList(expiryMs: 3000);
+            list.Observe(Sample(), "192.168.1.20", 0);
+
+            var update = Sample();
+            update.PlayerCount = 5;
+            Assert.False(list.Observe(update, "192.168.1.20", 2500));
+
+            Assert.Equal(0, list.Expire(5000));
+            var host = Assert.Single(list.Hosts);
+            Assert.Equal(2500, host.LastSeenMs);
+            Assert.Equal(5, host.Announcement.PlayerCount);
+            Assert.Equal(1, list.Expire(5501));
         }
 
         [Fact]
