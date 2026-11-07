@@ -121,26 +121,32 @@ namespace CarRacer.Core.Bots
             float turn = Angles.WrapSigned(Angles.Heading(target - position) - state.Heading);
             float steer = Math.Max(-1f, Math.Min(1f, turn / FullLockAngle));
 
-            float targetSpeed = TargetSpeed(state, speed);
+            CurvatureAhead = MeasureCurvature(speed);
+            float targetSpeed = TargetSpeed(CurvatureAhead);
             float throttle = speed < targetSpeed ? 1f : speed > targetSpeed + 2f ? -1f : 0f;
             return new CarInput(steer, throttle);
         }
 
-        /// <summary>The speed the bot wants now: its share of top speed, or slower for the bend coming up.</summary>
-        private float TargetSpeed(CarState state, float speed)
+        /// <summary>The track's curvature over the distance the bot needs to brake in, in radians per metre.</summary>
+        private float MeasureCurvature(float speed)
         {
             var here = _spline.SampleAtDistance(_trackDistance);
             float span = 10f + Math.Max(0f, speed) * BrakeLookSeconds;
             var there = _spline.SampleAtDistance(_trackDistance + span);
-            CurvatureAhead = Math.Abs(Angles.WrapSigned(Angles.Heading(there.Forward) - Angles.Heading(here.Forward))) / span;
+            return Math.Abs(Angles.WrapSigned(Angles.Heading(there.Forward) - Angles.Heading(here.Forward))) / span;
+        }
+
+        /// <summary>The speed the bot wants now: its share of top speed, or slower for the bend coming up.</summary>
+        private float TargetSpeed(float curvature)
+        {
             float straight = _tuning.MaxSpeed * _skill.TopSpeedFactor;
-            if (CurvatureAhead < 1e-4f)
+            if (curvature < 1e-4f)
             {
                 return straight;
             }
 
             // Cornering at speed v round curvature k needs v²k of sideways acceleration.
-            float corner = MathF.Sqrt(_skill.CornerAcceleration / CurvatureAhead);
+            float corner = MathF.Sqrt(_skill.CornerAcceleration / curvature);
             return Math.Min(straight, corner);
         }
 
