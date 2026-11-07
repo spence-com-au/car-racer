@@ -17,18 +17,47 @@ namespace CarRacer.Tests
         [Test]
         public void DiscoveryAnnouncementRoundTripsInUnity()
         {
-            var announcement = new DiscoveryAnnouncement { SessionId = 7, HostName = "Unity" };
+            var announcement = new DiscoveryAnnouncement
+            {
+                SessionId = 0xDEADBEEF,
+                HostName = "Unity",
+                GamePort = 51234,
+                PlayerCount = 3,
+                MaxPlayers = 5,
+                State = HostSessionState.InEvent,
+            };
             byte[] bytes = announcement.Encode();
             Assert.IsTrue(DiscoveryAnnouncement.TryDecode(bytes, bytes.Length, out var decoded));
-            Assert.AreEqual("Unity", decoded.HostName);
+            Assert.AreEqual(announcement.ProtocolVersion, decoded.ProtocolVersion);
+            Assert.AreEqual(announcement.SessionId, decoded.SessionId);
+            Assert.AreEqual(announcement.HostName, decoded.HostName);
+            Assert.AreEqual(announcement.GamePort, decoded.GamePort);
+            Assert.AreEqual(announcement.PlayerCount, decoded.PlayerCount);
+            Assert.AreEqual(announcement.MaxPlayers, decoded.MaxPlayers);
+            Assert.AreEqual(announcement.State, decoded.State);
         }
 
         [Test]
         public void MessagesRoundTripInUnity()
         {
-            var state = new CarStateMessage { PlayerId = 2, Sequence = 9, Position = new Vec3(1f, 2f, 3f) };
+            var state = new CarStateMessage
+            {
+                PlayerId = 2,
+                Sequence = 0xCAFEBABE,
+                SentAtMs = 0x123456789ABCL,
+                Position = new Vec3(1f, 2f, 3f),
+                Velocity = new Vec3(-4f, 5.5f, -6.25f),
+                HeadingRadians = 1.5f,
+                Flags = CarStateFlags.Drifting | CarStateFlags.Shielded,
+            };
             var decoded = (CarStateMessage)MessageCodec.Decode(MessageCodec.Encode(state));
-            Assert.AreEqual(new Vec3(1f, 2f, 3f), decoded.Position);
+            Assert.AreEqual(state.PlayerId, decoded.PlayerId);
+            Assert.AreEqual(state.Sequence, decoded.Sequence);
+            Assert.AreEqual(state.SentAtMs, decoded.SentAtMs);
+            Assert.AreEqual(state.Position, decoded.Position);
+            Assert.AreEqual(state.Velocity, decoded.Velocity);
+            Assert.AreEqual(state.HeadingRadians, decoded.HeadingRadians);
+            Assert.AreEqual(state.Flags, decoded.Flags);
         }
 
         [Test]
