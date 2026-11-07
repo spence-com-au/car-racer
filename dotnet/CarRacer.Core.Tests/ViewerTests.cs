@@ -214,6 +214,17 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void ResultsReadTheSameOnEveryScreen()
+        {
+            var result = new RaceResultEntry { RaceTimeMs = 83_456, Points = 37 };
+            Assert.Equal("1:23.45", EventText.ResultDetail(GameMode.Race, result));
+            Assert.Equal("37 pts", EventText.ResultDetail(GameMode.Monster, result));
+            result.DidNotFinish = true;
+            Assert.Equal("DNF", EventText.ResultDetail(GameMode.Battle, result));
+            Assert.Equal("37 pts", EventText.ResultDetail(GameMode.Monster, result));
+        }
+
+        [Fact]
         public void ClocksAreWholeSeconds()
         {
             Assert.Equal("1:05", RaceFormat.Clock(65_999));
