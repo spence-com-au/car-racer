@@ -44,11 +44,25 @@ namespace CarRacer.Core.Tests
             Assert.True(mismatches.Length == 0, $"case {index} differs at {mismatches}");
         }
 
+        // Masks the lowest-penalty rule picks, from a separate Python port of Nayuki's penalty scorer run over
+        // all eight masks of each input. They span several masks, so a scorer that always answered 0 (or any
+        // other constant) fails.
+        [Theory]
+        [InlineData("HELLO", QrErrorCorrection.Medium, 4)]
+        [InlineData("carracer://join?host=192.168.1.20&port=7777", QrErrorCorrection.Medium, 4)]
+        [InlineData("carracer://join?host=10.0.0.5&port=7777", QrErrorCorrection.Low, 7)]
+        [InlineData("https://example.com/tv", QrErrorCorrection.Medium, 1)]
+        [InlineData("123456789012345", QrErrorCorrection.Low, 2)]
+        [InlineData("http://192.168.0.101:8080/", QrErrorCorrection.Medium, 2)]
+        public void TheAutomaticMaskIsTheOneWithTheLowestPenalty(string text, QrErrorCorrection level, int mask)
+        {
+            Assert.Equal(mask, QrCode.Encode(text, level).Mask);
+        }
+
         [Fact]
-        public void TheAutomaticMaskIsOneOfTheEightAndReproducible()
+        public void TheAutomaticMaskIsReproducible()
         {
             var automatic = QrCode.Encode("carracer://join?host=192.168.1.20&port=7777");
-            Assert.InRange(automatic.Mask, 0, 7);
             var forced = QrCode.Encode("carracer://join?host=192.168.1.20&port=7777", QrErrorCorrection.Medium, automatic.Mask);
             for (int y = 0; y < automatic.Size; y++)
             {
