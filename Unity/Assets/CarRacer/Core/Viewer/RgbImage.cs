@@ -107,24 +107,6 @@ namespace CarRacer.Core.Viewer
             }
         }
 
-        /// <summary>A ring between <paramref name="inner"/> and <paramref name="outer"/> radii, both edges anti-aliased.</summary>
-        public void FillRing(float cx, float cy, float inner, float outer, Rgb colour)
-        {
-            int x0 = (int)Math.Floor(cx - outer - 1f), x1 = (int)Math.Ceiling(cx + outer + 1f);
-            int y0 = (int)Math.Floor(cy - outer - 1f), y1 = (int)Math.Ceiling(cy + outer + 1f);
-            for (int y = Math.Max(0, y0); y <= Math.Min(Height - 1, y1); y++)
-            {
-                float dy = y + 0.5f - cy;
-                for (int x = Math.Max(0, x0); x <= Math.Min(Width - 1, x1); x++)
-                {
-                    float dx = x + 0.5f - cx;
-                    float d = (float)Math.Sqrt(dx * dx + dy * dy);
-                    float coverage = Math.Min(outer + 0.5f - d, d - inner + 0.5f);
-                    Blend(x, y, colour, coverage);
-                }
-            }
-        }
-
         /// <summary>A line <paramref name="thickness"/> pixels wide with round ends.</summary>
         public void DrawLine(float ax, float ay, float bx, float by, float thickness, Rgb colour)
         {
@@ -144,17 +126,6 @@ namespace CarRacer.Core.Viewer
                     Blend(x, y, colour, coverage);
                 }
             }
-        }
-
-        /// <summary>Copies every pixel of <paramref name="source"/>, which must be the same size.</summary>
-        public void CopyFrom(RgbImage source)
-        {
-            if (source.Width != Width || source.Height != Height)
-            {
-                throw new ArgumentException("Images differ in size", nameof(source));
-            }
-
-            Buffer.BlockCopy(source.Pixels, 0, Pixels, 0, Pixels.Length);
         }
     }
 }
