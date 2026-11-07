@@ -82,6 +82,29 @@ namespace CarRacer.Core.Tests
             Assert.Equal(1, detector.NextCheckpoint);
         }
 
+        public static IEnumerable<object[]> Tracks => SampleTracks.All().Select(t => new object[] { t.Id });
+
+        [Theory]
+        [MemberData(nameof(Tracks))]
+        public void ALapOfAnyTrackCrossesEveryGateInOrder(string id)
+        {
+            // Banking, climbs and the figure-eight's bridge all change a gate's height and lateral reach.
+            var track = new TrackLayout(SampleTracks.All().Single(t => t.Id == id));
+            var detector = new CheckpointDetector(track.CheckpointGates());
+            var crossed = new List<int>();
+            for (float d = -6f; d < track.Spline.Length + 1f; d += 1f)
+            {
+                int c = detector.Update(track.Spline.SampleAtDistance(d).Position, track.Spline.SampleAtDistance(d + 1f).Position);
+                if (c >= 0)
+                {
+                    crossed.Add(c);
+                }
+            }
+
+            Assert.Equal(Enumerable.Range(0, track.CheckpointCount).Append(0), crossed);
+            Assert.Equal(1, detector.LapsCompleted);
+        }
+
         [Fact]
         public void ReversingOverAGateDoesNotCount()
         {
