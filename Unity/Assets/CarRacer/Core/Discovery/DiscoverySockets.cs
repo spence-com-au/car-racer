@@ -176,7 +176,10 @@ namespace CarRacer.Core.Discovery
         public int Poll(DiscoveredHostList hosts, long nowMs)
         {
             int added = 0;
-            while (_socket.Available > 0)
+
+            // Not `while (Available > 0)`: for UDP that is the size of the next datagram, so an empty one would end the
+            // loop without being consumed and block every announcement behind it. Drain until the socket would block.
+            while (true)
             {
                 EndPoint remote = new IPEndPoint(IPAddress.Any, 0);
                 int received;
