@@ -42,7 +42,7 @@ namespace CarRacer.Core.Viewer
         /// <summary>What's shown at the right of the row: "Lap 2/3", "Ready", "1:23.45", "Out"…</summary>
         public string Detail;
 
-        /// <summary>Drawn dimmer: a car that is out, or a bot in the lobby.</summary>
+        /// <summary>Drawn dimmer: a car that is out, or one that did not finish.</summary>
         public bool Dim;
     }
 
