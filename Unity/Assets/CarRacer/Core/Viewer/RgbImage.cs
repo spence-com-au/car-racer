@@ -1,4 +1,5 @@
 using System;
+using CarRacer.Core.Art;
 
 namespace CarRacer.Core.Viewer
 {
