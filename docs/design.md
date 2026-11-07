@@ -621,9 +621,10 @@ leader).
 ## 13. Tracks, arenas and art
 
 - **Tracks are data**: `TrackDefinition` holds closed-spline control points with width,
-  banking and elevation, plus checkpoint count, laps and item box rows. The built-in tracks are
-  defined in code (`SampleTracks`) so `dotnet test` can check them; the fields stay
-  `JsonUtility`-friendly for track files later.
+  banking and elevation, plus checkpoint count and item box rows. Laps belong to the event
+  (`LobbySettings`, `CupEvent`), not the track. The built-in tracks are defined in code
+  (`SampleTracks`) so `dotnet test` can check them; the fields stay `JsonUtility`-friendly for
+  track files later.
 - **Everything else is generated** from it: road and wall meshes (`RoadMeshBuilder`),
   checkpoint gates, start grid (two staggered columns behind the line), item box positions and
   the bot racing line (`TrackLayout`). Arenas will work the same way (platform shape + edge type).

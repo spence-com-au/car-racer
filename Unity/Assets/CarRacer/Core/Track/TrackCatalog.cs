@@ -69,7 +69,6 @@ namespace CarRacer.Core.Track
                 DisplayName = definition.DisplayName,
                 Points = points,
                 CheckpointCount = definition.CheckpointCount,
-                DefaultLaps = definition.DefaultLaps,
                 WallHeight = definition.WallHeight,
                 ItemBoxRows = definition.ItemBoxRows,
             };
