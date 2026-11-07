@@ -39,6 +39,7 @@ namespace CarRacer.Game.Net
         private static int _live;
 
         private readonly List<(ulong Connection, float AtTime)> _pendingDisconnects = new List<(ulong, float)>();
+        private IReadOnlyList<RosterEntry> _hostPlayers;
         private NetworkManager _network;
         private DiscoveryAnnouncer _announcer;
         private DiscoveryAnnouncement _announcement;
@@ -95,7 +96,12 @@ namespace CarRacer.Game.Net
             return GuestSide != null && GuestSide.State == GuestState.Joined;
         }
 
-        public IReadOnlyList<RosterEntry> Players => IsHost ? HostSide.Roster.ToMessage().Players : GuestSide.Roster.Players;
+        /// <summary>
+        /// Everyone in the session. On the host this is a snapshot, rebuilt only after
+        /// <see cref="HostSession.RosterChanged"/> so the per-frame readers don't allocate; a new list means the
+        /// roster changed.
+        /// </summary>
+        public IReadOnlyList<RosterEntry> Players => IsHost ? _hostPlayers ??= HostSide.Roster.ToMessage().Players : GuestSide.Roster.Players;
 
         /// <summary>True when this phone runs the room (design doc §2.3): it hosts, or a dedicated host made it the leader.</summary>
         public bool LeadsRoom => IsHost ? !HostSide.IsDedicated : GuestSide.IsLeader;
@@ -251,6 +257,7 @@ namespace CarRacer.Game.Net
             IsHost = true;
             HostSide.CarStateReceived += RaiseCarState;
             HostSide.HitReceived += RaiseHit;
+            HostSide.RosterChanged += () => _hostPlayers = null;
 
             Port = port;
             var transport = GetComponent<UnityTransport>();

@@ -249,6 +249,7 @@ namespace CarRacer.Core.Session
         public void RemoveBots()
         {
             // A guest still away when the event ends is a player again in the lobby, not one of the bots.
+            bool changed = _away.Count > 0;
             foreach (byte playerId in _away)
             {
                 var player = Roster.Find(playerId);
@@ -260,7 +261,7 @@ namespace CarRacer.Core.Session
             }
 
             _away.Clear();
-            if (Roster.RemoveBots() > 0)
+            if (Roster.RemoveBots() > 0 || changed)
             {
                 BroadcastRoster();
             }
