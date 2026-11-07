@@ -155,6 +155,10 @@ namespace CarRacer.Core.Tests
             Assert.Null(ViewerHttpServer.FileFor("/sub/live.m3u8"));
             Assert.Null(ViewerHttpServer.FileFor("/a\\b"));
             Assert.Null(ViewerHttpServer.FileFor("live.m3u8"));
+            Assert.Null(ViewerHttpServer.FileFor("/.."));
+            Assert.Null(ViewerHttpServer.FileFor("/../etc/passwd"));
+            Assert.Null(ViewerHttpServer.FileFor("/%2e%2e/x"));
+            Assert.Null(ViewerHttpServer.FileFor("/a..b"));
             Assert.Equal(HttpStatusCode.MethodNotAllowed, (await _http.PostAsync(Url("/live.m3u8"), new StringContent("x"))).StatusCode);
         }
 
