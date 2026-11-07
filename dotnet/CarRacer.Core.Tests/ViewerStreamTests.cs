@@ -158,6 +158,57 @@ namespace CarRacer.Core.Tests
             Assert.Equal(HttpStatusCode.MethodNotAllowed, (await _http.PostAsync(Url("/live.m3u8"), new StringContent("x"))).StatusCode);
         }
 
+        [Fact]
+        public async System.Threading.Tasks.Task StalledClientsCannotTakeEveryRequestThread()
+        {
+            var stalled = new List<System.Net.Sockets.TcpClient>();
+            for (int i = 0; i < ViewerHttpServer.MaxConcurrentRequests; i++)
+            {
+                stalled.Add(new System.Net.Sockets.TcpClient("127.0.0.1", _server.Port));
+            }
+
+            await Assert.ThrowsAsync<HttpRequestException>(() => _http.GetAsync(Url("/live.m3u8")));
+
+            stalled.ForEach(c => c.Dispose());
+            var deadline = Stopwatch.StartNew();
+            HttpResponseMessage reply = null;
+            while (reply == null && deadline.ElapsedMilliseconds < 5_000)
+            {
+                try
+                {
+                    reply = await _http.GetAsync(Url("/live.m3u8"));
+                }
+                catch (HttpRequestException)
+                {
+                    await System.Threading.Tasks.Task.Delay(50);
+                }
+            }
+
+            Assert.Equal(HttpStatusCode.OK, reply?.StatusCode);
+        }
+
+        [Fact]
+        public void AClientTricklingItsRequestIsCutOff()
+        {
+            using var client = new System.Net.Sockets.TcpClient("127.0.0.1", _server.Port);
+            var stream = client.GetStream();
+            var elapsed = Stopwatch.StartNew();
+            try
+            {
+                while (elapsed.ElapsedMilliseconds < 3 * ViewerHttpServer.ClientTimeoutMs)
+                {
+                    stream.WriteByte((byte)'G');
+                    Thread.Sleep(250);
+                }
+            }
+            catch (IOException)
+            {
+                // The server hung up.
+            }
+
+            Assert.InRange(elapsed.ElapsedMilliseconds, ViewerHttpServer.ClientTimeoutMs, 2 * ViewerHttpServer.ClientTimeoutMs);
+        }
+
         public void Dispose()
         {
             _server.Dispose();

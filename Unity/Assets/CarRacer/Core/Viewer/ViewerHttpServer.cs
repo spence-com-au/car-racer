@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -11,17 +12,21 @@ namespace CarRacer.Core.Viewer
     /// Serves the TV viewer's HLS playlist and segments over HTTP on the LAN (design doc §2.4), for
     /// a Chromecast (or VLC) to fetch. It only answers GET, HEAD and OPTIONS for plain file names in
     /// one folder, adds the CORS headers a Cast receiver needs, and closes each connection after
-    /// one reply. Runs on background threads.
+    /// one reply. Runs on background threads, at most <see cref="MaxConcurrentRequests"/> at once, and
+    /// gives each client <see cref="ClientTimeoutMs"/> in all to send its request, so clients that
+    /// connect and stall cannot pile up threads in the server.
     /// </summary>
     public sealed class ViewerHttpServer : IDisposable
     {
         public const ushort DefaultPort = 47780;
+        public const int MaxConcurrentRequests = 16;
+        public const int ClientTimeoutMs = 5_000;
         private const int MaxRequestBytes = 8 * 1024;
-        private const int ClientTimeoutMs = 5_000;
 
         private readonly TcpListener _listener;
         private readonly string _folder;
         private readonly Thread _thread;
+        private readonly SemaphoreSlim _requests = new SemaphoreSlim(MaxConcurrentRequests);
         private volatile bool _stopping;
 
         /// <summary>Serves <paramref name="folder"/> on <paramref name="port"/> (0 for any free port); throws <see cref="SocketException"/> if the port is taken.</summary>
@@ -54,6 +59,12 @@ namespace CarRacer.Core.Viewer
                     return;
                 }
 
+                if (!_requests.Wait(0))
+                {
+                    client.Close();
+                    continue;
+                }
+
                 new Thread(() => Serve(client)) { IsBackground = true, Name = "TV viewer request" }.Start();
             }
         }
@@ -64,7 +75,7 @@ namespace CarRacer.Core.Viewer
             {
                 try
                 {
-                    client.ReceiveTimeout = client.SendTimeout = ClientTimeoutMs;
+                    client.SendTimeout = ClientTimeoutMs;
                     var stream = client.GetStream();
                     string request = ReadRequestHead(stream);
                     if (request == null)
@@ -111,7 +122,11 @@ namespace CarRacer.Core.Viewer
                 }
                 catch (Exception e) when (e is IOException || e is SocketException || e is ObjectDisposedException)
                 {
-                    // The client went away.
+                    // The client went away, or took too long.
+                }
+                finally
+                {
+                    _requests.Release();
                 }
             }
         }
@@ -156,8 +171,16 @@ namespace CarRacer.Core.Viewer
         {
             var head = new StringBuilder();
             var buffer = new byte[1024];
+            var elapsed = Stopwatch.StartNew();
             while (head.Length < MaxRequestBytes)
             {
+                long remainingMs = ClientTimeoutMs - elapsed.ElapsedMilliseconds;
+                if (remainingMs <= 0)
+                {
+                    return null;
+                }
+
+                stream.ReadTimeout = (int)remainingMs;
                 int n = stream.Read(buffer, 0, buffer.Length);
                 if (n <= 0)
                 {
