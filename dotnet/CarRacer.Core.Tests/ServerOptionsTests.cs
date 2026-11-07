@@ -38,11 +38,27 @@ namespace CarRacer.Core.Tests
             Assert.Equal(DiscoveryConstants.DefaultGamePort, options.Port);
         }
 
-        [Fact]
-        public void AMissingValueIsHandled()
+        [Theory]
+        [InlineData("-port")]
+        [InlineData("-name")]
+        [InlineData("-ffmpeg")]
+        [InlineData("-viewer-port")]
+        public void AMissingValueIsAnError_AndDoesNotSwallowTheNextFlag(string flag)
         {
-            Assert.NotNull(ServerOptions.Parse(new[] { "-port" }).Error);
-            Assert.Equal("Player", ServerOptions.Parse(new[] { "-name" }).Name);
+            Assert.NotNull(ServerOptions.Parse(new[] { flag }).Error);
+
+            var options = ServerOptions.Parse(new[] { flag, "-server" });
+            Assert.NotNull(options.Error);
+            Assert.True(options.IsServer);
+            Assert.Equal(ServerOptions.DefaultName, options.Name);
+        }
+
+        [Fact]
+        public void ABlankNameIsAnError_AndTheDefaultStays()
+        {
+            var options = ServerOptions.Parse(new[] { "-name", "   " });
+            Assert.NotNull(options.Error);
+            Assert.Equal(ServerOptions.DefaultName, options.Name);
         }
 
         [Fact]

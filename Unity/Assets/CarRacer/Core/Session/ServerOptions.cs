@@ -56,7 +56,7 @@ namespace CarRacer.Core.Session
                 }
                 else if (string.Equals(arg, PortFlag, StringComparison.OrdinalIgnoreCase))
                 {
-                    string value = i + 1 < args.Count ? args[++i] : string.Empty;
+                    string value = NextValue(args, ref i);
                     if (!ushort.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out ushort port) || port == 0 || port == DiscoveryConstants.DiscoveryPort)
                     {
                         options.Error = $"{PortFlag} needs a port from 1 to 65535 other than {DiscoveryConstants.DiscoveryPort} (used for discovery), not \"{value}\"";
@@ -68,13 +68,20 @@ namespace CarRacer.Core.Session
                 }
                 else if (string.Equals(arg, NameFlag, StringComparison.OrdinalIgnoreCase))
                 {
-                    options.Name = LobbyRoster.CleanName(i + 1 < args.Count ? args[++i] : string.Empty);
+                    string value = NextValue(args, ref i);
+                    if (string.IsNullOrWhiteSpace(value))
+                    {
+                        options.Error = $"{NameFlag} needs a name";
+                    }
+                    else
+                    {
+                        options.Name = LobbyRoster.CleanName(value);
+                    }
                 }
                 else if (string.Equals(arg, CastFlag, StringComparison.OrdinalIgnoreCase))
                 {
                     // The TV is optional: "-cast -name X" casts to the first one found.
-                    bool named = i + 1 < args.Count && !args[i + 1].StartsWith("-", StringComparison.Ordinal);
-                    options.CastTo = named ? args[++i].Trim() : string.Empty;
+                    options.CastTo = NextValue(args, ref i)?.Trim() ?? string.Empty;
                 }
                 else if (string.Equals(arg, TvMusicFlag, StringComparison.OrdinalIgnoreCase))
                 {
@@ -82,8 +89,8 @@ namespace CarRacer.Core.Session
                 }
                 else if (string.Equals(arg, FfmpegFlag, StringComparison.OrdinalIgnoreCase))
                 {
-                    string value = i + 1 < args.Count ? args[++i] : string.Empty;
-                    if (value.Trim().Length == 0)
+                    string value = NextValue(args, ref i);
+                    if (string.IsNullOrWhiteSpace(value))
                     {
                         options.Error = $"{FfmpegFlag} needs the path to ffmpeg";
                     }
@@ -94,7 +101,7 @@ namespace CarRacer.Core.Session
                 }
                 else if (string.Equals(arg, ViewerPortFlag, StringComparison.OrdinalIgnoreCase))
                 {
-                    string value = i + 1 < args.Count ? args[++i] : string.Empty;
+                    string value = NextValue(args, ref i);
                     if (!ushort.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out ushort port) || port == 0)
                     {
                         options.Error = $"{ViewerPortFlag} needs a port from 1 to 65535, not \"{value}\"";
@@ -107,6 +114,20 @@ namespace CarRacer.Core.Session
             }
 
             return options;
+        }
+
+        /// <summary>
+        /// Takes the value after the flag at <paramref name="i"/>, or returns null without taking anything if nothing
+        /// or another flag follows, so a flag missing its value never swallows the next one.
+        /// </summary>
+        private static string NextValue(IReadOnlyList<string> args, ref int i)
+        {
+            if (i + 1 < args.Count && !args[i + 1].StartsWith("-", StringComparison.Ordinal))
+            {
+                return args[++i];
+            }
+
+            return null;
         }
     }
 }
