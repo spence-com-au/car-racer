@@ -114,6 +114,62 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void EndsWhenTheTvClosesTheConnection()
+        {
+            var receiver = Playing();
+            receiver.Handle(Closed(CastSession.ReceiverId), 50);
+            Assert.Equal(CastState.Failed, receiver.State);
+            Assert.Equal("The TV closed the connection", receiver.Detail);
+
+            var player = Playing();
+            player.Handle(Closed("t1"), 50);
+            Assert.Equal(CastState.Stopped, player.State);
+            Assert.Equal("The TV stopped showing the race", player.Detail);
+
+            var stranger = Playing();
+            stranger.Handle(Closed("someone-else"), 50);
+            Assert.Equal(CastState.Playing, stranger.State);
+        }
+
+        [Theory]
+        [InlineData("LOAD_FAILED")]
+        [InlineData("LOAD_CANCELLED")]
+        [InlineData("INVALID_REQUEST")]
+        public void FailsWhenTheTvRejectsTheLoad(string type)
+        {
+            var session = Loading();
+            session.Handle(new CastMessage("t1", CastSession.SenderId, CastMessage.MediaNamespace, "{\"type\":\"" + type + "\"}"), 50);
+            Assert.Equal(CastState.Failed, session.State);
+            Assert.Contains(type, session.Detail);
+        }
+
+        [Fact]
+        public void StopsWhenThePlayerGoesIdleAfterPlaying()
+        {
+            var session = Playing();
+            session.Handle(Media("{\"playerState\":\"IDLE\",\"idleReason\":\"FINISHED\"}"), 50);
+            Assert.Equal(CastState.Stopped, session.State);
+            Assert.Equal("The TV stopped showing the race", session.Detail);
+
+            // Idle before it ever played is just the player starting up.
+            var loading = Loading();
+            loading.Handle(Media("{\"playerState\":\"IDLE\",\"idleReason\":\"CANCELLED\"}"), 50);
+            Assert.Equal(CastState.Loading, loading.State);
+        }
+
+        [Fact]
+        public void FailsWhenTheTvNeverStartsTheStream()
+        {
+            var session = Loading();
+
+            // Keep the TV audible so it is the step timeout that ends the cast, not the silence one.
+            session.Handle(new CastMessage(CastSession.ReceiverId, CastSession.SenderId, CastMessage.HeartbeatNamespace, "{\"type\":\"PING\"}"), 2 + CastSession.StepTimeoutMs);
+            session.Tick(2 + CastSession.StepTimeoutMs + 1);
+            Assert.Equal(CastState.Failed, session.State);
+            Assert.Equal("The TV didn't start the stream", session.Detail);
+        }
+
+        [Fact]
         public void StoppingClosesThePlayerItStarted()
         {
             var session = Playing();
@@ -164,6 +220,18 @@ namespace CarRacer.Core.Tests
             session.Begin(Url, 0);
             Assert.Empty(session.Stop());
             Assert.Equal(CastState.Stopped, session.State);
+        }
+
+        private static CastMessage Closed(string source) => new CastMessage(source, CastSession.SenderId, CastMessage.ConnectionNamespace, "{\"type\":\"CLOSE\"}");
+
+        private static CastSession Loading()
+        {
+            var session = new CastSession("Lounge", takeOver: false);
+            session.Begin(Url, 0);
+            session.Handle(Status(), 1);
+            session.Handle(Status(App(CastSession.MediaReceiverAppId, "Default Media Receiver", idle: false)), 2);
+            Assert.Equal(CastState.Loading, session.State);
+            return session;
         }
 
         internal static CastSession Playing()
