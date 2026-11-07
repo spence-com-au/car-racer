@@ -51,7 +51,7 @@ namespace CarRacer.Game.Net
             }
 
             var cup = Cups.All[settings.Cup - 1];
-            panel.Add(UiKit.Hint($"{cup.Events.Count} events; the next starts 10 s after each finishes."));
+            panel.Add(UiKit.Hint($"{cup.Events.Count} events; the next starts {CupRun.AdvanceMs / 1000} s after each finishes."));
             panel.Add(UiKit.Button(settings.ReverseGrid ? "Reverse grid: on" : "Reverse grid: off", () =>
             {
                 var next = _session.Settings;
