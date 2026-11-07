@@ -101,5 +101,58 @@ namespace CarRacer.Tests
                 Object.DestroyImmediate(b.gameObject);
             }
         }
+
+        [Test]
+        public void ThePlayersColourLandsInTheModelsPaintRowsOnly()
+        {
+            var model = CarModels.Race;
+            var red = CarBodies.PaintedPalette(model, Color.red, out int width, out int height);
+            var green = CarBodies.PaintedPalette(model, Color.green, out _, out _);
+            Assert.IsNotNull(red);
+            Assert.AreEqual(width * height * 4, red.Length);
+
+            // Rows count from the bottom up, so the paint's v range maps straight onto them.
+            int x = (int)((model.Paint.UMin + model.Paint.UMax) * width / 2f);
+            int y = (int)((model.Paint.VMin + model.Paint.VMax) * height / 2f);
+            int i = (y * width + x) * 4;
+            Assert.Greater(red[i], 0, "red paint");
+            Assert.AreEqual(0, red[i + 1], "red paint");
+            Assert.AreEqual(0, red[i + 2], "red paint");
+            Assert.Greater(green[i + 1], 0, "green paint");
+            Assert.AreEqual(0, green[i], "green paint");
+            Assert.AreEqual(0, green[i + 2], "green paint");
+
+            // The bottom and top rows are outside the paint strip, so they're the palette untouched.
+            for (int j = 0; j < width * 4; j++)
+            {
+                Assert.AreEqual(red[j], green[j], "bottom row");
+                Assert.AreEqual(red[red.Length - 1 - j], green[green.Length - 1 - j], "top row");
+            }
+        }
+
+        [Test]
+        public void AMonsterTruckIsTheSameModelRaisedWithItsOwnMesh()
+        {
+            var car = new GameObject("Car").transform;
+            var truck = new GameObject("Truck").transform;
+            try
+            {
+                Assert.IsTrue(CarBodies.TryBuild(car, Color.red, CarModels.Race));
+                Assert.IsTrue(CarBodies.TryBuild(truck, Color.red, CarModels.Race, monster: true));
+                var carBody = car.GetChild(0);
+                var truckBody = truck.GetChild(0);
+                var carMesh = carBody.GetComponent<MeshFilter>().sharedMesh;
+                var truckMesh = truckBody.GetComponent<MeshFilter>().sharedMesh;
+                Assert.AreNotSame(carMesh, truckMesh);
+                Assert.AreEqual(CarModels.Race.Name + " truck", truckMesh.name);
+                Assert.Greater(truckMesh.bounds.max.y, carMesh.bounds.max.y);
+                Assert.AreSame(carBody.GetComponent<MeshRenderer>().sharedMaterial, truckBody.GetComponent<MeshRenderer>().sharedMaterial);
+            }
+            finally
+            {
+                Object.DestroyImmediate(car.gameObject);
+                Object.DestroyImmediate(truck.gameObject);
+            }
+        }
     }
 }
