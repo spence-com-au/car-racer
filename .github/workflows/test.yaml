@@ -20,4 +20,7 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      # The viewer stream tests run the real ffmpeg and ffprobe, and fail without them.
+      - run: 'sudo apt-get update && sudo apt-get install --yes --no-install-recommends ffmpeg'
+
       - run: 'dotnet test dotnet/CarRacer.sln --configuration Release'

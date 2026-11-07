@@ -207,15 +207,10 @@ namespace CarRacer.Core.Tests
             Directory.Delete(folder, recursive: true);
         }
 
-        /// <summary>Runs the real ffmpeg when there is one (CI may not have it) and checks what it writes.</summary>
+        /// <summary>Runs the real ffmpeg, which the Test workflow installs, and checks what it writes.</summary>
         [Fact]
         public void StreamsPlayableHls()
         {
-            if (!HasTool("ffmpeg") || !HasTool("ffprobe"))
-            {
-                return;
-            }
-
             string folder = Path.Combine(Path.GetTempPath(), "viewer-stream-" + Guid.NewGuid().ToString("N"));
             using (var stream = ViewerStream.Start("ffmpeg", folder, out string error))
             {
@@ -283,11 +278,6 @@ namespace CarRacer.Core.Tests
         [Fact]
         public void StreamsTheMusic()
         {
-            if (!HasTool("ffmpeg") || !HasTool("ffprobe"))
-            {
-                return;
-            }
-
             string folder = Path.Combine(Path.GetTempPath(), "viewer-music-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(folder);
             string tune = Path.Combine(folder, "tune.ogg");
@@ -326,19 +316,6 @@ namespace CarRacer.Core.Tests
             string output = process.StandardError.ReadToEnd();
             process.WaitForExit();
             return output;
-        }
-
-        private static bool HasTool(string name)
-        {
-            try
-            {
-                Run(name, "-version");
-                return true;
-            }
-            catch (System.ComponentModel.Win32Exception)
-            {
-                return false;
-            }
         }
 
         private static string Run(string file, string arguments)
