@@ -5,7 +5,6 @@ using CarRacer.Core.Net;
 using CarRacer.Core.Race;
 using CarRacer.Core.Session;
 using CarRacer.Core.Track;
-using CarRacer.Core.Viewer;
 using Xunit;
 
 namespace CarRacer.Core.Tests
@@ -57,7 +56,7 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
-        public void SummarisesTheNextEventAndSurvivesABadCup()
+        public void SummarisesTheNextEventFromCleanSettings()
         {
             var settings = LobbySettings.Default;
             settings.Mode = GameMode.Sumo;
@@ -82,6 +81,11 @@ namespace CarRacer.Core.Tests
             Assert.Equal(CarPalette.ForIndex(1), CarPalette.ForIndex(1 + CarPalette.Count));
             Assert.Equal(CarPalette.ForIndex(CarPalette.Count - 1), CarPalette.ForIndex(-1));
             Assert.Equal(new Rgb(242, 191, 26), CarPalette.ForIndex(0));
+
+            // Light paint gets dark text over it, and dark paint light text.
+            Assert.True(CarPalette.ForIndex(6).Luma > 0.5f);
+            Assert.True(CarPalette.ForIndex(7).Luma < 0.5f);
+            Assert.Equal(Rgb.FromFloats(1f, 0.5f, 0f), new Rgb(255, 128, 0));
         }
     }
 }
