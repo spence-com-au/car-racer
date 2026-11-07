@@ -62,7 +62,8 @@ namespace CarRacer.Core.Driving
                 return 0;
             }
 
-            bool restarted = after.BoostSecondsLeft > before.BoostSecondsLeft - deltaSeconds + 1e-4f;
+            float countedDown = Math.Max(0f, before.BoostSecondsLeft - deltaSeconds);
+            bool restarted = after.BoostSecondsLeft > countedDown + 1e-4f;
             return restarted ? before.DriftTier(tuning) : 0;
         }
     }
