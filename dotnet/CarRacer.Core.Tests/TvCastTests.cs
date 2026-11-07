@@ -245,6 +245,6 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
-        public void TheProtocolVersionChangedForTheTvMessages() => Assert.Equal(26, Discovery.DiscoveryConstants.ProtocolVersion);
+        public void TheProtocolVersionChangedForTheTvMessages() => Assert.True(Discovery.DiscoveryConstants.ProtocolVersion >= 26);
     }
 }

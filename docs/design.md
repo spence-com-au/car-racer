@@ -480,7 +480,8 @@ leader).
   target it blows up, hitting every car within 5 m of the target but its owner's, 12 m/s away from
   the blast. Its target gets the same "Missile!" warning and arrow as for a Missile.
 - **Missiles and Bombs** (`ProjectileRules`) are simulated only by the host, which sends their
-  positions 20 times a second (`Projectiles`) and says when each is gone (`HazardGone`). A
+  positions 20 times a second (`Projectiles`) and says when each is gone and where it ended
+  (`HazardGone`), so guests show the bang even when it ends before any position update. A
   **Missile** starts 2.5 m ahead and flies at 40 m/s at its launch height, turning at up to 220°/s
   towards the car one place ahead in the standings (straight on if fired by the leader). It hits
   the first car it reaches, pushing it 10 m/s along its flight, or runs out after 5 s. A **Bomb** is

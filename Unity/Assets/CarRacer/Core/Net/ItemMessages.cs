@@ -104,14 +104,28 @@ namespace CarRacer.Core.Net
     {
         public ushort EffectId;
 
+        /// <summary>
+        /// What it was and where it ended. A projectile can end before any <see cref="ProjectilesMessage"/>
+        /// carried it (a Bomb thrown beside a car goes off at once), so guests show its end from these.
+        /// </summary>
+        public ItemKind Item;
+        public Vec3 Position;
+
         public MessageType Type => MessageType.HazardGone;
 
         public void Write(NetWriter w)
         {
             w.WriteUShort(EffectId);
+            w.WriteByte((byte)Item);
+            w.WriteVec3(Position);
         }
 
-        public static HazardGoneMessage Read(NetReader r) => new HazardGoneMessage { EffectId = r.ReadUShort() };
+        public static HazardGoneMessage Read(NetReader r) => new HazardGoneMessage
+        {
+            EffectId = r.ReadUShort(),
+            Item = (ItemKind)r.ReadByte(),
+            Position = r.ReadVec3(),
+        };
     }
 
     public struct ProjectileSnapshot
