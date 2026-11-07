@@ -36,6 +36,32 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void ValidationCatchesBadControlPoints()
+        {
+            // Four points, so the per-point checks run rather than the "at least 4 control points" short-circuit.
+            var bad = new TrackDefinition
+            {
+                Id = "bad",
+                DefaultLaps = 0,
+                Points = new[]
+                {
+                    new TrackPoint(0, 0, 0, width: 2f),
+                    new TrackPoint(10, 0, 0, bankDegrees: 60f),
+                    new TrackPoint(10, 0, 0.5f),
+                    null,
+                },
+            };
+
+            var problems = bad.Validate();
+            Assert.Contains(problems, p => p.Contains("Point 0 width") && p.Contains("narrower than 4 m"));
+            Assert.Contains(problems, p => p.Contains("Point 1 bank") && p.Contains("exceeds 45"));
+            Assert.Contains(problems, p => p.Contains("Points 1 and 2") && p.Contains("closer than 1 m"));
+            Assert.Contains(problems, p => p.Contains("Point 3 is missing"));
+            Assert.Contains(problems, p => p.Contains("DefaultLaps must be at least 1"));
+            Assert.DoesNotContain(problems, p => p.Contains("4 control points"));
+        }
+
+        [Fact]
         public void LengthIsPlausibleForTheOval()
         {
             // The chords between control points sum to about 380 m; the spline through them is
