@@ -140,12 +140,17 @@ namespace CarRacer.Game.Driving
             _visual = visual;
         }
 
-        /// <summary>Puts the car at rest at <paramref name="position"/> facing <paramref name="heading"/> (radians, 0 = +Z).</summary>
-        public void Place(Vector3 position, float heading)
+        /// <summary>
+        /// Puts the car at <paramref name="position"/> facing <paramref name="heading"/> (radians, 0 = +Z), moving at
+        /// <paramref name="velocity"/>. Setting the speed is no bump, so unlike <see cref="AddImpulse"/> this raises no
+        /// <see cref="Pushed"/>.
+        /// </summary>
+        public void Place(Vector3 position, float heading, Vector3 velocity = default)
         {
             _spawnPosition = position;
             _spawnHeading = heading;
             Respawn();
+            _body.linearVelocity = velocity;
         }
 
         /// <summary>

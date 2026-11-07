@@ -263,8 +263,7 @@ namespace CarRacer.Game.Net
                 return;
             }
 
-            car.Place(returned.Position.ToUnity(), returned.HeadingRadians);
-            car.AddImpulse(returned.Velocity.ToUnity() * car.GetComponent<Rigidbody>().mass);
+            car.Place(returned.Position.ToUnity(), returned.HeadingRadians, returned.Velocity.ToUnity());
             _detector.Resume(returned.CheckpointsPassed);
             _lastPosition = car.BodyPosition;
         }
