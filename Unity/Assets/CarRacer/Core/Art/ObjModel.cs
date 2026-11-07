@@ -57,6 +57,9 @@ namespace CarRacer.Core.Art
             var min = new Vec3(float.MaxValue, float.MaxValue, float.MaxValue);
             var max = new Vec3(float.MinValue, float.MinValue, float.MinValue);
 
+            // Kenney's Racing Kit models repeat a group with an identical copy of its faces; drawing both doubles the cost.
+            var seenFaces = new HashSet<string>();
+
             foreach (string raw in text.Split('\n'))
             {
                 string line = raw.Trim();
@@ -111,6 +114,11 @@ namespace CarRacer.Core.Art
                             corners.Add(Corner(f[i], positions.Count, uvs.Count, normals.Count));
                         }
 
+                        if (!seenFaces.Add(part.Name + "\n" + part.Material + "\n" + string.Join(" ", corners)))
+                        {
+                            break;
+                        }
+
                         // A fan of triangles, each wound the other way for the mirrored x.
                         for (int i = 1; i + 1 < corners.Count; i++)
                         {
@@ -123,6 +131,7 @@ namespace CarRacer.Core.Art
                 }
             }
 
+            model.Parts.RemoveAll(p => p.Triangles.Count == 0);
             model.Min = positions.Count > 0 ? min : Vec3.Zero;
             model.Max = positions.Count > 0 ? max : Vec3.Zero;
             return model;

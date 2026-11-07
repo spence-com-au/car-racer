@@ -72,6 +72,15 @@ f -4/-4/-1 -3/-3/-1 -2/-2/-1
             Assert.Contains(new Vec3(0f, 0f, 0f), extra.Positions);
             Assert.Contains(new Vec3(-1f, 0f, 1f), extra.Positions);
         }
+
+        [Fact]
+        public void RepeatedGroupDrawsItsFacesOnce()
+        {
+            // As Kenney's Racing Kit writes it: the group again, with no new vertices and the same faces.
+            var model = ObjModel.Parse(Quad + "g floor\nf 1/1/1 4/4/1 3/3/1 2/2/1\n");
+            Assert.Equal(new[] { "floor", "extra" }, model.Parts.Select(p => p.Name));
+            Assert.Equal(3, model.TriangleCount);
+        }
     }
 
     public class PaintRecolourTests
