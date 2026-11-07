@@ -30,8 +30,6 @@ namespace CarRacer.Game.Items
 
         /// <summary>A Fake box is a shade more orange than a real one (<see cref="ItemBoxes"/>): easy to miss at speed, fair once you know.</summary>
         private static readonly Color FakeBoxColour = new Color(0.98f, 0.62f, 0.15f);
-        private const float FakeBoxSize = 1.1f;
-        private const float FakeBoxSpinDegreesPerSecond = 90f;
 
         private readonly Dictionary<ushort, Transform> _hazards = new Dictionary<ushort, Transform>();
         private readonly HashSet<ushort> _fakes = new HashSet<ushort>();
@@ -194,7 +192,7 @@ namespace CarRacer.Game.Items
         private void SyncHazards()
         {
             _seen.Clear();
-            var spin = Quaternion.Euler(0f, FakeBoxSpinDegreesPerSecond * Time.deltaTime, 0f);
+            var spin = ItemBoxes.Spin();
             foreach (var hazard in _items.Hazards.Active)
             {
                 _seen.Add(hazard.EffectId);
@@ -222,14 +220,10 @@ namespace CarRacer.Game.Items
             return disc;
         }
 
-        /// <summary>A Fake box, drawn like the real ones: a tilted cube that spins in place.</summary>
+        /// <summary>A Fake box, drawn like the real ones (<see cref="ItemBoxes.Box"/>) but for its colour.</summary>
         private Transform FakeBox(Hazard hazard)
         {
-            var box = new GameObject($"Fake box {hazard.EffectId}").transform;
-            box.SetParent(transform, false);
-            box.position = hazard.Position.ToUnity() + Vector3.up * 0.15f;
-            var cube = SimpleMaterials.Part(PrimitiveType.Cube, box, Vector3.zero, Vector3.one * FakeBoxSize, SimpleMaterials.Get(FakeBoxColour));
-            cube.localRotation = Quaternion.Euler(35f, 0f, 35f);
+            var box = ItemBoxes.Box($"Fake box {hazard.EffectId}", transform, hazard.Position.ToUnity() + Vector3.up * 0.15f, FakeBoxColour);
             _fakes.Add(hazard.EffectId);
             return box;
         }
