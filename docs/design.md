@@ -537,7 +537,8 @@ leader).
   0.5 m, 0.4 s. On the sample oval that is about 18.7, 16.8 and 15.6 s a lap.
 - **Items** (`BotItems`): Boost on a straight, Shield straight away, Shockwave with a rival within
   7 m, Missile when there is a car ahead within 60 m, Oil with a rival behind within 20 m, Bomb
-  with a rival ahead within 25 m. Anything held for 10 s is used anyway.
+  with a rival ahead within 25 m, Fake box like Oil, Lightning and Seeker whenever a car is ahead in
+  the standings. Anything held for 10 s is used anyway.
 
 ## 10. Championship (`Championship`)
 
