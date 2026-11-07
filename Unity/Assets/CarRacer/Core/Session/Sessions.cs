@@ -754,11 +754,11 @@ namespace CarRacer.Core.Session
 
         public void SendCarState(CarStateMessage state) => SendToHost(state, reliable: false);
 
-        /// <summary>The room leader's command to the host (design doc §2.3); the host ignores it from anyone else.</summary>
         /// <summary>The room leader's TV command (design doc §2.4): a TV to cast to, Stop, or TV music on or off.</summary>
         public void SendCastCommand(CastCommand command, string device = null) =>
             SendToHost(new CastCommandMessage { Command = command, Device = device ?? string.Empty }, reliable: true);
 
+        /// <summary>The room leader's command to the host (design doc §2.3); the host ignores it from anyone else.</summary>
         public void SendLobbyCommand(LobbyCommand command, LobbySettings settings = default) =>
             SendToHost(new LobbyCommandMessage { Command = command, Settings = settings }, reliable: true);
 

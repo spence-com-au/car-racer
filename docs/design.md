@@ -177,7 +177,7 @@ people waiting their turn, or just watching, can follow it.
   button reads "Cast to TV", "Casting to Den...", "On TV: Den", "TV busy: Den" or "Can't reach
   Den" (`TvText`); with one TV found and nothing cast, a tap casts straight to it
   (`TvCastPanel`).
-- **Music:** optional (off by default; a toggle in the cast menu, or `-tv-music`). The TV plays
+- **Music** (planned, the next PR; protocol 26 already carries it): optional (off by default; a toggle in the cast menu, or `-tv-music`). The TV plays
   the tune the phones would (`MusicChoice`), and while it does the phones fade theirs out. No
   sound effects go to the TV; they would land seconds after the phones'.
 - **On the server** (`TvViewer`, `ViewerStream`, `ViewerHttpServer`, `TvCastPlan`): Chromecasts

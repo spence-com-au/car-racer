@@ -88,6 +88,26 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void LongNamesAndReasonsAreCutToFitInsteadOfThrowing()
+        {
+            string longName = new string('x', 300);
+            string longEmoji = string.Concat(Enumerable.Repeat("📺", 100));
+            var back = (TvStatusMessage)MessageCodec.Decode(MessageCodec.Encode(new TvStatusMessage
+            {
+                CanCast = true,
+                Devices = { longName, longEmoji },
+                CastingTo = longName,
+                Detail = longEmoji,
+            }));
+            Assert.Equal(NetWriter.MaxStringBytes, back.Devices[0].Length);
+            Assert.True(System.Text.Encoding.UTF8.GetByteCount(back.Detail) <= NetWriter.MaxStringBytes);
+            Assert.False(char.IsHighSurrogate(back.Detail[back.Detail.Length - 1]));
+            Assert.Equal(back.Detail, back.Devices[1]);
+            Assert.Equal("Den", TvStatusMessage.Fit("Den"));
+            Assert.Equal(string.Empty, TvStatusMessage.Fit(null));
+        }
+
+        [Fact]
         public void OnlyTheLeadersCastCommandsReachTheGame()
         {
             Join(1, "Alice");
@@ -166,6 +186,10 @@ namespace CarRacer.Core.Tests
             status.Devices.Add("Kitchen");
             Assert.Null(TvText.QuickCast(status));
             Assert.NotEqual(TvText.Signature(status), TvText.Signature(Playing()));
+
+            // A new reason alone rebuilds the lobby, since it's shown under the button.
+            var why = new TvStatusMessage { State = TvState.Busy, Detail = "The TV is showing YouTube" };
+            Assert.NotEqual(TvText.Signature(why), TvText.Signature(new TvStatusMessage { State = TvState.Busy, Detail = "The TV is showing Netflix" }));
         }
 
         [Fact]
