@@ -36,7 +36,6 @@ jobs:
         with:
           ref: 'refs/tags/${{ env.TAG }}'
           fetch-depth: 0
-          lfs: true
 
       - uses: 'jlumbroso/free-disk-space@v1.3.1'
         with:
@@ -129,7 +128,6 @@ jobs:
         with:
           ref: 'refs/tags/${{ env.TAG }}'
           fetch-depth: 0
-          lfs: true
 
       - uses: 'actions/cache@v4.3.0'
         with:
