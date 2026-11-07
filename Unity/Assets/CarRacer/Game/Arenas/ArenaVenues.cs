@@ -62,35 +62,30 @@ namespace CarRacer.Game.Arenas
 
         private void BuildBattle()
         {
-            var centre = ArenaLayout.BattleCentre.ToUnity();
-            float radius = BattleRules.BowlRadius;
-            Solid(PrimitiveType.Cylinder, "Battle floor", centre + Vector3.down * (PlatformThickness / 2f), new Vector3(2f * radius + 4f, PlatformThickness / 2f, 2f * radius + 4f), BowlFloorColour);
+            BuildWalledFloor(ArenaLayout.BattleCentre.ToUnity(), BattleRules.BowlRadius, BowlWallHeight, BowlFloorColour, BowlWallColour, "Battle");
+        }
 
+        /// <summary>A round floor with a ring of wall segments just outside <paramref name="radius"/>.</summary>
+        private void BuildWalledFloor(Vector3 centre, float radius, float wallHeight, Color floorColour, Color wallColour, string name)
+        {
+            // The floor extends past the walls so no gap shows beneath them.
+            float floorDiameter = 2f * radius + 4f;
+            Solid(PrimitiveType.Cylinder, $"{name} floor", centre + Vector3.down * (PlatformThickness / 2f), new Vector3(floorDiameter, PlatformThickness / 2f, floorDiameter), floorColour);
+
+            // Each segment is 8% wider than its share of the circumference, so neighbours overlap and leave no gaps.
             float segment = 2f * Mathf.PI * radius / BowlWallSegments * 1.08f;
             for (int i = 0; i < BowlWallSegments; i++)
             {
-                float angle = 360f * i / BowlWallSegments;
-                var rotation = Quaternion.Euler(0f, angle, 0f);
-                var position = centre + rotation * new Vector3(0f, BowlWallHeight / 2f, radius + 0.5f);
-                var wall = Solid(PrimitiveType.Cube, $"Battle wall {i}", position, new Vector3(segment, BowlWallHeight, 1f), BowlWallColour);
-                wall.rotation = rotation;
+                var rotation = Quaternion.Euler(0f, 360f * i / BowlWallSegments, 0f);
+                var position = centre + rotation * new Vector3(0f, wallHeight / 2f, radius + 0.5f);
+                Solid(PrimitiveType.Cube, $"{name} wall {i}", position, new Vector3(segment, wallHeight, 1f), wallColour).rotation = rotation;
             }
         }
 
         /// <summary>The Monster Jam stadium: a dirt floor, a high wall all round, and the ramps from <see cref="ArenaLayout.MonsterRamps"/>.</summary>
         private void BuildMonster()
         {
-            var centre = ArenaLayout.MonsterCentre.ToUnity();
-            float radius = MonsterRules.StadiumRadius;
-            Solid(PrimitiveType.Cylinder, "Stadium floor", centre + Vector3.down * (PlatformThickness / 2f), new Vector3(2f * radius + 4f, PlatformThickness / 2f, 2f * radius + 4f), DirtColour);
-
-            float segment = 2f * Mathf.PI * radius / BowlWallSegments * 1.08f;
-            for (int i = 0; i < BowlWallSegments; i++)
-            {
-                var rotation = Quaternion.Euler(0f, 360f * i / BowlWallSegments, 0f);
-                var position = centre + rotation * new Vector3(0f, StadiumWallHeight / 2f, radius + 0.5f);
-                Solid(PrimitiveType.Cube, $"Stadium wall {i}", position, new Vector3(segment, StadiumWallHeight, 1f), StadiumWallColour).rotation = rotation;
-            }
+            BuildWalledFloor(ArenaLayout.MonsterCentre.ToUnity(), MonsterRules.StadiumRadius, StadiumWallHeight, DirtColour, StadiumWallColour, "Stadium");
 
             int n = 0;
             foreach (var ramp in ArenaLayout.MonsterRamps(ArenaLayout.MonsterCentre))
