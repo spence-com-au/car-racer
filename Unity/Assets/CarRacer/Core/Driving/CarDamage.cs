@@ -54,7 +54,10 @@ namespace CarRacer.Core.Driving
         /// <summary>0 for no smoke, 1 for light, 2 for heavy (a wreck is always heavy).</summary>
         public int SmokeLevel => Wrecked || Value >= HeavySmoke ? 2 : Value >= LightSmoke ? 1 : 0;
 
-        /// <summary>A bump from another car that changed this car's speed by <paramref name="impulsePerMass"/> m/s. True if it wrecked the car.</summary>
+        /// <summary>
+        /// A bump from another car of <paramref name="impulsePerMass"/>, its impulse per unit of the two cars' reduced
+        /// mass: twice this car's change in speed when the cars weigh the same. True if it wrecked the car.
+        /// </summary>
         public bool AddBump(float impulsePerMass, BumpSettings settings)
         {
             float t = (impulsePerMass - settings.MinImpulsePerMass) / Math.Max(1e-3f, settings.MaxImpulsePerMass - settings.MinImpulsePerMass);

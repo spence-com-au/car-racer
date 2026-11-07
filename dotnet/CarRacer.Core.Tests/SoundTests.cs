@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using CarRacer.Core.Audio;
+using CarRacer.Core.Numerics;
 using CarRacer.Core.Physics;
 using Xunit;
 
@@ -33,6 +34,18 @@ namespace CarRacer.Core.Tests
             Assert.Equal(CrunchSize.Heavy, hard.Size);
             Assert.Equal(0.4f, gentle.Volume, 4);
             Assert.Equal(1f, hard.Volume, 4);
+        }
+
+        [Fact]
+        public void TheHardestCarToCarBumpCrunchesHeavy()
+        {
+            var self = new CarBody(Vec3.Zero, new Vec3(30f, 0f, 0f), BumpMonitor.CarMass);
+            var other = new CarBody(new Vec3(1f, 0f, 0f), new Vec3(-30f, 0f, 0f), BumpMonitor.CarMass);
+            Vec3 impulse = BumpResolver.ComputeSelfImpulse(self, other, Bumps);
+
+            var crunch = SoundRules.Crunch(impulse.Flattened.Length, BumpMonitor.CarMass / 2f, Bumps);
+            Assert.Equal(CrunchSize.Heavy, crunch.Size);
+            Assert.Equal(1f, crunch.Volume, 4);
         }
 
         [Fact]
