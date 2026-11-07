@@ -31,6 +31,10 @@ namespace CarRacer.Core.Tests
         [InlineData("carracer://join?port=7777")]
         [InlineData("carracer://join?host=1.2.3.4&port=99999")]
         [InlineData("carracer://join?host=&port=7777")]
+        [InlineData("carracer://join?host=evil.example.com&port=7777")]
+        [InlineData("carracer://join?host=010.0.0.1&port=7777")]
+        [InlineData("carracer://join?host=1.2.3&port=7777")]
+        [InlineData("carracer://join?host=1.2.3.4:80&port=7777")]
         public void AnythingElseIsNotAJoinLink(string link)
         {
             Assert.False(JoinLink.TryParse(link, out _, out _));
