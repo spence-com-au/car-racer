@@ -1,5 +1,6 @@
 using System.Collections;
 using CarRacer.Core.Driving;
+using CarRacer.Core.Physics;
 using CarRacer.Game;
 using CarRacer.Game.Driving;
 using CarRacer.Game.Screens;
@@ -11,7 +12,8 @@ namespace CarRacer.Tests
 {
     /// <summary>
     /// Drives the real Unity car (rigidbody, colliders, generated track) to check the glue between
-    /// <see cref="CarModel"/> and the physics engine. The handling itself is tested by `dotnet test`.
+    /// <see cref="CarModel"/> and the physics engine: driving, collisions, landings and respawns.
+    /// The handling itself is tested by `dotnet test`.
     /// </summary>
     public class TrackScreenTests
     {
@@ -131,6 +133,179 @@ namespace CarRacer.Tests
             _input.Input = new CarInput(1f, 1f);
             yield return new WaitForSeconds(0.3f);
             Assert.That(Mathf.DeltaAngle(heading * Mathf.Rad2Deg, Car.State.Heading * Mathf.Rad2Deg), Is.GreaterThan(10f));
+        }
+
+        [UnityTest]
+        public IEnumerator ALandingReportsTheTimeInTheAir()
+        {
+            yield return new WaitForSeconds(0.5f);
+            float? airSeconds = null;
+            Car.Landed += seconds => airSeconds = seconds;
+
+            Lift(Car, 4f);
+            yield return WaitUntil(() => airSeconds.HasValue, 5f);
+
+            Assert.IsNotNull(airSeconds, "the car landed");
+            Assert.That(airSeconds.Value, Is.InRange(0.2f, 2f));
+        }
+
+        [UnityTest]
+        public IEnumerator AMonsterTruckHangsInTheAirLongerThanACar()
+        {
+            float car = 0f;
+            yield return MeasureDrop(seconds => car = seconds);
+
+            Car.MonsterTruck = true;
+            float truck = 0f;
+            yield return MeasureDrop(seconds => truck = seconds);
+
+            Assert.That(car, Is.GreaterThan(0f));
+            Assert.That(truck, Is.GreaterThan(car), "a truck feels less gravity in the air");
+        }
+
+        [UnityTest]
+        public IEnumerator ACarThatFallsOffTheWorldIsPutBackAtTheStart()
+        {
+            yield return new WaitForSeconds(0.5f);
+            Vector3 start = Car.transform.position;
+
+            var body = Car.GetComponent<Rigidbody>();
+            body.position = start + Vector3.down * (start.y - CarController.FallLimit + 5f);
+            yield return new WaitForSeconds(0.2f);
+
+            Assert.That(Car.transform.position.y, Is.GreaterThan(CarController.FallLimit));
+            Vector3 offset = Car.transform.position - start;
+            offset.y = 0f;
+            Assert.That(offset.magnitude, Is.LessThan(1f));
+        }
+
+        [UnityTest]
+        public IEnumerator AHardHitOnAWallDamagesTheCar()
+        {
+            yield return new WaitForSeconds(0.5f);
+            Assert.IsTrue(Car.DamageEnabled);
+            Assert.That(Car.Damage.Value, Is.EqualTo(0f));
+
+            Vector3 forward = Car.State.Forward.ToUnity();
+            var wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            wall.transform.SetParent(_screen.transform, true);
+            wall.transform.position = Car.transform.position + forward * 15f;
+            wall.transform.rotation = Quaternion.LookRotation(forward);
+            wall.transform.localScale = new Vector3(30f, 6f, 1f);
+
+            _input.Input = new CarInput(0f, 1f);
+            yield return WaitUntil(() => Car.Damage.Value > 0f, 4f);
+
+            Assert.That(Car.Damage.Value, Is.GreaterThan(0f), "ran into the wall at speed");
+        }
+
+        [UnityTest]
+        public IEnumerator HittingAnotherCarReportsTheTouch()
+        {
+            yield return new WaitForSeconds(0.5f);
+            CarController other = null;
+            CarController touched = null;
+            Car.TouchedCar += car => touched = car;
+            yield return DriveIntoACarAhead(car => other = car);
+
+            Assert.That(other, Is.Not.Null);
+            Assert.That(touched, Is.SameAs(other));
+        }
+
+        [UnityTest]
+        public IEnumerator AMonsterTruckPushesWhatItHits()
+        {
+            yield return new WaitForSeconds(0.5f);
+            Car.MonsterTruck = true;
+            Vector3? push = null;
+            Car.Pushed += impulse => push = impulse;
+            yield return DriveIntoACarAhead(_ => { });
+
+            Assert.IsNotNull(push, "the truck was pushed by its own hit");
+            Assert.That(push.Value.y, Is.GreaterThan(0f), "with some lift");
+        }
+
+        [UnityTest]
+        public IEnumerator ABumpFromAnotherPhoneDamagesTheCarByItsHorizontalPush()
+        {
+            yield return new WaitForSeconds(0.5f);
+            Assert.IsTrue(Car.DamageEnabled);
+            Assert.That(Car.Damage.Value, Is.EqualTo(0f));
+
+            // The car has a mass of 1, so the damage is sized by the horizontal impulse over half of that;
+            // the upward pop in the impulse must not count.
+            Car.TakeBump(new Vector3(0f, 100f, 6f));
+
+            float expected = BumpDamage(6f / 0.5f);
+            Assert.That(expected, Is.GreaterThan(CarDamage.BumpMinDamage).And.LessThan(CarDamage.BumpMaxDamage));
+            Assert.That(Car.Damage.Value, Is.EqualTo(expected).Within(1e-4f));
+        }
+
+        [UnityTest]
+        public IEnumerator ABumpDoesNothingWhereDamageIsOff()
+        {
+            yield return new WaitForSeconds(0.5f);
+            Car.DamageEnabled = false;
+
+            Car.TakeBump(new Vector3(0f, 0f, 20f));
+
+            Assert.That(Car.Damage.Value, Is.EqualTo(0f));
+        }
+
+        /// <summary>The damage a single bump of <paramref name="impulsePerMass"/> does to an undamaged car.</summary>
+        private static float BumpDamage(float impulsePerMass)
+        {
+            var damage = new CarDamage();
+            damage.AddBump(impulsePerMass, new BumpSettings());
+            return damage.Value;
+        }
+
+        /// <summary>Waits until <paramref name="done"/> or <paramref name="timeout"/> seconds have passed.</summary>
+        private static IEnumerator WaitUntil(System.Func<bool> done, float timeout)
+        {
+            float giveUp = Time.time + timeout;
+            while (!done() && Time.time < giveUp)
+            {
+                yield return null;
+            }
+        }
+
+        /// <summary>Raises <paramref name="car"/> by <paramref name="height"/> metres, at rest, so it drops back down.</summary>
+        private static void Lift(CarController car, float height)
+        {
+            var body = car.GetComponent<Rigidbody>();
+            body.position += Vector3.up * height;
+            body.linearVelocity = Vector3.zero;
+        }
+
+        /// <summary>Puts the car back at the start, drops it from a height and reports how long it was in the air.</summary>
+        private IEnumerator MeasureDrop(System.Action<float> report)
+        {
+            Car.Place(Car.transform.position, Car.State.Heading);
+            yield return new WaitForSeconds(0.5f);
+
+            float? airSeconds = null;
+            System.Action<float> onLanded = seconds => airSeconds = seconds;
+            Car.Landed += onLanded;
+            Lift(Car, 10f);
+            yield return WaitUntil(() => airSeconds.HasValue, 5f);
+            Car.Landed -= onLanded;
+
+            Assert.IsNotNull(airSeconds, "the car landed");
+            report(airSeconds.Value);
+        }
+
+        /// <summary>Parks a second car 6 m ahead of this one and drives into it at full throttle for a moment.</summary>
+        private IEnumerator DriveIntoACarAhead(System.Action<CarController> parked)
+        {
+            Vector3 forward = Car.State.Forward.ToUnity();
+            var other = CarFactory.Build("Parked car", Color.red, _screen.transform, haptics: false);
+            other.Place(Car.transform.position + forward * 6f, Car.State.Heading);
+            parked(other);
+            yield return new WaitForSeconds(0.3f);
+
+            _input.Input = new CarInput(0f, 1f);
+            yield return new WaitForSeconds(1.5f);
         }
     }
 }
