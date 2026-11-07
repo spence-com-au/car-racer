@@ -261,48 +261,13 @@ namespace CarRacer.Game.Net
         /// <summary>What the phones are told: whether casting works here, the TVs found and how the cast is going.</summary>
         private TvStatusMessage Status()
         {
-            var status = new TvStatusMessage { CanCast = !_streamFailed && _discovery != null, Music = Music };
+            var names = new List<string>();
             foreach (var device in Devices)
             {
-                if (status.Devices.Count < TvStatusMessage.MaxDevices && !status.Devices.Contains(device.Name))
-                {
-                    status.Devices.Add(device.Name);
-                }
+                names.Add(device.Name);
             }
 
-            if (_cast != null)
-            {
-                status.CastingTo = _cast.Device.Name;
-                status.Detail = _cast.Detail;
-                switch (_cast.State)
-                {
-                    case CastState.Playing:
-                        status.State = TvState.Playing;
-                        break;
-                    case CastState.Busy:
-                        status.State = TvState.Busy;
-                        break;
-                    case CastState.Failed:
-                        status.State = TvState.Failed;
-                        break;
-                    case CastState.Stopped:
-                        status.State = TvState.Off;
-                        break;
-                    default:
-                        status.State = TvState.Connecting;
-                        break;
-                }
-            }
-
-            // Waiting for the stream or the TV to turn up counts as connecting to it.
-            if (_plan.Wanted != null && (_cast == null || _cast.Finished) && status.State != TvState.Busy && status.State != TvState.Failed && _plan.Pending)
-            {
-                status.State = TvState.Connecting;
-                status.CastingTo = _plan.Wanted.Length > 0 ? _plan.Wanted : status.CastingTo;
-                status.Detail = string.Empty;
-            }
-
-            return status;
+            return _plan.Status(!_streamFailed && _discovery != null, Music, names, _cast?.State, _cast?.Device.Name, _cast?.Detail);
         }
 
         private void OnDestroy()

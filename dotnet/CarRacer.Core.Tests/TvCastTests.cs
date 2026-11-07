@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using CarRacer.Core.Cast;
 using CarRacer.Core.Net;
 using CarRacer.Core.Session;
 using Xunit;
@@ -190,6 +191,55 @@ namespace CarRacer.Core.Tests
             // A new reason alone rebuilds the lobby, since it's shown under the button.
             var why = new TvStatusMessage { State = TvState.Busy, Detail = "The TV is showing YouTube" };
             Assert.NotEqual(TvText.Signature(why), TvText.Signature(new TvStatusMessage { State = TvState.Busy, Detail = "The TV is showing Netflix" }));
+        }
+
+        [Fact]
+        public void StatusReportsTheCastAndTheTvsFound()
+        {
+            var plan = new TvCastPlan();
+            var none = plan.Status(true, false, new[] { "Den", "Den", "Kitchen" }, null, null, null);
+            Assert.True(none.CanCast);
+            Assert.Equal(new[] { "Den", "Kitchen" }, none.Devices);
+            Assert.Equal(TvState.Off, none.State);
+
+            plan.Request("Den", takeOver: true);
+            var waiting = plan.Status(true, false, new string[0], null, null, null);
+            Assert.Equal(TvState.Connecting, waiting.State);
+            Assert.Equal("Den", waiting.CastingTo);
+
+            plan.Next(new[] { new CastDevice { Name = "Den" } }, casting: false, streamReady: true, out _);
+            var playing = plan.Status(true, true, new[] { "Den" }, CastState.Playing, "Den", string.Empty);
+            Assert.Equal(TvState.Playing, playing.State);
+            Assert.True(playing.Music);
+            Assert.Equal(TvState.Connecting, plan.Status(true, false, new string[0], CastState.Loading, "Den", string.Empty).State);
+
+            var busy = plan.Status(true, false, new string[0], CastState.Busy, "Den", "The TV is showing YouTube");
+            Assert.Equal(TvState.Busy, busy.State);
+            Assert.Equal("The TV is showing YouTube", busy.Detail);
+        }
+
+        [Fact]
+        public void StoppingClearsABusyOrFailedTv()
+        {
+            foreach (var ended in new[] { CastState.Busy, CastState.Failed, CastState.Stopped })
+            {
+                var plan = new TvCastPlan();
+                plan.Request("Den", takeOver: false);
+                plan.Next(new[] { new CastDevice { Name = "Den" } }, casting: false, streamReady: true, out _);
+                Assert.NotEqual(TvState.Off, plan.Status(true, false, new string[0], CastState.Busy, "Den", "busy").State);
+
+                // The leader taps Stop casting: the plan forgets the TV, and the ended cast no longer shows.
+                plan.Forget();
+                var status = plan.Status(true, false, new string[0], ended, "Den", "why");
+                Assert.Equal(TvState.Off, status.State);
+                Assert.Equal(string.Empty, status.CastingTo);
+                Assert.Equal(string.Empty, status.Detail);
+                Assert.Equal("Cast to TV", TvText.ButtonLabel(status));
+            }
+
+            // A cast still running when Stop is tapped shows until it has ended.
+            var running = new TvCastPlan();
+            Assert.Equal(TvState.Playing, running.Status(true, false, new string[0], CastState.Playing, "Den", string.Empty).State);
         }
 
         [Fact]

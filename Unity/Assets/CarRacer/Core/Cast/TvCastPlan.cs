@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using CarRacer.Core.Net;
 
 namespace CarRacer.Core.Cast
 {
@@ -88,6 +89,50 @@ namespace CarRacer.Core.Cast
             _pending = false;
             _takeOver = false;
             return device;
+        }
+
+        /// <summary>
+        /// What every phone is told about the TV (design doc §2.4): whether casting works here, the
+        /// TVs found (by name, at most <see cref="TvStatusMessage.MaxDevices"/>, no repeats), and how
+        /// the cast is going. <paramref name="cast"/> is the latest cast's state, or null if there
+        /// hasn't been one. A cast that has ended is shown as off once no TV is wanted, so Stop
+        /// clears a busy or failed TV; while a cast is waiting to start, it shows as connecting.
+        /// </summary>
+        public TvStatusMessage Status(bool canCast, bool music, IEnumerable<string> devices, CastState? cast, string castDevice, string castDetail)
+        {
+            var status = new TvStatusMessage { CanCast = canCast, Music = music };
+            foreach (string name in devices)
+            {
+                if (status.Devices.Count < TvStatusMessage.MaxDevices && !status.Devices.Contains(name))
+                {
+                    status.Devices.Add(name);
+                }
+            }
+
+            bool finished = cast == CastState.Busy || cast == CastState.Stopped || cast == CastState.Failed;
+            if (cast.HasValue && !(finished && Wanted == null))
+            {
+                status.CastingTo = castDevice ?? string.Empty;
+                status.Detail = castDetail ?? string.Empty;
+                status.State = cast switch
+                {
+                    CastState.Playing => TvState.Playing,
+                    CastState.Busy => TvState.Busy,
+                    CastState.Failed => TvState.Failed,
+                    CastState.Stopped => TvState.Off,
+                    _ => TvState.Connecting,
+                };
+            }
+
+            // Waiting for the stream or the TV to turn up counts as connecting to it.
+            if (Pending && (!cast.HasValue || finished) && status.State != TvState.Busy && status.State != TvState.Failed)
+            {
+                status.State = TvState.Connecting;
+                status.CastingTo = Wanted.Length > 0 ? Wanted : status.CastingTo;
+                status.Detail = string.Empty;
+            }
+
+            return status;
         }
     }
 }
