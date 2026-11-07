@@ -166,6 +166,8 @@ namespace CarRacer.Core.Tests
         {
             var status = new TvStatusMessage { CanCast = true, Devices = { "Den" } };
             Assert.Equal("Cast to TV", TvText.ButtonLabel(status));
+            Assert.Equal("TV music: off", TvText.MusicLabel(status));
+            Assert.Equal("TV music: on", TvText.MusicLabel(new TvStatusMessage { Music = true }));
             Assert.Equal("Den", TvText.QuickCast(status));
             Assert.Null(TvText.OnTvLine(status));
 

@@ -4,6 +4,8 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Net;
+using System.Net.Sockets;
 using System.Threading;
 
 namespace CarRacer.Core.Viewer
@@ -14,7 +16,8 @@ namespace CarRacer.Core.Viewer
     /// pipes the frames to <c>ffmpeg</c>, which writes HLS (<see cref="PlaylistName"/> and its
     /// segments) into <see cref="Folder"/> for <see cref="ViewerHttpServer"/> to serve. The game
     /// thread only calls <see cref="Show"/>. If drawing falls behind, the last frame is sent again so
-    /// the stream keeps time with the race.
+    /// the stream keeps time with the race. A second thread feeds ffmpeg the sound over a loopback
+    /// TCP connection, in step with the clock: the music <see cref="Music"/> plays, or silence.
     /// </summary>
     public sealed class ViewerStream : IDisposable
     {
@@ -27,15 +30,19 @@ namespace CarRacer.Core.Viewer
         private readonly object _lock = new object();
         private readonly Process _ffmpeg;
         private readonly Thread _thread;
+        private readonly Thread _audioThread;
+        private readonly TcpListener _audioListener;
         private readonly Queue<string> _errors = new Queue<string>();
         private ViewerScene _scene;
         private volatile bool _stopping;
         private volatile string _failure;
 
-        private ViewerStream(Process ffmpeg, string folder)
+        private ViewerStream(Process ffmpeg, string folder, TcpListener audioListener, MusicFeed music)
         {
             _ffmpeg = ffmpeg;
             Folder = folder;
+            _audioListener = audioListener;
+            Music = music;
             _ffmpeg.ErrorDataReceived += (sender, e) =>
             {
                 if (!string.IsNullOrWhiteSpace(e.Data))
@@ -53,7 +60,12 @@ namespace CarRacer.Core.Viewer
             _ffmpeg.BeginErrorReadLine();
             _thread = new Thread(Run) { IsBackground = true, Name = "TV viewer" };
             _thread.Start();
+            _audioThread = new Thread(RunAudio) { IsBackground = true, Name = "TV viewer sound" };
+            _audioThread.Start();
         }
+
+        /// <summary>The TV's music: <see cref="MusicFeed.Play"/> a tune, or null for silence.</summary>
+        public MusicFeed Music { get; }
 
         /// <summary>Where the playlist and segments are written.</summary>
         public string Folder { get; }
@@ -71,6 +83,7 @@ namespace CarRacer.Core.Viewer
         public static ViewerStream Start(string ffmpegPath, string folder, out string error)
         {
             error = null;
+            TcpListener listener = null;
             try
             {
                 if (Directory.Exists(folder))
@@ -79,7 +92,10 @@ namespace CarRacer.Core.Viewer
                 }
 
                 Directory.CreateDirectory(folder);
-                var info = new ProcessStartInfo(ffmpegPath, string.Join(" ", Arguments(folder)))
+                listener = new TcpListener(IPAddress.Loopback, 0);
+                listener.Start();
+                int audioPort = ((IPEndPoint)listener.LocalEndpoint).Port;
+                var info = new ProcessStartInfo(ffmpegPath, string.Join(" ", Arguments(folder, audioPort)))
                 {
                     UseShellExecute = false,
                     RedirectStandardInput = true,
@@ -91,20 +107,22 @@ namespace CarRacer.Core.Viewer
                 if (process == null)
                 {
                     error = "ffmpeg didn't start";
+                    listener.Stop();
                     return null;
                 }
 
-                return new ViewerStream(process, folder);
+                return new ViewerStream(process, folder, listener, new MusicFeed(ffmpegPath));
             }
             catch (Win32Exception)
             {
                 error = $"ffmpeg not found (\"{ffmpegPath}\"); install it, or point -ffmpeg at it";
             }
-            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException || e is InvalidOperationException)
+            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException || e is InvalidOperationException || e is SocketException)
             {
                 error = "Couldn't start ffmpeg: " + e.Message;
             }
 
+            listener?.Stop();
             return null;
         }
 
@@ -172,10 +190,11 @@ namespace CarRacer.Core.Viewer
         }
 
         /// <summary>
-        /// ffmpeg's arguments: raw RGB frames on stdin and a silent stereo track, encoded as H.264
-        /// and AAC into 1-second HLS segments, each starting with a keyframe, keeping the last six.
+        /// ffmpeg's arguments: raw RGB frames on stdin and raw stereo PCM from a loopback TCP
+        /// connection to <paramref name="audioPort"/>, encoded as H.264 and AAC into 1-second HLS
+        /// segments, each starting with a keyframe, keeping the last six.
         /// </summary>
-        public static IReadOnlyList<string> Arguments(string folder)
+        public static IReadOnlyList<string> Arguments(string folder, int audioPort)
         {
             string size = ViewerRenderer.Width.ToString(CultureInfo.InvariantCulture) + "x" + ViewerRenderer.Height.ToString(CultureInfo.InvariantCulture);
             string fps = FramesPerSecond.ToString(CultureInfo.InvariantCulture);
@@ -183,7 +202,8 @@ namespace CarRacer.Core.Viewer
             {
                 "-hide_banner", "-loglevel", "error", "-y",
                 "-f", "rawvideo", "-pix_fmt", "rgb24", "-video_size", size, "-framerate", fps, "-i", "pipe:0",
-                "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=48000",
+                "-f", "s16le", "-ar", MusicFeed.SampleRate.ToString(CultureInfo.InvariantCulture), "-ac", MusicFeed.Channels.ToString(CultureInfo.InvariantCulture),
+                "-i", "tcp://127.0.0.1:" + audioPort.ToString(CultureInfo.InvariantCulture),
                 "-map", "0:v", "-map", "1:a",
                 "-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency", "-pix_fmt", "yuv420p", "-profile:v", "main",
                 "-g", fps, "-keyint_min", fps, "-sc_threshold", "0", "-b:v", "2500k", "-maxrate", "2500k", "-bufsize", "5000k",
@@ -260,9 +280,49 @@ namespace CarRacer.Core.Viewer
             }
         }
 
+        /// <summary>Feeds ffmpeg the sound 20 ms at a time, keeping pace with the clock.</summary>
+        private void RunAudio()
+        {
+            const int chunkFrames = MusicFeed.SampleRate / 50;
+            var pcm = new short[chunkFrames * MusicFeed.Channels];
+            var bytes = new byte[pcm.Length * 2];
+            try
+            {
+                using (var client = _audioListener.AcceptTcpClient())
+                {
+                    _audioListener.Stop();
+                    var stream = client.GetStream();
+                    var clock = Stopwatch.StartNew();
+                    long written = 0;
+                    while (!_stopping)
+                    {
+                        long due = clock.ElapsedMilliseconds * MusicFeed.SampleRate / 1000;
+                        if (written >= due)
+                        {
+                            Thread.Sleep(10);
+                            continue;
+                        }
+
+                        Music.Fill(pcm, chunkFrames);
+                        Buffer.BlockCopy(pcm, 0, bytes, 0, bytes.Length);
+                        stream.Write(bytes, 0, bytes.Length);
+                        written += chunkFrames;
+                    }
+                }
+            }
+            catch (Exception e) when (e is IOException || e is SocketException || e is ObjectDisposedException || e is InvalidOperationException)
+            {
+                if (!_stopping)
+                {
+                    _failure = "ffmpeg stopped taking the sound: " + e.Message;
+                }
+            }
+        }
+
         public void Dispose()
         {
             _stopping = true;
+            _audioListener.Stop();
             try
             {
                 _ffmpeg.StandardInput.Close();
@@ -273,6 +333,8 @@ namespace CarRacer.Core.Viewer
             }
 
             _thread.Join(2_000);
+            _audioThread.Join(2_000);
+            Music.Dispose();
             try
             {
                 if (!_ffmpeg.WaitForExit(3_000))

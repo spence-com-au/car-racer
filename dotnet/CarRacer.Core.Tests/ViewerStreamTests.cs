@@ -171,8 +171,9 @@ namespace CarRacer.Core.Tests
         [Fact]
         public void ArgumentsMakeLiveHlsFromRawFrames()
         {
-            var args = ViewerStream.Arguments("/tmp/v");
+            var args = ViewerStream.Arguments("/tmp/v", 40000);
             string line = string.Join(" ", args);
+            Assert.Contains("-f s16le -ar 48000 -ac 2 -i tcp://127.0.0.1:40000", line);
             Assert.Contains("-f rawvideo -pix_fmt rgb24 -video_size 1280x720 -framerate 25 -i pipe:0", line);
             Assert.Contains("-g 25", line);
             Assert.Contains("-f hls -hls_time 1", line);
@@ -239,6 +240,92 @@ namespace CarRacer.Core.Tests
             }
 
             Directory.Delete(folder, recursive: true);
+        }
+
+        [Fact]
+        public void MusicCrossfadesAndClips()
+        {
+            var a = new short[] { 1000, -1000, 1000, -1000 };
+            var b = new short[] { 0, 0, 30000, 30000 };
+            var output = new short[4];
+            MusicFeed.Mix(a, null, output, 2, 0, 10);
+            Assert.Equal(new short[] { 800, -800, 800, -800 }, output);
+
+            // Halfway through a fade to silence, half as loud.
+            MusicFeed.Mix(a, null, output, 1, 5, 10);
+            Assert.Equal(400, output[0]);
+
+            // Fully faded in, only the new tune.
+            MusicFeed.Mix(a, b, output, 2, 10, 10);
+            Assert.Equal(new short[] { 0, 0, 24000, 24000 }, output);
+
+            var loud = new short[] { short.MaxValue, short.MinValue };
+            MusicFeed.Mix(loud, loud, output, 1, 5, 10);
+            Assert.Equal((short)Math.Round(short.MaxValue * MusicFeed.Gain), output[0]);
+        }
+
+        [Fact]
+        public void MissingMusicIsSilence()
+        {
+            using var feed = new MusicFeed("ffmpeg");
+            feed.Play("/nonexistent/tune.ogg");
+            var pcm = new short[960 * 2];
+            for (int i = 0; i < 40; i++)
+            {
+                feed.Fill(pcm, 960);
+                Assert.All(pcm, s => Assert.Equal(0, s));
+            }
+
+            Assert.Contains("No music file", feed.Error);
+        }
+
+        /// <summary>With the real ffmpeg, a tune asked for is heard in the stream.</summary>
+        [Fact]
+        public void StreamsTheMusic()
+        {
+            if (!HasTool("ffmpeg") || !HasTool("ffprobe"))
+            {
+                return;
+            }
+
+            string folder = Path.Combine(Path.GetTempPath(), "viewer-music-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(folder);
+            string tune = Path.Combine(folder, "tune.ogg");
+            Run("ffmpeg", $"-hide_banner -loglevel error -y -f lavfi -i sine=frequency=440:duration=2 -ac 2 -c:a libvorbis \"{tune}\"");
+            Assert.True(File.Exists(tune));
+
+            string stream = Path.Combine(folder, "hls");
+            using (var viewer = ViewerStream.Start("ffmpeg", stream, out string error))
+            {
+                Assert.True(viewer != null, error);
+                viewer.Music.Play(tune);
+                var race = new FakeRaceView { Standings = new Net.StandingsMessage() };
+                var clock = Stopwatch.StartNew();
+                while (clock.ElapsedMilliseconds < 20_000 && Directory.GetFiles(stream, "*.ts").Length < 3)
+                {
+                    viewer.Show(ViewerScene.Build(ViewerSceneTests.Racing(race, clock.ElapsedMilliseconds)));
+                    Thread.Sleep(40);
+                }
+
+                Assert.Null(viewer.Failure);
+                Assert.Null(viewer.Music.Error);
+
+                // A segment after the fade-in is loud; volumedetect reports a mean far above silence (-91 dB).
+                string segment = Directory.GetFiles(stream, "*.ts").OrderBy(f => f).Last();
+                string volume = RunErr("ffmpeg", $"-hide_banner -i \"{segment}\" -af volumedetect -vn -f null -");
+                string mean = volume.Split('\n').First(l => l.Contains("mean_volume")).Split(':')[1].Trim().Split(' ')[0];
+                Assert.True(double.Parse(mean, System.Globalization.CultureInfo.InvariantCulture) > -40, volume);
+            }
+
+            Directory.Delete(folder, recursive: true);
+        }
+
+        private static string RunErr(string file, string arguments)
+        {
+            using var process = Process.Start(new ProcessStartInfo(file, arguments) { RedirectStandardError = true, UseShellExecute = false });
+            string output = process.StandardError.ReadToEnd();
+            process.WaitForExit();
+            return output;
         }
 
         private static bool HasTool(string name)

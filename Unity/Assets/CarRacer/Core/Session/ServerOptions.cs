@@ -11,7 +11,7 @@ namespace CarRacer.Core.Session
     /// <c>-name</c> for the name phones list it under. Unity's own arguments are ignored. For the TV
     /// viewer (design doc §2.4): <c>-cast [TV]</c> casts to a Chromecast by itself (the first found
     /// if no TV is named), <c>-ffmpeg</c> says where ffmpeg is, and <c>-viewer-port</c> is the TCP
-    /// port the stream is served on.
+    /// port the stream is served on, and <c>-tv-music</c> plays the music on the TV.
     /// </summary>
     public sealed class ServerOptions
     {
@@ -21,6 +21,7 @@ namespace CarRacer.Core.Session
         public const string CastFlag = "-cast";
         public const string FfmpegFlag = "-ffmpeg";
         public const string ViewerPortFlag = "-viewer-port";
+        public const string TvMusicFlag = "-tv-music";
         public const string DefaultName = "Car Racer server";
         public const ushort DefaultViewerPort = 47780;
 
@@ -33,6 +34,9 @@ namespace CarRacer.Core.Session
 
         /// <summary>The ffmpeg to stream with; "ffmpeg" looks on the PATH.</summary>
         public string FfmpegPath { get; private set; } = "ffmpeg";
+
+        /// <summary>Whether the TV plays the music to begin with; the room leader can switch it.</summary>
+        public bool TvMusic { get; private set; }
 
         /// <summary>The TCP port the TV viewer's stream is served on.</summary>
         public ushort ViewerPort { get; private set; } = DefaultViewerPort;
@@ -71,6 +75,10 @@ namespace CarRacer.Core.Session
                     // The TV is optional: "-cast -name X" casts to the first one found.
                     bool named = i + 1 < args.Count && !args[i + 1].StartsWith("-", StringComparison.Ordinal);
                     options.CastTo = named ? args[++i].Trim() : string.Empty;
+                }
+                else if (string.Equals(arg, TvMusicFlag, StringComparison.OrdinalIgnoreCase))
+                {
+                    options.TvMusic = true;
                 }
                 else if (string.Equals(arg, FfmpegFlag, StringComparison.OrdinalIgnoreCase))
                 {
