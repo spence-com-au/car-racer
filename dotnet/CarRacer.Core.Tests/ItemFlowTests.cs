@@ -391,6 +391,49 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void AnItemTheBotUsedForAnAwayGuestIsGoneWhenTheyComeBack()
+        {
+            StartRacing();
+            Assert.True(_guestItems.ClaimTouchedBox(BoxPositions[0]));
+            var held = _guestItems.Held;
+            _now += HostSession.AwayAfterMs;
+            _host.Tick();
+            Assert.True(_host.IsAway(GuestId));
+            Assert.Equal(held, _hostItems.UseHeldForBot(GuestId, Vec3.Zero, Vec3.Zero, 0f));
+
+            Assert.Equal(ItemKind.None, _guestItems.Held);
+            Assert.Equal(ItemKind.None, _guestItems.UseHeld(Vec3.Zero, Vec3.Zero, 0f));
+            Assert.True(_guestItems.ClaimTouchedBox(BoxPositions[1]));
+        }
+
+        [Fact]
+        public void AGuestThatMissesTheCountdownStillStartsTheNextRaceEmptyHanded()
+        {
+            StartRacing();
+            Assert.True(_guestItems.ClaimTouchedBox(BoxPositions[0]));
+            Assert.NotEqual(ItemKind.None, _guestItems.Held);
+
+            // The guest hears nothing from the end of this race until the next one is under way.
+            _hostLink.HoldBack = true;
+            _hostRace.Tracker.Retire(GuestId);
+            _hostRace.Tracker.Retire(_host.HostPlayerId);
+            Tick();
+            Assert.True(_hostRace.ReturnToLobby());
+            Assert.True(_hostRace.Start(3));
+            Tick();
+            _now += HostRace.StartLeadMs + HostRace.CountdownMs;
+            Tick();
+            Assert.Equal(RacePhase.Racing, _guestRace.Phase);
+            _hostLink.Release();
+            Tick();
+
+            Assert.Equal(RacePhase.Racing, _guestRace.Phase);
+            Assert.Equal(ItemKind.None, _hostItems.Slots.Held(GuestId));
+            Assert.Equal(ItemKind.None, _guestItems.Held);
+            Assert.True(_guestItems.ClaimTouchedBox(BoxPositions[0]));
+        }
+
+        [Fact]
         public void APlayerWhoLeavesTheLobbyLosesTheirSlot()
         {
             _hostItems.Slots.Give(GuestId, ItemKind.Bomb);
