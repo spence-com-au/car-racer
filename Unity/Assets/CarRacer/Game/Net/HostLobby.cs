@@ -1,7 +1,5 @@
-using System;
 using CarRacer.Core.Arena;
 using CarRacer.Core.Bots;
-using CarRacer.Core.Net;
 using CarRacer.Core.Race;
 using CarRacer.Core.Scoring;
 using CarRacer.Core.Session;
@@ -12,11 +10,10 @@ namespace CarRacer.Game.Net
 {
     /// <summary>
     /// The host's side of the lobby (design doc §2.3, §10, §11), on a phone host and on a server
-    /// alike: remembers the next event's settings between sessions, carries out the room leader's
-    /// commands (start a single event or a cup, resume the saved cup, pause, skip, leave, back to
-    /// the lobby), and runs the <see cref="CupRun"/> under way with its auto-save. The screens only
-    /// send commands (<see cref="NetworkSession.Command"/>), so the same buttons work on the host's
-    /// own phone and on a guest phone leading a server's room.
+    /// alike: remembers the next event's settings and the cup auto-save between sessions, and hands
+    /// the room leader's commands to <see cref="HostLobbyRules"/>, which carries them out. The
+    /// screens only send commands (<see cref="NetworkSession.Command"/>), so the same buttons work
+    /// on the host's own phone and on a guest phone leading a server's room.
     /// </summary>
     public sealed class HostLobby : MonoBehaviour
     {
@@ -31,11 +28,10 @@ namespace CarRacer.Game.Net
         public const string SaveKey = "cupSave";
 
         private NetworkSession _session;
-        private string _savedText;
-        private CupRun _saved;
+        private HostLobbyRules _rules;
 
         /// <summary>The cup in progress, or null.</summary>
-        public CupRun Run { get; private set; }
+        public CupRun Run => _rules?.Run;
 
         public void Initialise(NetworkSession session)
         {
@@ -43,8 +39,8 @@ namespace CarRacer.Game.Net
             var host = session.HostSide;
             host.ChangeSettings(Load());
             host.SettingsChanged += Save;
-            host.LobbyCommandReceived += OnCommand;
-            ReportSave();
+            _rules = new HostLobbyRules(host, (HostRace)session.Race, () => NetworkSession.NowMs, new PlayerPrefsCupSave());
+            host.LobbyCommandReceived += _rules.RunCommand;
         }
 
         private void OnDestroy()
@@ -52,157 +48,19 @@ namespace CarRacer.Game.Net
             if (_session != null && _session.HostSide != null)
             {
                 _session.HostSide.SettingsChanged -= Save;
-                _session.HostSide.LobbyCommandReceived -= OnCommand;
+                if (_rules != null)
+                {
+                    _session.HostSide.LobbyCommandReceived -= _rules.RunCommand;
+                }
             }
         }
 
         private void Update()
         {
-            if (_session.Ended || _session.Race == null)
+            if (!_session.Ended)
             {
-                return;
+                _rules.Tick();
             }
-
-            Run?.Tick();
-
-            // A server whose players have all left (their cars now bots) has nobody to press Back to
-            // lobby, and would refuse every new guest as mid-event; once the event's results are in,
-            // it goes back by itself. A cup in progress is left, keeping its save to resume.
-            if (_session.IsDedicated && _session.LeaderId == HostSession.NoPlayer && Race.Phase == RacePhase.Results)
-            {
-                Run = null;
-                Race.ReturnToLobby();
-            }
-        }
-
-        private HostRace Race => (HostRace)_session.Race;
-
-        private void OnCommand(LobbyCommand command)
-        {
-            if (_session.Race == null)
-            {
-                return;
-            }
-
-            switch (command)
-            {
-                case LobbyCommand.Start:
-                    if (Race.Phase != RacePhase.Lobby || !_session.HostSide.CanStart)
-                    {
-                        return;
-                    }
-
-                    var settings = _session.Settings;
-                    if (settings.CupChosen)
-                    {
-                        Begin(new CupRun(_session.HostSide, Race, () => NetworkSession.NowMs, Cups.All[settings.Cup - 1], settings.ReverseGrid));
-                    }
-                    else
-                    {
-                        Race.Start(settings.Laps, settings.Mode, settings.Track);
-                    }
-
-                    break;
-                case LobbyCommand.ResumeSavedCup:
-                    var saved = LoadSave();
-                    if (saved != null && Race.Phase == RacePhase.Lobby && _session.HostSide.CanStart)
-                    {
-                        Begin(saved);
-                    }
-
-                    break;
-                case LobbyCommand.PauseCup:
-                case LobbyCommand.UnpauseCup:
-                    Run?.SetPaused(command == LobbyCommand.PauseCup);
-                    break;
-                case LobbyCommand.NextEvent:
-                    Run?.AdvanceNow();
-                    break;
-                case LobbyCommand.LeaveCup:
-                    // Leaving keeps the save, so the cup can be resumed from the lobby.
-                    if (Run != null)
-                    {
-                        Run = null;
-                        Race.ReturnToLobby();
-                    }
-
-                    break;
-                case LobbyCommand.BackToLobby:
-                    if (Run == null)
-                    {
-                        Race.ReturnToLobby();
-                    }
-                    else if (Run.IsComplete)
-                    {
-                        // The finished cup is done with: its save goes too.
-                        Run = null;
-                        PlayerPrefs.DeleteKey(SaveKey);
-                        ReportSave();
-                        Race.ReturnToLobby();
-                    }
-
-                    break;
-            }
-        }
-
-        private void Begin(CupRun run)
-        {
-            if (!run.StartNextEvent())
-            {
-                return;
-            }
-
-            run.Saved += SaveCup;
-            Run = run;
-            _savedText = null;
-        }
-
-        private void SaveCup(byte[] save)
-        {
-            PlayerPrefs.SetString(SaveKey, Convert.ToBase64String(save));
-            PlayerPrefs.Save();
-            ReportSave();
-        }
-
-        /// <summary>Tells every phone which cup is saved, so the room leader can offer to resume it.</summary>
-        private void ReportSave()
-        {
-            var saved = LoadSave();
-            int cup = 0;
-            for (int i = 0; saved != null && i < Cups.All.Count; i++)
-            {
-                if (Cups.All[i] == saved.Cup)
-                {
-                    cup = i + 1;
-                }
-            }
-
-            _session.HostSide.SetSavedCup(cup, saved?.Championship.EventsCompleted ?? 0);
-        }
-
-        /// <summary>The saved cup, read again only when the save changes.</summary>
-        private CupRun LoadSave()
-        {
-            string text = PlayerPrefs.GetString(SaveKey, string.Empty);
-            if (text == _savedText)
-            {
-                return _saved;
-            }
-
-            _savedText = text;
-            _saved = null;
-            if (text.Length > 0 && _session.Race != null)
-            {
-                try
-                {
-                    _saved = CupRun.Resume(Convert.FromBase64String(text), _session.HostSide, Race, () => NetworkSession.NowMs);
-                }
-                catch (FormatException)
-                {
-                }
-            }
-
-            return _saved;
         }
 
         private static LobbySettings Load()
@@ -230,6 +88,19 @@ namespace CarRacer.Game.Net
             PlayerPrefs.SetInt(BotDifficultyKey, (int)settings.BotDifficulty);
             PlayerPrefs.SetInt(CupKey, settings.Cup);
             PlayerPrefs.SetInt(ReverseGridKey, settings.ReverseGrid ? 1 : 0);
+        }
+
+        private sealed class PlayerPrefsCupSave : ICupSaveStore
+        {
+            public string Load() => PlayerPrefs.GetString(SaveKey, string.Empty);
+
+            public void Save(string save)
+            {
+                PlayerPrefs.SetString(SaveKey, save);
+                PlayerPrefs.Save();
+            }
+
+            public void Delete() => PlayerPrefs.DeleteKey(SaveKey);
         }
     }
 }
