@@ -243,7 +243,7 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
-        public void MusicCrossfadesAndClips()
+        public void MusicCrossfadesAndAppliesGain()
         {
             var a = new short[] { 1000, -1000, 1000, -1000 };
             var b = new short[] { 0, 0, 30000, 30000 };
