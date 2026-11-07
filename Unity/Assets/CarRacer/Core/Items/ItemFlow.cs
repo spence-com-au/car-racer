@@ -103,8 +103,6 @@ namespace CarRacer.Core.Items
                 Boxes.Reset();
                 Slots.Clear();
                 Hazards.Clear();
-                _flying.Clear();
-                _snapshots.Clear();
             }
 
             _lastPhase = phase;
@@ -116,6 +114,12 @@ namespace CarRacer.Core.Items
             {
                 CatchCarsOnHazards(now);
                 FlyProjectiles(now, dt);
+            }
+            else
+            {
+                // Nothing flies them outside a race, so they would hang in mid-air.
+                _flying.Clear();
+                _snapshots.Clear();
             }
         }
 
@@ -497,6 +501,12 @@ namespace CarRacer.Core.Items
 
         public void Tick()
         {
+            // The host stops flying projectiles when the race ends, so drop the last positions it sent.
+            if (_race.Phase != RacePhase.Racing)
+            {
+                _snapshots.Clear();
+            }
+
             Hazards.Expire(_clockMs());
         }
 
