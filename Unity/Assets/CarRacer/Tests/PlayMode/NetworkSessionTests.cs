@@ -42,7 +42,13 @@ namespace CarRacer.Tests
                 Assert.AreEqual(0, me);
                 Assert.AreEqual(1, session.Players.Count);
                 Assert.AreEqual("Test host", session.Players[0].Name);
-                Assert.IsNotNull(screen.Car, "the host's car should be spawned on its grid slot");
+                Assert.IsNotNull(screen.Car, "the host's car should be spawned");
+
+                int slotIndex = session.Race.GridSlotOf(me);
+                var expected = screen.Track.StartGrid(slotIndex + 1)[slotIndex].Position.ToUnity();
+                var actual = screen.Car.BodyPosition;
+                Assert.That(Vector2.Distance(new Vector2(actual.x, actual.z), new Vector2(expected.x, expected.z)), Is.LessThan(0.5f), "the host's car should stand on its grid slot");
+                Assert.That(actual.y, Is.EqualTo(expected.y).Within(2f), "on the track, not under or above it");
             }
             finally
             {
