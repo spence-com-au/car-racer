@@ -94,7 +94,7 @@ namespace CarRacer.Core.Tests
         {
             var transport = new RecordingTransport();
             var host = new HostSession(transport, "Host", 17, () => 0, new CarChoice(1, 2));
-            var link = new ForwardingLink(host);
+            var link = new GuestLink { Host = host };
             var guest = new GuestSession(link, "Guest", 17, () => 0, new CarChoice(4, 2));
             guest.OnConnected();
 
@@ -157,31 +157,6 @@ namespace CarRacer.Core.Tests
             }
 
             return Path.Combine(dir.FullName, "Unity", "Assets", "CarRacer", "Resources", "Models", file);
-        }
-
-        private sealed class RecordingTransport : ISessionTransport
-        {
-            public void Send(ulong connection, IGameMessage message, bool reliable)
-            {
-            }
-
-            public void Disconnect(ulong connection)
-            {
-            }
-        }
-
-        /// <summary>A guest's link that hands each message straight to the host on connection 1.</summary>
-        private sealed class ForwardingLink : ISessionTransport
-        {
-            private readonly HostSession _host;
-
-            public ForwardingLink(HostSession host) => _host = host;
-
-            public void Send(ulong connection, IGameMessage message, bool reliable) => _host.OnMessage(1, message);
-
-            public void Disconnect(ulong connection)
-            {
-            }
         }
     }
 }

@@ -52,11 +52,9 @@ namespace CarRacer.Core.Tests
         [Fact]
         public void AVoteReachesEveryoneAndIsClearedAfterTheEvent()
         {
-            var toGuest = new Loopback();
+            var toGuest = new HostLink();
             var host = new HostSession(toGuest, "Host", Version, () => 0);
-            var guest = new GuestSession(new Loopback { Host = host }, "Guest", Version, () => 0);
-            toGuest.Guest = guest;
-            guest.OnConnected();
+            var guest = toGuest.Join(host, "Guest", Version, () => 0);
 
             guest.VoteTrack(4);
             Assert.Equal(4, guest.Roster.Players.Single(p => p.PlayerId == guest.PlayerId).TrackVote);
@@ -87,27 +85,5 @@ namespace CarRacer.Core.Tests
         }
 
         private static RosterEntry Entry(byte vote) => new RosterEntry { TrackVote = vote };
-
-        private sealed class Loopback : ISessionTransport
-        {
-            public HostSession Host;
-            public GuestSession Guest;
-
-            public void Send(ulong connection, IGameMessage message, bool reliable)
-            {
-                if (Host != null)
-                {
-                    Host.OnMessage(7, message);
-                }
-                else
-                {
-                    Guest?.OnMessage(message);
-                }
-            }
-
-            public void Disconnect(ulong connection)
-            {
-            }
-        }
     }
 }

@@ -12,34 +12,6 @@ namespace CarRacer.Core.Tests
     public class ArenaFlowTests
     {
         private const ushort Version = 17;
-        private const ulong GuestConnection = 7;
-
-        private sealed class HostLink : ISessionTransport
-        {
-            public readonly List<IGameMessage> Sent = new List<IGameMessage>();
-            public GuestSession Guest;
-
-            public void Send(ulong connection, IGameMessage message, bool reliable)
-            {
-                Sent.Add(message);
-                Guest?.OnMessage(message);
-            }
-
-            public void Disconnect(ulong connection)
-            {
-            }
-        }
-
-        private sealed class GuestLink : ISessionTransport
-        {
-            public HostSession Host;
-
-            public void Send(ulong connection, IGameMessage message, bool reliable) => Host.OnMessage(GuestConnection, message);
-
-            public void Disconnect(ulong connection)
-            {
-            }
-        }
 
         private long _now = 10_000;
         private readonly HostLink _hostLink = new HostLink();
@@ -53,11 +25,7 @@ namespace CarRacer.Core.Tests
         {
             _host = new HostSession(_hostLink, "Host", Version, () => _now);
             _race = new HostRace(_host, new[] { 4 }, () => _now, id => 0f, _cars.TryGetValue);
-            var guestLink = new GuestLink { Host = _host };
-            _guest = new GuestSession(guestLink, "Guest", Version, () => _now);
-            _hostLink.Guest = _guest;
-            _guest.OnConnected();
-            _guest.OnMessage(new ClockPongMessage { GuestSentMs = _now - 20, HostMs = _now - 10 });
+            _guest = _hostLink.Join(_host, "Guest", Version, () => _now);
             _guestRace = new GuestRace(_guest, () => _now);
         }
 
@@ -103,7 +71,7 @@ namespace CarRacer.Core.Tests
         {
             Start(GameMode.Battle);
             _now += 5_000;
-            _host.OnDisconnected(GuestConnection);
+            _host.OnDisconnected(GuestLink.Connection);
             Tick();
 
             // The guest's car carries on under a bot (design doc §12): still in, and it can still lose lives.
@@ -203,7 +171,7 @@ namespace CarRacer.Core.Tests
             _cars[GuestId] = ArenaLayout.SumoCentre;
             Start(GameMode.Sumo);
             _race.ReportOwnCheckpoint(0); // nothing to report to: no race tracker
-            _host.OnMessage(GuestConnection, new CheckpointReachedMessage { PlayerId = GuestId, CheckpointIndex = 0 });
+            _host.OnMessage(GuestLink.Connection, new CheckpointReachedMessage { PlayerId = GuestId, CheckpointIndex = 0 });
             Assert.Equal(RacePhase.Racing, _race.Phase);
         }
 

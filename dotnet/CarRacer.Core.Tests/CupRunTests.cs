@@ -12,7 +12,6 @@ namespace CarRacer.Core.Tests
     public class CupRunTests
     {
         private const ushort Version = 17;
-        private const ulong GuestConnection = 7;
 
         /// <summary>The format version <see cref="CupRun"/> and <see cref="Championship"/> both write, 1 today.</summary>
         private const ushort SaveFormatVersion = 1;
@@ -24,28 +23,6 @@ namespace CarRacer.Core.Tests
             CupEvent.ArenaEvent(GameMode.Battle),
             CupEvent.ArenaEvent(GameMode.Battle),
         });
-
-        private sealed class HostLink : ISessionTransport
-        {
-            public GuestSession Guest;
-
-            public void Send(ulong connection, IGameMessage message, bool reliable) => Guest?.OnMessage(message);
-
-            public void Disconnect(ulong connection)
-            {
-            }
-        }
-
-        private sealed class GuestLink : ISessionTransport
-        {
-            public HostSession Host;
-
-            public void Send(ulong connection, IGameMessage message, bool reliable) => Host.OnMessage(GuestConnection, message);
-
-            public void Disconnect(ulong connection)
-            {
-            }
-        }
 
         private long _now = 10_000;
         private readonly HostLink _hostLink = new HostLink();
@@ -59,10 +36,7 @@ namespace CarRacer.Core.Tests
         {
             _host = new HostSession(_hostLink, "Host", Version, () => _now);
             _race = new HostRace(_host, new[] { 4, 4, 4 }, () => _now, id => 0f);
-            _guest = new GuestSession(new GuestLink { Host = _host }, "Guest", Version, () => _now);
-            _hostLink.Guest = _guest;
-            _guest.OnConnected();
-            _guest.OnMessage(new ClockPongMessage { GuestSentMs = _now - 20, HostMs = _now - 10 });
+            _guest = _hostLink.Join(_host, "Guest", Version, () => _now);
             _guestRace = new GuestRace(_guest, () => _now);
         }
 
@@ -336,11 +310,8 @@ namespace CarRacer.Core.Tests
             Assert.True(_race.ReturnToLobby());
 
             // The guest drops out in the lobby and joins again as "  GUEST " on a new phone.
-            _host.OnDisconnected(GuestConnection);
-            var rejoined = new GuestSession(new GuestLink { Host = _host }, "  GUEST ", Version, () => _now);
-            _hostLink.Guest = rejoined;
-            rejoined.OnConnected();
-            rejoined.OnMessage(new ClockPongMessage { GuestSentMs = _now - 20, HostMs = _now - 10 });
+            _host.OnDisconnected(GuestLink.Connection);
+            var rejoined = _hostLink.Join(_host, "  GUEST ", Version, () => _now);
 
             Assert.True(run.StartNextEvent());
             PlayBattle(run, HostId);

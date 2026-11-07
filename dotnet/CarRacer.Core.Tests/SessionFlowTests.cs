@@ -10,20 +10,8 @@ namespace CarRacer.Core.Tests
     {
         private const ushort Version = 2;
 
-        private sealed class FakeTransport : ISessionTransport
-        {
-            public readonly List<(ulong To, IGameMessage Message, bool Reliable)> Sent = new List<(ulong, IGameMessage, bool)>();
-            public readonly List<ulong> Disconnected = new List<ulong>();
-
-            public void Send(ulong connection, IGameMessage message, bool reliable) => Sent.Add((connection, message, reliable));
-
-            public void Disconnect(ulong connection) => Disconnected.Add(connection);
-
-            public List<T> To<T>(ulong connection) => Sent.Where(s => s.To == connection).Select(s => s.Message).OfType<T>().ToList();
-        }
-
         private long _now = 1000;
-        private readonly FakeTransport _hostSide = new FakeTransport();
+        private readonly RecordingTransport _hostSide = new RecordingTransport();
         private readonly HostSession _host;
 
         public SessionFlowTests()
