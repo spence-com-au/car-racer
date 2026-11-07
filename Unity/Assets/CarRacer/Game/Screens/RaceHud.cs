@@ -394,7 +394,7 @@ namespace CarRacer.Game.Screens
         private void AddArrow(float bearing, float size, Color colour, float width)
         {
             Vec2 at = HudIndicators.EdgePoint(bearing, width, UiMetrics.ReferenceHeight, size / 2f + ArrowInset);
-            _arrowShapes.Add((new Vector2(at.X, at.Y), size, bearing, colour));
+            _arrowShapes.Add((at.ToUnity(), size, bearing, colour));
         }
 
         /// <summary>The drift tier in words above the meter, so the colour isn't the only way to tell (design doc §6).</summary>
