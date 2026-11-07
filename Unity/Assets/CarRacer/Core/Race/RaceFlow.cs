@@ -165,31 +165,18 @@ namespace CarRacer.Core.Race
 
             Mode = mode;
             TrackIndex = trackIndex;
-            _gridOrder.Clear();
+            var ranked = new List<(int Rank, byte Id)>();
             foreach (var player in _session.Roster.Players)
             {
-                _gridOrder.Add(player.PlayerId);
+                ranked.Add((gridRank?.Invoke(player.Name) ?? 0, player.PlayerId));
             }
 
-            if (gridRank != null)
+            // By rank, ties by player id.
+            ranked.Sort((a, b) => a.Rank != b.Rank ? a.Rank.CompareTo(b.Rank) : a.Id.CompareTo(b.Id));
+            _gridOrder.Clear();
+            foreach (var (_, id) in ranked)
             {
-                // A stable sort by rank, ties by player id.
-                var ranked = new List<(int Rank, byte Id)>();
-                foreach (var player in _session.Roster.Players)
-                {
-                    ranked.Add((gridRank(player.Name), player.PlayerId));
-                }
-
-                ranked.Sort((a, b) => a.Rank != b.Rank ? a.Rank.CompareTo(b.Rank) : a.Id.CompareTo(b.Id));
-                _gridOrder.Clear();
-                foreach (var (_, id) in ranked)
-                {
-                    _gridOrder.Add(id);
-                }
-            }
-            else
-            {
-                _gridOrder.Sort();
+                _gridOrder.Add(id);
             }
 
             Tracker = mode == GameMode.Race ? new RaceTracker(_checkpointCounts[trackIndex], laps, ids) : null;
@@ -235,9 +222,7 @@ namespace CarRacer.Core.Race
 
             if (now >= _nextStandingsMs)
             {
-                _nextStandingsMs = now + StandingsIntervalMs;
-                Standings = BuildStandings();
-                _session.Broadcast(Standings, reliable: false);
+                SendStandingsNow();
             }
 
             if (Tracker.AllFinished || (_firstFinishMs >= 0 && now >= _firstFinishMs + PostFinishMs))
@@ -354,22 +339,20 @@ namespace CarRacer.Core.Race
                 return;
             }
 
-            Results = new RaceResultsMessage();
+            var results = new RaceResultsMessage();
             foreach (var placing in Stunts.Placings())
             {
-                Results.Results.Add(new RaceResultEntry
+                results.Results.Add(new RaceResultEntry
                 {
                     PlayerId = (byte)placing.PlayerId,
-                    Name = _names.TryGetValue(placing.PlayerId, out string name) ? name : string.Empty,
+                    Name = NameOf(placing.PlayerId),
                     Position = (byte)placing.Position,
                     RaceTimeMs = MonsterRules.TimeLimitMs,
                     Points = (ushort)Math.Min(placing.Points, ushort.MaxValue),
                 });
             }
 
-            Standings = BuildStandings();
-            Phase = RacePhase.Results;
-            _session.Broadcast(Results, reliable: true);
+            Finish(results);
         }
 
         private void TickArena(long now)
@@ -408,21 +391,19 @@ namespace CarRacer.Core.Race
 
         private void EndArena(long elapsed)
         {
-            Results = new RaceResultsMessage();
+            var results = new RaceResultsMessage();
             foreach (var placing in Arena.Placings(elapsed))
             {
-                Results.Results.Add(new RaceResultEntry
+                results.Results.Add(new RaceResultEntry
                 {
                     PlayerId = (byte)placing.PlayerId,
-                    Name = _names.TryGetValue(placing.PlayerId, out string name) ? name : string.Empty,
+                    Name = NameOf(placing.PlayerId),
                     Position = (byte)placing.Position,
                     RaceTimeMs = placing.SurvivedMs,
                 });
             }
 
-            Standings = BuildStandings();
-            Phase = RacePhase.Results;
-            _session.Broadcast(Results, reliable: true);
+            Finish(results);
         }
 
         private void Report(byte playerId, int index, long raceTimeMs)
@@ -449,21 +430,30 @@ namespace CarRacer.Core.Race
         private void End(long now)
         {
             Tracker.FinishRemaining(_fractionToNextCheckpoint, now - StartAtLocalMs);
-            Standings = BuildStandings();
-            Results = new RaceResultsMessage();
+            var results = new RaceResultsMessage();
             foreach (int id in Tracker.FinishOrder)
             {
                 var racer = Tracker.Get(id);
-                Results.Results.Add(new RaceResultEntry
+                results.Results.Add(new RaceResultEntry
                 {
                     PlayerId = (byte)id,
-                    Name = _names.TryGetValue(id, out string name) ? name : string.Empty,
+                    Name = NameOf(id),
                     Position = (byte)racer.FinishPosition,
                     RaceTimeMs = racer.FinishTimeMs,
                     DidNotFinish = racer.DidNotFinish,
                 });
             }
 
+            Finish(results);
+        }
+
+        private string NameOf(int playerId) => _names.TryGetValue(playerId, out string name) ? name : string.Empty;
+
+        /// <summary>Ends the event: freezes the final standings and sends everyone the results.</summary>
+        private void Finish(RaceResultsMessage results)
+        {
+            Results = results;
+            Standings = BuildStandings();
             Phase = RacePhase.Results;
             _session.Broadcast(Results, reliable: true);
         }
