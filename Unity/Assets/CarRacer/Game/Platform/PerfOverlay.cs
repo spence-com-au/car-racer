@@ -31,12 +31,8 @@ namespace CarRacer.Game.Platform
 
         public static bool Visible
         {
-            get => _visible ?? (bool)(_visible = PlayerPrefs.GetInt(VisibleKey, Debug.isDebugBuild ? 1 : 0) != 0);
-            set
-            {
-                _visible = value;
-                PlayerPrefs.SetInt(VisibleKey, value ? 1 : 0);
-            }
+            get => Accessibility.Get(ref _visible, VisibleKey, fallback: Debug.isDebugBuild);
+            set => Accessibility.Set(ref _visible, VisibleKey, value);
         }
 
         /// <summary>For the Settings button.</summary>
