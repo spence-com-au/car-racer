@@ -51,6 +51,12 @@ jobs:
           key: "Library-android-${{ hashFiles('Unity/Assets/**', 'Unity/Packages/**', 'Unity/ProjectSettings/**') }}"
           restore-keys: 'Library-android-'
 
+      # The tag without its `v`. GameCI's `Tag` versioning reads every tag on the commit, so a second tag (one left by a
+      # release published by hand) would make an unparseable version and an APK with version code 1.
+      - name: 'Version'
+        id: 'version'
+        run: 'echo "version=${TAG#v}" >> "${GITHUB_OUTPUT}"'
+
       - uses: 'game-ci/unity-builder@v4.8.2'
         env:
           UNITY_EMAIL: '${{ secrets.UNITY_EMAIL }}'
@@ -62,7 +68,8 @@ jobs:
           buildName: 'CarRacer'
           buildMethod: 'CarRacer.Editor.BuildScript.BuildFromCommandLine'
           androidExportType: 'androidPackage'
-          versioning: 'Tag'
+          versioning: 'Custom'
+          version: '${{ steps.version.outputs.version }}'
           androidKeystoreName: 'release.keystore'
           androidKeystoreBase64: '${{ secrets.ANDROID_KEYSTORE_BASE64 }}'
           androidKeystorePass: '${{ secrets.ANDROID_KEYSTORE_PASS }}'
@@ -137,6 +144,12 @@ jobs:
           key: "Library-linux-${{ hashFiles('Unity/Assets/**', 'Unity/Packages/**', 'Unity/ProjectSettings/**') }}"
           restore-keys: 'Library-linux-'
 
+      # The tag without its `v`. GameCI's `Tag` versioning reads every tag on the commit, so a second tag (one left by a
+      # release published by hand) would make an unparseable version and an APK with version code 1.
+      - name: 'Version'
+        id: 'version'
+        run: 'echo "version=${TAG#v}" >> "${GITHUB_OUTPUT}"'
+
       - uses: 'game-ci/unity-builder@v4.8.2'
         env:
           UNITY_EMAIL: '${{ secrets.UNITY_EMAIL }}'
@@ -147,7 +160,8 @@ jobs:
           targetPlatform: 'StandaloneLinux64'
           buildName: 'CarRacer'
           buildMethod: 'CarRacer.Editor.BuildScript.BuildLinuxServerFromCommandLine'
-          versioning: 'Tag'
+          versioning: 'Custom'
+          version: '${{ steps.version.outputs.version }}'
 
       - name: 'Package the server'
         run: |
