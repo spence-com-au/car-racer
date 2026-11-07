@@ -1,0 +1,230 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Globalization;
+using System.IO;
+using System.Threading;
+
+namespace CarRacer.Core.Viewer
+{
+    /// <summary>
+    /// Turns the TV viewer into a live video stream (design doc §2.4): a background thread draws the
+    /// latest <see cref="ViewerScene"/> 25 times a second with a <see cref="ViewerRenderer"/> and
+    /// pipes the frames to <c>ffmpeg</c>, which writes HLS (<see cref="PlaylistName"/> and its
+    /// segments) into <see cref="Folder"/> for <see cref="ViewerHttpServer"/> to serve. The game
+    /// thread only calls <see cref="Show"/>. If drawing falls behind, the last frame is sent again so
+    /// the stream keeps time with the race.
+    /// </summary>
+    public sealed class ViewerStream : IDisposable
+    {
+        public const int FramesPerSecond = 25;
+        public const string PlaylistName = "live.m3u8";
+
+        /// <summary>Behind by more than this, frames are repeated rather than drawn, to catch up.</summary>
+        private const long MaxLagMs = 200;
+
+        private readonly object _lock = new object();
+        private readonly Process _ffmpeg;
+        private readonly Thread _thread;
+        private readonly Queue<string> _errors = new Queue<string>();
+        private ViewerScene _scene;
+        private volatile bool _stopping;
+        private volatile string _failure;
+
+        private ViewerStream(Process ffmpeg, string folder)
+        {
+            _ffmpeg = ffmpeg;
+            Folder = folder;
+            _ffmpeg.ErrorDataReceived += (sender, e) =>
+            {
+                if (!string.IsNullOrWhiteSpace(e.Data))
+                {
+                    lock (_errors)
+                    {
+                        _errors.Enqueue(e.Data);
+                        while (_errors.Count > 5)
+                        {
+                            _errors.Dequeue();
+                        }
+                    }
+                }
+            };
+            _ffmpeg.BeginErrorReadLine();
+            _thread = new Thread(Run) { IsBackground = true, Name = "TV viewer" };
+            _thread.Start();
+        }
+
+        /// <summary>Where the playlist and segments are written.</summary>
+        public string Folder { get; }
+
+        /// <summary>Whether ffmpeg has written the playlist, so a TV can start playing it.</summary>
+        public bool Ready => File.Exists(Path.Combine(Folder, PlaylistName));
+
+        /// <summary>Why the stream stopped (ffmpeg exited or the pipe broke), or null while it runs.</summary>
+        public string Failure => _failure;
+
+        /// <summary>
+        /// Starts ffmpeg (<paramref name="ffmpegPath"/>, "ffmpeg" to look on the PATH) writing into a
+        /// fresh <paramref name="folder"/>. Returns null with <paramref name="error"/> set if it can't run.
+        /// </summary>
+        public static ViewerStream Start(string ffmpegPath, string folder, out string error)
+        {
+            error = null;
+            try
+            {
+                if (Directory.Exists(folder))
+                {
+                    Directory.Delete(folder, recursive: true);
+                }
+
+                Directory.CreateDirectory(folder);
+                var info = new ProcessStartInfo(ffmpegPath, string.Join(" ", Arguments(folder)))
+                {
+                    UseShellExecute = false,
+                    RedirectStandardInput = true,
+                    RedirectStandardError = true,
+                    RedirectStandardOutput = false,
+                    CreateNoWindow = true,
+                };
+                var process = Process.Start(info);
+                if (process == null)
+                {
+                    error = "ffmpeg didn't start";
+                    return null;
+                }
+
+                return new ViewerStream(process, folder);
+            }
+            catch (Win32Exception)
+            {
+                error = $"ffmpeg not found (\"{ffmpegPath}\"); install it, or point -ffmpeg at it";
+            }
+            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException || e is InvalidOperationException)
+            {
+                error = "Couldn't start ffmpeg: " + e.Message;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// ffmpeg's arguments: raw RGB frames on stdin and a silent stereo track, encoded as H.264
+        /// and AAC into 1-second HLS segments, each starting with a keyframe, keeping the last six.
+        /// </summary>
+        public static IReadOnlyList<string> Arguments(string folder)
+        {
+            string size = ViewerRenderer.Width.ToString(CultureInfo.InvariantCulture) + "x" + ViewerRenderer.Height.ToString(CultureInfo.InvariantCulture);
+            string fps = FramesPerSecond.ToString(CultureInfo.InvariantCulture);
+            return new[]
+            {
+                "-hide_banner", "-loglevel", "error", "-y",
+                "-f", "rawvideo", "-pix_fmt", "rgb24", "-video_size", size, "-framerate", fps, "-i", "pipe:0",
+                "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=48000",
+                "-map", "0:v", "-map", "1:a",
+                "-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency", "-pix_fmt", "yuv420p", "-profile:v", "main",
+                "-g", fps, "-keyint_min", fps, "-sc_threshold", "0", "-b:v", "2500k", "-maxrate", "2500k", "-bufsize", "5000k",
+                "-c:a", "aac", "-b:a", "64k",
+                "-f", "hls", "-hls_time", "1", "-hls_list_size", "6",
+                "-hls_flags", "delete_segments+independent_segments+temp_file+omit_endlist",
+                "-hls_segment_filename", Quote(Path.Combine(folder, "seg%05d.ts")),
+                Quote(Path.Combine(folder, PlaylistName)),
+            };
+        }
+
+        /// <summary>What the TV shows from the next frame on.</summary>
+        public void Show(ViewerScene scene)
+        {
+            lock (_lock)
+            {
+                _scene = scene;
+            }
+        }
+
+        /// <summary>The last few lines ffmpeg wrote to its error output, for the log.</summary>
+        public string RecentErrors()
+        {
+            lock (_errors)
+            {
+                return string.Join(" / ", _errors);
+            }
+        }
+
+        private void Run()
+        {
+            var renderer = new ViewerRenderer();
+            var frame = new RgbImage(ViewerRenderer.Width, ViewerRenderer.Height);
+            var clock = Stopwatch.StartNew();
+            var stdin = _ffmpeg.StandardInput.BaseStream;
+            long frameIndex = 0;
+            ViewerScene drawn = null;
+            try
+            {
+                while (!_stopping)
+                {
+                    long due = frameIndex * 1000 / FramesPerSecond;
+                    long wait = due - clock.ElapsedMilliseconds;
+                    if (wait > 0)
+                    {
+                        Thread.Sleep((int)wait);
+                        continue;
+                    }
+
+                    ViewerScene scene;
+                    lock (_lock)
+                    {
+                        scene = _scene;
+                    }
+
+                    // Draw only when something changed and there's time; otherwise the last frame repeats.
+                    if (scene != null && (scene != drawn || frameIndex == 0) && -wait <= MaxLagMs)
+                    {
+                        renderer.Render(scene, frame);
+                        drawn = scene;
+                    }
+
+                    stdin.Write(frame.Pixels, 0, frame.Pixels.Length);
+                    frameIndex++;
+                }
+            }
+            catch (IOException e)
+            {
+                _failure = "ffmpeg stopped: " + (RecentErrors().Length > 0 ? RecentErrors() : e.Message);
+            }
+            catch (ObjectDisposedException)
+            {
+                // Stopped from Dispose.
+            }
+        }
+
+        public void Dispose()
+        {
+            _stopping = true;
+            try
+            {
+                _ffmpeg.StandardInput.Close();
+            }
+            catch (IOException)
+            {
+                // Already gone.
+            }
+
+            _thread.Join(2_000);
+            try
+            {
+                if (!_ffmpeg.WaitForExit(3_000))
+                {
+                    _ffmpeg.Kill();
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                // Never started or already reaped.
+            }
+
+            _ffmpeg.Dispose();
+        }
+
+        private static string Quote(string path) => "\"" + path.Replace("\"", "\\\"") + "\"";
+    }
+}

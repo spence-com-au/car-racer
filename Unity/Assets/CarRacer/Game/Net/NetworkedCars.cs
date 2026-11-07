@@ -319,8 +319,8 @@ namespace CarRacer.Game.Net
             return true;
         }
 
-        /// <summary>Host only, for item hits: where this phone sees a player's car.</summary>
-        private bool TryGetCarPosition(byte playerId, out CarRacer.Core.Numerics.Vec3 position)
+        /// <summary>Where this phone sees a player's car: for the host's item hits, and the TV viewer's map (design doc §2.4).</summary>
+        public bool TryGetCarPosition(byte playerId, out CarRacer.Core.Numerics.Vec3 position)
         {
             if (playerId == _me && _screen.Car != null)
             {
