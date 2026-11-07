@@ -55,6 +55,9 @@ namespace CarRacer.Core.Cast
         private long _lastPingMs;
         private long _stepStartedMs;
 
+        /// <summary>Stop was asked for while the player was launching; it is closed once the TV says it's up.</summary>
+        private bool _stopPending;
+
         /// <summary>
         /// A cast titled <paramref name="title"/>. With <paramref name="takeOver"/> it replaces
         /// whatever the TV is showing (the room leader asked); otherwise it only uses an idle TV.
@@ -149,6 +152,12 @@ namespace CarRacer.Core.Cast
 
             if (State != CastState.Playing && nowMs - _stepStartedMs > StepTimeoutMs)
             {
+                if (_stopPending)
+                {
+                    End(CastState.Stopped, "Stopped casting");
+                    return messages;
+                }
+
                 End(CastState.Failed, State == CastState.Loading ? "The TV didn't start the stream" : "The TV didn't answer in time");
                 return messages;
             }
@@ -166,18 +175,28 @@ namespace CarRacer.Core.Cast
         public List<CastMessage> Stop()
         {
             var messages = new List<CastMessage>();
-            if (!Finished && _sessionId != null)
+            if (Finished)
             {
-                messages.Add(Message(ReceiverId, CastMessage.ReceiverNamespace, new Dictionary<string, object> { ["type"] = "STOP", ["sessionId"] = _sessionId, ["requestId"] = ++_requestId }));
+                return messages;
             }
 
-            if (!Finished)
+            if (_sessionId != null)
             {
-                End(CastState.Stopped, "Stopped casting");
+                messages.Add(StopMessage());
+            }
+            else if (State == CastState.Launching)
+            {
+                // The player may still come up; close it once the TV reports its session (StepTimeoutMs bounds the wait).
+                _stopPending = true;
+                return messages;
             }
 
+            End(CastState.Stopped, "Stopped casting");
             return messages;
         }
+
+        private CastMessage StopMessage() =>
+            Message(ReceiverId, CastMessage.ReceiverNamespace, new Dictionary<string, object> { ["type"] = "STOP", ["sessionId"] = _sessionId, ["requestId"] = ++_requestId });
 
         private void OnReceiverMessage(string type, Dictionary<string, object> payload, List<CastMessage> replies, long nowMs)
         {
@@ -215,6 +234,13 @@ namespace CarRacer.Core.Cast
                         {
                             _sessionId = Json.String(app, "sessionId");
                             _transportId = Json.String(app, "transportId");
+                            if (_stopPending)
+                            {
+                                replies.Add(StopMessage());
+                                End(CastState.Stopped, "Stopped casting");
+                                return;
+                            }
+
                             State = CastState.Loading;
                             _stepStartedMs = nowMs;
                             replies.Add(Message(_transportId, CastMessage.ConnectionNamespace, new Dictionary<string, object> { ["type"] = "CONNECT" }));
