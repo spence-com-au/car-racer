@@ -177,9 +177,14 @@ people waiting their turn, or just watching, can follow it.
   button reads "Cast to TV", "Casting to Den...", "On TV: Den", "TV busy: Den" or "Can't reach
   Den" (`TvText`); with one TV found and nothing cast, a tap casts straight to it
   (`TvCastPanel`).
-- **Music:** optional (off by default; a toggle in the cast menu, or `-tv-music`). The TV plays
-  the tune the phones would (`MusicChoice`), and while it does the phones fade theirs out. No
-  sound effects go to the TV; they would land seconds after the phones'.
+- **Music:** optional (off by default; "TV music: on/off" in the leader's cast menu, or
+  `-tv-music`). The TV plays the tune the phones would (`MusicChoice`), and while a TV is playing
+  it every phone's own music fades out (`MusicDirector`). The build copies the tunes as files
+  into a `Music` folder beside the server; `MusicFeed` decodes the wanted one with its own ffmpeg,
+  looping, and crossfades over the phones' 0.6 s, at 80% of full scale. The sound reaches the
+  stream's ffmpeg as raw PCM over a loopback TCP connection, paced by the clock like the frames;
+  with the music off, or a tune missing, it is silence. No sound effects go to the TV; they
+  would land seconds after the phones'.
 - **On the server** (`TvViewer`, `ViewerStream`, `ViewerHttpServer`, `TvCastPlan`): Chromecasts
   are looked for all along (an mDNS query from a port of its own every 10 s, so it never competes
   with avahi for 5353), but ffmpeg and the HTTP server only run while a TV is wanted. Frames are

@@ -52,6 +52,8 @@ namespace CarRacer.Core.Tests
             Assert.Null(plain.CastTo);
             Assert.Equal("ffmpeg", plain.FfmpegPath);
             Assert.Equal(ServerOptions.DefaultViewerPort, plain.ViewerPort);
+            Assert.False(plain.TvMusic);
+            Assert.True(ServerOptions.Parse(new[] { "-server", "-tv-music", "-cast" }).TvMusic);
 
             var named = ServerOptions.Parse(new[] { "-server", "-cast", " Living Room TV ", "-ffmpeg", "/opt/ffmpeg/bin/ffmpeg", "-viewer-port", "8080" });
             Assert.Equal("Living Room TV", named.CastTo);

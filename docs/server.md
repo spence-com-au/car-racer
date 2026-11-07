@@ -60,6 +60,7 @@ WantedBy=multi-user.target
 | `-cast [TV]` | off | Show the room on a Chromecast by itself (see below): the TV's name, id or address, or none for the first one found |
 | `-ffmpeg <path>` | `ffmpeg` | The ffmpeg the TV stream is made with |
 | `-viewer-port <port>` | `47780` | The TCP port the TV fetches the stream from |
+| `-tv-music` | off | Play the music on the TV (phones then fade theirs); the room leader can switch it |
 
 Open UDP **47777** (discovery) and the game port in any firewall. If phones can't see the server
 (some networks block broadcast), they can still **join by IP** with the server's address.
@@ -87,6 +88,9 @@ TV's own media player, a few seconds behind the race.
   firewall. Chromecasts are found by mDNS (UDP 5353 to `224.0.0.251`), which needs host
   networking in Docker, as discovery already does. The log says which TVs it found and how each
   cast goes.
+- **Music** is off to begin with. The leader's cast menu has "TV music: on/off" (or start with
+  `-tv-music`); while the TV plays it, everyone's phone fades its own music out. The tunes are in
+  the `Music` folder beside the server.
 - Anything that plays HLS can watch too: `vlc http://<server>:47780/live.m3u8`.
 
 ## How it's built

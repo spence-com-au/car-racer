@@ -52,7 +52,10 @@ namespace CarRacer.Editor
         public static void BuildLinuxServer()
         {
             PrepareProject(BuildTarget.StandaloneLinux64);
-            Build(DefaultLinuxServerPath, BuildTarget.StandaloneLinux64, development: false);
+            if (Build(DefaultLinuxServerPath, BuildTarget.StandaloneLinux64, development: false))
+            {
+                CopyServerMusic(DefaultLinuxServerPath);
+            }
         }
 
         public const string DefaultLinuxServerPath = "build/StandaloneLinux64/CarRacer";
@@ -68,8 +71,29 @@ namespace CarRacer.Editor
             }
 
             string output = args.TryGetValue("customBuildPath", out string path) && !string.IsNullOrEmpty(path) ? path : DefaultLinuxServerPath;
-            bool succeeded = Build(output, BuildTarget.StandaloneLinux64, development: false);
+            bool succeeded = Build(output, BuildTarget.StandaloneLinux64, development: false) && CopyServerMusic(output);
             EditorApplication.Exit(succeeded ? 0 : 1);
+        }
+
+        /// <summary>The tunes, copied as files beside the server, so ffmpeg can play them on the TV (design doc §2.4).</summary>
+        public const string ServerMusicFolder = "Music";
+
+        private const string MusicSource = "Assets/CarRacer/Resources/Music";
+
+        /// <summary>Copies every tune into a Music folder beside the server built at <paramref name="playerPath"/>.</summary>
+        private static bool CopyServerMusic(string playerPath)
+        {
+            string target = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(playerPath)), ServerMusicFolder);
+            Directory.CreateDirectory(target);
+            int copied = 0;
+            foreach (string file in Directory.GetFiles(MusicSource, "*.ogg"))
+            {
+                File.Copy(file, Path.Combine(target, Path.GetFileName(file)), overwrite: true);
+                copied++;
+            }
+
+            Debug.Log($"Copied {copied} tunes to {target}");
+            return copied > 0;
         }
 
         [MenuItem("Car Racer/Create Bootstrap Scene")]

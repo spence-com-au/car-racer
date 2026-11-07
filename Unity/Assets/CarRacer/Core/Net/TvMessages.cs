@@ -154,6 +154,9 @@ namespace CarRacer.Core.Net
             }
         }
 
+        /// <summary>The leader's music toggle: "TV music: on" or "TV music: off" (phones go quiet while it's on).</summary>
+        public static string MusicLabel(TvStatusMessage status) => status.Music ? "TV music: on" : "TV music: off";
+
         /// <summary>The line everyone's lobby shows while the room is on a TV ("On TV: Den"), or null.</summary>
         public static string OnTvLine(TvStatusMessage status) =>
             status.State == TvState.Playing && !string.IsNullOrEmpty(status.CastingTo) ? "On TV: " + status.CastingTo : null;

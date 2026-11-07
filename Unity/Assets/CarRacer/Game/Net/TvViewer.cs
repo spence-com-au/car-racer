@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
+using CarRacer.Core.Arena;
+using CarRacer.Core.Audio;
 using CarRacer.Core.Cast;
 using CarRacer.Core.Discovery;
 using CarRacer.Core.Net;
@@ -32,6 +34,8 @@ namespace CarRacer.Game.Net
         private string _joinAddress;
         private float _nextFrameAt;
         private bool _streamFailed;
+        private string _musicFolder;
+        private string _musicError;
 
         /// <summary>The Chromecasts found lately.</summary>
         public IReadOnlyList<CastDevice> Devices => _discovery != null ? _discovery.Devices : (IReadOnlyList<CastDevice>)new List<CastDevice>();
@@ -48,6 +52,8 @@ namespace CarRacer.Game.Net
             viewer._options = options;
             viewer._session = session;
             viewer._cars = cars;
+            viewer.Music = options.TvMusic;
+            viewer._musicFolder = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Music"));
             if (!ViewerStream.IsAvailable(options.FfmpegPath, out string ffmpegError))
             {
                 Debug.LogWarning("TV viewer off: " + ffmpegError);
@@ -176,6 +182,7 @@ namespace CarRacer.Game.Net
             }
 
             _nextFrameAt = Time.unscaledTime + 1f / ViewerStream.FramesPerSecond;
+            PlayMusic();
             _stream.Show(ViewerScene.Build(new ViewerScene.Inputs
             {
                 ServerName = _options.Name,
@@ -188,6 +195,21 @@ namespace CarRacer.Game.Net
                 JoinAddress = _joinAddress,
                 Port = _session.Port,
             }));
+        }
+
+        /// <summary>The tune the phones would play (<see cref="MusicChoice"/>), on the TV while its music is on.</summary>
+        private void PlayMusic()
+        {
+            var race = _session.Race;
+            bool inEvent = race != null && race.Phase != RacePhase.Lobby;
+            string tune = MusicChoice.For(inEvent, race != null ? race.Mode : GameMode.Race, race != null ? race.TrackIndex : 0);
+            _stream.Music.Play(Music ? Path.Combine(_musicFolder, tune + ".ogg") : null);
+            string error = _stream.Music.Error;
+            if (error != null && error != _musicError)
+            {
+                Debug.LogWarning("TV music: " + error);
+                _musicError = error;
+            }
         }
 
         private void StartStreaming()
