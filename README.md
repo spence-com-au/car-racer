@@ -45,7 +45,7 @@ To work in Unity, open `Unity/` with Unity **6000.3.26f1** (with Android Build S
 
 ### Trying multiplayer on phones
 
-Install the development APK (from a PR's **Unity** workflow artifacts, or built locally) on two
+Install the development APK (from a PR's **Build** workflow artifacts, or built locally) on two
 or more phones on the same Wi-Fi. Tap **Host game** on one; on the others tap **Join game**, and
 the host should be listed within a couple of seconds. If it isn't (some networks block
 discovery), type the address shown in the host's lobby.

@@ -22,8 +22,8 @@ published, a release can't take assets and its version can't be reused.
 
 ## 2. Check `master`
 
-- The latest `master` commit's `Core` and `Unity` runs should be green (`list_workflow_runs` with
-  branch `master`). If they're red or still running, tell the user and ask before going on.
+- The latest `master` commit's `Lint`, `Test` and `Build` runs should be green (`list_workflow_runs`
+  with branch `master`). If they're red or still running, tell the user and ask before going on.
 - Mention any open PR that looks meant for this release (for example, the rest of a milestone
   stack) so the user can wait for it.
 
