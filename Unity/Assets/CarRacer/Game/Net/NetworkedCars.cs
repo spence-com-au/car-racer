@@ -200,28 +200,8 @@ namespace CarRacer.Game.Net
             _ownSpunOut = spun;
             if (_phase == RacePhase.Racing && _session.Race.Mode != GameMode.Race)
             {
-                car.InputLocked = IsOut(_session.Race, _me);
+                car.InputLocked = ArenaStandings.IsOut(_session.Race, _me);
             }
-        }
-
-        /// <summary>Whether <paramref name="playerId"/> is out of the arena event, from the latest standings.</summary>
-        public static bool IsOut(IRaceView race, byte playerId)
-        {
-            var standings = race.Standings;
-            if (standings == null)
-            {
-                return false;
-            }
-
-            foreach (var entry in standings.Order)
-            {
-                if (entry.PlayerId == playerId)
-                {
-                    return entry.IsOut(race.Mode);
-                }
-            }
-
-            return false;
         }
 
         /// <summary>Uses the held item when the player presses Item, and keeps the Item button and shield ring up to date.</summary>
@@ -232,7 +212,8 @@ namespace CarRacer.Game.Net
             bool pressed = input != null && input.ConsumeItemPress();
             _shield.Tick(Time.deltaTime);
             // A wreck can't use its item (design doc §4): a Boost would drive it, and the item keeps for later.
-            if (pressed && car != null && _phase == RacePhase.Racing && !car.Damage.Wrecked)
+            // Nor can a car that is out of an arena event, which must not still decide it.
+            if (pressed && car != null && _phase == RacePhase.Racing && !car.Damage.Wrecked && !ArenaStandings.IsOut(_session.Race, _me))
             {
                 var item = _session.Items.UseHeld(car.BodyPosition.ToCore(), car.BodyVelocity.ToCore(), car.State.Heading);
                 if (item == ItemKind.Boost)

@@ -166,7 +166,7 @@ namespace CarRacer.Core.Items
         private bool Grant(byte playerId, int box)
         {
             long now = _clockMs();
-            if (_race.Phase != RacePhase.Racing || !_race.Rules.Items || !Slots.CanPickUp(playerId) || !Boxes.TryTake(box, now, out long respawnAt))
+            if (_race.Phase != RacePhase.Racing || !_race.Rules.Items || ArenaStandings.IsOut(_race, playerId) || !Slots.CanPickUp(playerId) || !Boxes.TryTake(box, now, out long respawnAt))
             {
                 return false;
             }
@@ -180,7 +180,7 @@ namespace CarRacer.Core.Items
 
         private bool Accept(ItemUsedMessage used)
         {
-            if (_race.Phase != RacePhase.Racing || !Slots.TryUse(used.PlayerId, used.Item))
+            if (_race.Phase != RacePhase.Racing || ArenaStandings.IsOut(_race, used.PlayerId) || !Slots.TryUse(used.PlayerId, used.Item))
             {
                 return false;
             }

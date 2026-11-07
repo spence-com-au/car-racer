@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using CarRacer.Core.Arena;
 using CarRacer.Core.Bots;
 using CarRacer.Core.Items;
 using CarRacer.Core.Net;
@@ -200,6 +201,40 @@ namespace CarRacer.Core.Tests
             Assert.False(_items.ClaimTouchedBoxForBot(_guest, new Vec3(0f, 0.6f, 20f)));
             Assert.False(_items.ClaimTouchedBoxForBot(_host.HostPlayerId, new Vec3(0f, 0.6f, 20f)));
             Assert.Equal(ItemKind.None, _items.UseHeldForBot(_guest, Vec3.Zero, Vec3.Zero, 0f));
+        }
+
+        [Fact]
+        public void ACarOutOfABattleNeitherPicksUpNorUsesItems()
+        {
+            _host.BotFill = 4;
+            Assert.True(_race.Start(1, GameMode.Battle));
+            _now += HostRace.StartLeadMs + HostRace.CountdownMs;
+            _race.Tick();
+            _items.Tick();
+            Assert.Equal(RacePhase.Racing, _race.Phase);
+            byte first = Bots[0].PlayerId;
+            byte second = Bots[1].PlayerId;
+            var box = new Vec3(0f, 0.6f, 20f);
+
+            for (int i = 0; i < BattleRules.StartingLives; i++)
+            {
+                _race.ReportSpinOut(second);
+            }
+
+            Assert.True(ArenaStandings.IsOut(_race, second));
+            Assert.False(_items.ClaimTouchedBoxForBot(second, box));
+
+            Assert.True(_items.ClaimTouchedBoxForBot(first, box));
+            var held = _items.Slots.Held(first);
+            for (int i = 0; i < BattleRules.StartingLives; i++)
+            {
+                _race.ReportSpinOut(first);
+            }
+
+            Assert.Equal(RacePhase.Racing, _race.Phase);
+            Assert.Equal(ItemKind.None, _items.UseHeldForBot(first, Vec3.Zero, Vec3.Zero, 0f));
+            Assert.Equal(held, _items.Slots.Held(first));
+            Assert.DoesNotContain(_transport.Sent, s => s.Message is ItemUsedMessage);
         }
 
         [Fact]
