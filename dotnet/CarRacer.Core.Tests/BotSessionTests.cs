@@ -27,20 +27,14 @@ namespace CarRacer.Core.Tests
             Assert.Equal(2, first.PlayerId);
             Assert.NotEqual(first.ColourIndex, second.ColourIndex);
             Assert.False(roster.SetReady(first.PlayerId, false));
-            Assert.Equal(2, roster.HumanCount);
         }
 
         [Fact]
-        public void BotsDoNotCountTowardsEveryoneReady()
+        public void ResettingReadyLeavesBotsReady()
         {
             var roster = new LobbyRoster();
             roster.Add("Host", isHost: true);
             roster.AddBot();
-            Assert.False(roster.EveryoneReady); // no guests, just a bot
-            var alice = roster.Add("Alice");
-            Assert.False(roster.EveryoneReady);
-            roster.SetReady(alice.PlayerId, true);
-            Assert.True(roster.EveryoneReady);
             roster.ResetReady();
             Assert.True(roster.Players.Single(p => p.IsBot).Ready);
         }

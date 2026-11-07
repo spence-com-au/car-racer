@@ -226,10 +226,6 @@ namespace CarRacer.Core.Session
         /// <summary>A joined guest claimed an item box or used its item, for its own car (see <c>HostItems</c>).</summary>
         public event Action<IGameMessage> ItemMessageReceived;
 
-        public IEnumerable<ulong> GuestConnections => _playerByConnection.Keys;
-
-        public bool TryGetPlayerId(ulong connection, out byte playerId) => _playerByConnection.TryGetValue(connection, out playerId);
-
         public bool IsBot(byte playerId) => Roster.Find(playerId)?.IsBot ?? false;
 
         /// <summary>Adds bots until there are <see cref="BotFill"/> cars (or the session is full), and tells everyone.</summary>
@@ -447,17 +443,6 @@ namespace CarRacer.Core.Session
 
             BroadcastRoster();
             return true;
-        }
-
-        public void SetHostName(string name)
-        {
-            if (IsDedicated)
-            {
-                return;
-            }
-
-            Roster.Rename(HostPlayerId, name);
-            BroadcastRoster();
         }
 
         private void HandleJoin(ulong connection, JoinRequestMessage join)

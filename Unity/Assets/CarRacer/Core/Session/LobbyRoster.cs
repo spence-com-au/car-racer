@@ -61,28 +61,6 @@ namespace CarRacer.Core.Session
         /// <summary>Bot names, handed out in order.</summary>
         public static readonly string[] BotNames = { "Turbo", "Sprocket", "Nitro", "Gizmo", "Blitz", "Zippy" };
 
-        /// <summary>True when there is at least one guest and every guest is ready. Bots don't count.</summary>
-        public bool EveryoneReady
-        {
-            get
-            {
-                bool anyGuest = false;
-                foreach (var p in _players)
-                {
-                    if (!p.IsHost && !p.IsBot)
-                    {
-                        anyGuest = true;
-                        if (!p.Ready)
-                        {
-                            return false;
-                        }
-                    }
-                }
-
-                return anyGuest;
-            }
-        }
-
         /// <summary>
         /// Whether the room leader may start (design doc §2.3, §11): there is a leader and every
         /// other person (not the host's own player, not a bot) is ready. A leader on their own can
@@ -173,8 +151,6 @@ namespace CarRacer.Core.Session
         /// <summary>Removes every bot, returning how many there were.</summary>
         public int RemoveBots() => _players.RemoveAll(p => p.IsBot);
 
-        public int HumanCount => _players.FindAll(p => !p.IsBot).Count;
-
         public bool Remove(byte playerId) => _players.RemoveAll(p => p.PlayerId == playerId) > 0;
 
         public LobbyPlayer Find(byte playerId) => _players.Find(p => p.PlayerId == playerId);
@@ -220,9 +196,6 @@ namespace CarRacer.Core.Session
             player.ColourIndex = colour;
             return true;
         }
-
-        /// <summary>True if someone other than <paramref name="playerId"/> has colour <paramref name="colour"/>.</summary>
-        public bool ColourTaken(byte colour, byte playerId) => _players.Exists(p => p.PlayerId != playerId && p.ColourIndex == colour);
 
         /// <summary>Records a guest's track vote (design doc §11); the host decides and bots don't vote. Returns true if it changed.</summary>
         public bool Vote(byte playerId, byte track)

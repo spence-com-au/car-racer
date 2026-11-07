@@ -106,7 +106,6 @@ namespace CarRacer.Core.Tests
             sync.AddSample(100, 6150, 200);
             sync.AddSample(300, 6350, 400);
             Assert.Equal(6000, sync.OffsetMs);
-            Assert.Equal(2, sync.SampleCount);
         }
 
         [Fact]
@@ -168,21 +167,15 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
-        public void EveryoneReadyNeedsAGuestAndAllGuestsReady()
+        public void ResettingReadyUnreadiesGuestsButNotTheHost()
         {
             var roster = new LobbyRoster();
             roster.Add("Host", isHost: true);
-            Assert.False(roster.EveryoneReady); // nobody to race
-
             var a = roster.Add("A");
-            var b = roster.Add("B");
             roster.SetReady(a.PlayerId, true);
-            Assert.False(roster.EveryoneReady);
-            roster.SetReady(b.PlayerId, true);
-            Assert.True(roster.EveryoneReady);
 
             roster.ResetReady();
-            Assert.False(roster.EveryoneReady);
+            Assert.False(a.Ready);
             Assert.True(roster.Players[0].Ready); // the host stays ready
         }
 

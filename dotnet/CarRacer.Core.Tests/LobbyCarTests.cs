@@ -32,8 +32,6 @@ namespace CarRacer.Core.Tests
             roster.Add("Host", isHost: true, new CarChoice(0, 0));
             var alice = roster.Add("Alice", car: new CarChoice(1, 1));
 
-            Assert.True(roster.ColourTaken(0, alice.PlayerId));
-            Assert.False(roster.ColourTaken(1, alice.PlayerId));
             Assert.True(roster.ChangeCar(alice.PlayerId, new CarChoice(3, 0)));
             Assert.Equal(3, alice.BodyIndex);
             Assert.Equal(1, alice.ColourIndex);
