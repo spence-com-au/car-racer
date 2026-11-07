@@ -72,39 +72,34 @@ namespace CarRacer.Core.Items
         /// <summary>A projectile meets a car when their centres come this close.</summary>
         public const float HitRadius = 1.6f;
 
-        public static Projectile LaunchMissile(ItemUsedMessage used, byte targetId, long nowMs)
+        public static Projectile LaunchMissile(ItemUsedMessage used, byte targetId, long nowMs) =>
+            LaunchHoming(ItemKind.Missile, used, targetId, nowMs);
+
+        public static Projectile LaunchSeeker(ItemUsedMessage used, byte targetId, long nowMs) =>
+            LaunchHoming(ItemKind.Seeker, used, targetId, nowMs);
+
+        private static Projectile LaunchHoming(ItemKind kind, ItemUsedMessage used, byte targetId, long nowMs)
         {
+            var (speed, _, lifetimeMs) = HomingStats(kind);
             var forward = Angles.Forward(used.HeadingRadians);
             return new Projectile
             {
                 EffectId = used.EffectId,
                 OwnerId = used.PlayerId,
-                Kind = ItemKind.Missile,
+                Kind = kind,
                 Position = used.Position + forward * MissileLaunchAhead,
-                Velocity = forward * MissileSpeed,
+                Velocity = forward * speed,
                 TargetId = targetId,
                 GroundY = used.Position.Y,
                 LaunchedAtMs = nowMs,
-                ExpiresAtMs = nowMs + MissileLifetimeMs,
+                ExpiresAtMs = nowMs + lifetimeMs,
             };
         }
 
-        public static Projectile LaunchSeeker(ItemUsedMessage used, byte targetId, long nowMs)
-        {
-            var forward = Angles.Forward(used.HeadingRadians);
-            return new Projectile
-            {
-                EffectId = used.EffectId,
-                OwnerId = used.PlayerId,
-                Kind = ItemKind.Seeker,
-                Position = used.Position + forward * MissileLaunchAhead,
-                Velocity = forward * SeekerSpeed,
-                TargetId = targetId,
-                GroundY = used.Position.Y,
-                LaunchedAtMs = nowMs,
-                ExpiresAtMs = nowMs + SeekerLifetimeMs,
-            };
-        }
+        private static (float Speed, float TurnDegreesPerSecond, long LifetimeMs) HomingStats(ItemKind kind) =>
+            kind == ItemKind.Seeker
+                ? (SeekerSpeed, SeekerTurnDegreesPerSecond, SeekerLifetimeMs)
+                : (MissileSpeed, MissileTurnDegreesPerSecond, MissileLifetimeMs);
 
         public static Projectile LaunchBomb(ItemUsedMessage used, long nowMs)
         {
@@ -132,9 +127,7 @@ namespace CarRacer.Core.Items
         {
             if (IsHoming(p.Kind))
             {
-                bool seeker = p.Kind == ItemKind.Seeker;
-                float speed = seeker ? SeekerSpeed : MissileSpeed;
-                float turnRate = seeker ? SeekerTurnDegreesPerSecond : MissileTurnDegreesPerSecond;
+                var (speed, turnRate, _) = HomingStats(p.Kind);
                 var direction = p.Velocity.Flattened.Normalized;
                 if (hasTarget)
                 {
