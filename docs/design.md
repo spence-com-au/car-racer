@@ -554,7 +554,8 @@ leader).
   once the cup is won. Cars start on their grid order's slot.
 - The host **auto-saves after every event**; a dead session can be **resumed**, and players
   reclaim their points by name (ignoring case and spaces at the ends). Names are unique within a
-  lobby; device ids aren't needed on a LAN of friends.
+  lobby (`LobbyRoster` numbers a taken name, "Sam 2", and bots skip names people have); device ids
+  aren't needed on a LAN of friends.
 - **Flow** (`Cups`, `CupRun`, host side): Grand Prix is every track in catalog order; Mixed Cup adds
   Sumo then Battle. After each event `CupRun` scores the results, sends everyone a
   `CupStandingsMessage` (the table and when the next event starts) and saves. The next event

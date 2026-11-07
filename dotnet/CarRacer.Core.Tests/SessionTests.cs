@@ -206,5 +206,38 @@ namespace CarRacer.Core.Tests
         {
             Assert.Equal(expected, LobbyRoster.CleanName(input));
         }
+
+        [Fact]
+        public void NamesAreUniqueIgnoringCase()
+        {
+            var roster = new LobbyRoster();
+            var host = roster.Add("Sam", isHost: true);
+            Assert.Equal("sam 2", roster.Add(" sam ").Name);
+            Assert.Equal("Sam 3", roster.Add("Sam").Name);
+            Assert.Equal("Player", roster.Add("").Name);
+            Assert.Equal("Player 2", roster.Add(null).Name);
+
+            roster.Rename(host.PlayerId, "player");
+            Assert.Equal("player 3", host.Name);
+            roster.Rename(host.PlayerId, "Sam");
+            Assert.Equal("Sam", host.Name); // its own name isn't taken
+        }
+
+        [Fact]
+        public void NumberedNamesStayWithinTheLimit()
+        {
+            var roster = new LobbyRoster();
+            roster.Add("A very long phone name that goes on");
+            Assert.Equal("A very long phone name 2", roster.Add("A very long phone name that goes on").Name);
+        }
+
+        [Fact]
+        public void BotsSkipNamesPeopleHave()
+        {
+            var roster = new LobbyRoster();
+            roster.Add(LobbyRoster.BotNames[0], isHost: true);
+            roster.Add(LobbyRoster.BotNames[1].ToLowerInvariant());
+            Assert.Equal(LobbyRoster.BotNames[2], roster.AddBot().Name);
+        }
     }
 }
