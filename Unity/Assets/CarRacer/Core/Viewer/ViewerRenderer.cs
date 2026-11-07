@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using CarRacer.Core.Arena;
+using CarRacer.Core.Art;
 using CarRacer.Core.Numerics;
 using CarRacer.Core.Platform;
 using CarRacer.Core.Track;
