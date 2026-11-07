@@ -71,6 +71,8 @@ namespace CarRacer.Core.Tests
             settings.Track = -5;
             settings.Rules = EventRules.Default;
             Assert.Equal("Race, 3 laps, Pebble Oval", EventText.SettingsSummary(settings));
+            settings.Laps = 1;
+            Assert.Equal("Race, 1 lap, Pebble Oval", EventText.SettingsSummary(settings));
         }
     }
 
