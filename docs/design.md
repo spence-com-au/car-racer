@@ -145,6 +145,37 @@ player of its own (`HostSession.Dedicated`, `HostPlayerId` is `NoPlayer`).
   server goes back to the lobby by itself (leaving a cup, which keeps its save), so new guests can
   join again.
 
+### 2.4 TV viewer (Chromecast)
+
+A Linux server (§2.3) can show the room's event live on a television through a Chromecast, so
+people waiting their turn, or just watching, can follow it.
+
+- **What it shows** (`ViewerScene`, `ViewerRenderer`, `Core/Viewer`): a 2D broadcast view, drawn
+  on the server in software because it runs with `-nographics`. In the lobby: a QR code to join
+  (the same `carracer://join` link a phone host shows), who's in and what's next. In an event: a
+  top-down map of the track or arena (bridges drawn over the road they cross, Sumo's platform
+  shrinking, Monster Jam's ramps) with every car as a dot numbered with its place, the standings
+  beside it (laps, lives or points), the race clock or time left, and a big 3-2-1-GO. Then the
+  results. Frames are 1280×720 with a 5×7 pixel font (with descenders) scaled up, in the car
+  colours the phones use (`CarPalette`).
+- **How it gets there:** frames go to `ffmpeg`, which makes a live HLS stream (H.264, 25 fps,
+  1 s segments, 3–5 s behind) served over HTTP on **47780/tcp**. The server finds Chromecasts
+  with mDNS and speaks the Cast v2 protocol to them itself, launching Google's **Default Media
+  Receiver** on the stream, so there's no Cast app to register. (A custom receiver drawing the
+  scene on the TV itself, smoother and with less delay, may come later; the scene stays free of
+  drawing details so it could be sent as data instead.)
+- **Who casts:** the room leader, with a **Cast to TV** button in the lobby that lists the
+  Chromecasts the server found and has Stop casting. A leader's tap takes over the TV even if
+  something else is on it. `-cast <name>` gives the server a TV to cast to by itself; it, and a
+  TV the leader picked, are cast to again at each countdown, but only while the TV is idle, so it
+  never takes over something someone else is watching. Everyone else's lobby says "On TV: …".
+  Only a server with `ffmpeg` that has found a Chromecast offers it; phone hosts never do.
+- **Music:** optional (off by default; a toggle in the cast menu, or `-tv-music`). The TV plays
+  the tune the phones would (`MusicChoice`), and while it does the phones fade theirs out. No
+  sound effects go to the TV; they would land seconds after the phones'.
+- **Getting ffmpeg:** it is in the Docker image; with the tarball it is installed separately
+  (`-ffmpeg <path>` for a non-standard place). Without it the server logs why and offers no casting.
+
 ## 3. Engine and tech stack
 
 | Area | Choice |
@@ -712,6 +743,7 @@ leader).
 | **M16: Linux host** | A dedicated host on a Linux server (release tarball and Docker image) with no player of its own; the first guest in runs the room from their phone. The room leader, lobby settings and commands (protocol 22), the game's server mode with host controls on the leader's phone, and the CI build, tarball and image. |
 | **M17: More tracks and cars** | Six more Car Kit bodies (sedan, SUV, taxi, pickup, delivery truck and a kart), each with its own handling (protocol 23); three more tracks, Dune Jumps, Carousel Ring and Ridge Run, each with its own tune and in both cups (protocol 24). |
 | **M18: Monster Jam** | A fourth event type: monster trucks in a stunt stadium with ramps, scoring air time and crushes. Rules, scoring, messages (protocol 25), the truck model and bots; the stadium, truck handling and looks, stunt reporting, HUD and lobby. |
-| Later | Google Play internal testing track. |
+| **M19: TV viewer** | Cast the room to a Chromecast from a Linux server: a 2D broadcast view drawn on the server and streamed with ffmpeg to the Default Media Receiver, a Cast to TV button for the room leader, and optional TV music. |
+| Later | Google Play internal testing track; a custom Cast receiver drawing the viewer on the TV. |
 
 Not planned: internet play, accounts, analytics, host migration.
