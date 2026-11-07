@@ -18,6 +18,25 @@ namespace CarRacer.Core.Tests
             }
         }
 
+        private sealed class PingLink : ISessionTransport
+        {
+            public ClockPingMessage Pending;
+            public int PingsSent;
+
+            public void Send(ulong connection, IGameMessage message, bool reliable)
+            {
+                if (message is ClockPingMessage ping)
+                {
+                    Pending = ping;
+                    PingsSent++;
+                }
+            }
+
+            public void Disconnect(ulong connection)
+            {
+            }
+        }
+
         private long _now = 10_000;
         private readonly GuestSession _guest;
 
@@ -48,6 +67,30 @@ namespace CarRacer.Core.Tests
             Assert.True(_guest.HostQuiet);
             _guest.OnMessage(new ClockPongMessage { GuestSentMs = _now - 10, HostMs = _now });
             Assert.False(_guest.HostQuiet);
+        }
+
+        [Fact]
+        public void OneLostClockPingIsNotMistakenForADroppedConnection()
+        {
+            var link = new PingLink();
+            var guest = new GuestSession(link, "Guest", 17, () => _now);
+            guest.OnConnected();
+            guest.OnMessage(new JoinReplyMessage { Result = JoinResult.Accepted, PlayerId = 1 });
+
+            // A lone guest on a dedicated server between races hears only the replies to its pings;
+            // lose the first one sent at the slow rate.
+            int lostPing = GuestSession.FastPingCount + 1;
+            for (long end = _now + 10_000; _now < end; _now += 50)
+            {
+                guest.Tick();
+                if (link.Pending != null && link.PingsSent != lostPing)
+                {
+                    guest.OnMessage(new ClockPongMessage { GuestSentMs = link.Pending.GuestSentMs, HostMs = _now });
+                }
+
+                link.Pending = null;
+                Assert.False(guest.HostQuiet);
+            }
         }
 
         [Fact]

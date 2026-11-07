@@ -584,10 +584,11 @@ namespace CarRacer.Core.Session
         private long _lastHeardMs;
 
         /// <summary>
-        /// Once joined, the host is heard from many times a second (its car, clock replies). After
+        /// A lone guest on a dedicated server outside a race hears only the replies to its unreliable
+        /// clock pings, so this outlasts one lost ping or reply with half an interval to spare. After
         /// this long without a word the guest shows "Reconnecting…" (design doc §12)…
         /// </summary>
-        public const long ReconnectingAfterMs = 1500;
+        public const long ReconnectingAfterMs = 2 * PingIntervalMs + PingIntervalMs / 2;
 
         /// <summary>…and after this long it gives up and goes back to the menu.</summary>
         public const long GiveUpAfterMs = 10_000;
