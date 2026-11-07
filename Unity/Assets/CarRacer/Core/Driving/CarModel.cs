@@ -26,7 +26,10 @@ namespace CarRacer.Core.Driving
     [Serializable]
     public sealed class CarTuning
     {
-        public float MaxSpeed = 26f;
+        /// <summary>The base tuning's top speed (m/s), which the camera zoom, engine note and wall damage scale to.</summary>
+        public const float BaseMaxSpeed = 26f;
+
+        public float MaxSpeed = BaseMaxSpeed;
         public float MaxReverseSpeed = 8f;
         public float Acceleration = 16f;
         public float ReverseAcceleration = 9.6f;

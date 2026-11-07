@@ -20,7 +20,7 @@ namespace CarRacer.Core.Driving
         public float FieldOfViewAtTopSpeed = 72f;
 
         /// <summary>Speed at which the "at top speed" values apply fully; boosting goes no further.</summary>
-        public float TopSpeed = 26f;
+        public float TopSpeed = CarTuning.BaseMaxSpeed;
 
         /// <summary>How quickly the camera swings round behind the car (per second). Higher is stiffer.</summary>
         public float HeadingSharpness = 5f;
