@@ -119,12 +119,23 @@ namespace CarRacer.Core.Tests
         [Fact]
         public void ABotSlowsForTheBendAhead()
         {
-            // Just before the first bend at full speed: the bot lifts or brakes.
-            float bendStart = Oval.Spline.FindNearestDistance(new Vec3(0f, 0f, 60f));
-            var before = Oval.Spline.SampleAtDistance(bendStart - 8f);
-            var state = new CarState { Heading = MathF.Atan2(before.Forward.X, before.Forward.Z), Velocity = before.Forward * Tuning.MaxSpeed };
-            var input = new BotDriver(Oval.Spline, BotSkill.For(BotDifficulty.Easy), Tuning, 1).Drive(state, before.Position, Dt, null);
-            Assert.True(input.Throttle <= 0f, $"throttle {input.Throttle}");
+            // 20 m/s is under Easy's straight-line target (0.82 of top speed, 21.3 m/s), so the bot only
+            // lifts for the hairpin if it looks ahead: the straight is the control.
+            var canyon = new TrackLayout(SampleTracks.Canyon());
+            float hairpin = canyon.Spline.FindNearestDistance(new Vec3(15f, 0f, 130f));
+
+            float onTheStraight = EasyThrottleAt(canyon, 10f, 20f);
+            float atTheHairpin = EasyThrottleAt(canyon, hairpin, 20f);
+
+            Assert.Equal(1f, onTheStraight);
+            Assert.True(atTheHairpin < onTheStraight, $"throttle {atTheHairpin} at the hairpin, {onTheStraight} on the straight");
+        }
+
+        private static float EasyThrottleAt(TrackLayout track, float distance, float speed)
+        {
+            var sample = track.Spline.SampleAtDistance(distance);
+            var state = new CarState { Heading = MathF.Atan2(sample.Forward.X, sample.Forward.Z), Velocity = sample.Forward * speed };
+            return new BotDriver(track.Spline, BotSkill.For(BotDifficulty.Easy), Tuning, 1).Drive(state, sample.Position, Dt, null).Throttle;
         }
     }
 
