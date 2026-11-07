@@ -366,8 +366,7 @@ namespace CarRacer.Core.Tests
             Assert.True(_guestItems.ClaimTouchedBox(BoxPositions[0]));
             Assert.True(_hostItems.ClaimTouchedBox(BoxPositions[1]));
 
-            _hostRace.Tracker.Retire(GuestId);
-            _hostRace.Tracker.Retire(_host.HostPlayerId);
+            _hostRace.Tracker.FinishRemaining(_ => 0f, 0);
             Tick();
             Assert.Equal(RacePhase.Results, _hostRace.Phase);
             Assert.True(_hostRace.ReturnToLobby());
@@ -534,8 +533,7 @@ namespace CarRacer.Core.Tests
         {
             StartRacing();
             GiveAndUse(GuestId, ItemKind.OilSlick, new Vec3(0f, 0.6f, 10f));
-            _hostRace.Tracker.Retire(GuestId);
-            _hostRace.Tracker.Retire(_host.HostPlayerId);
+            _hostRace.Tracker.FinishRemaining(_ => 0f, 0);
             Tick();
             Assert.True(_hostRace.ReturnToLobby());
             StartRacing();
@@ -778,8 +776,7 @@ namespace CarRacer.Core.Tests
             _cars[GuestId] = Vec3.Zero;
             GiveAndUse(GuestId, ItemKind.Bomb, Vec3.Zero);
             Advance(100);
-            _hostRace.Tracker.Retire(GuestId);
-            _hostRace.Tracker.Retire(_host.HostPlayerId);
+            _hostRace.Tracker.FinishRemaining(_ => 0f, 0);
             Tick();
             Assert.True(_hostRace.ReturnToLobby());
             StartRacing();
