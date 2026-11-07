@@ -3,6 +3,7 @@ using System.Text;
 using CarRacer.Core.Art;
 using CarRacer.Core.Audio;
 using CarRacer.Core.Discovery;
+using CarRacer.Core.Platform;
 using CarRacer.Core.Session;
 using CarRacer.Game.Audio;
 using CarRacer.Game.Driving;
@@ -53,6 +54,7 @@ namespace CarRacer.Game.Menu
         private VisualElement _hostList;
         private string _shownHosts;
         private float _nextHostRefresh;
+        private string _shownUpdate;
 
         /// <summary>A join link that arrived before the player had a name; joined once they choose one.</summary>
         public static (string Address, ushort Port)? PendingJoin { get; set; }
@@ -97,7 +99,15 @@ namespace CarRacer.Game.Menu
                 _nextHostRefresh = Time.unscaledTime + HostListRefreshSeconds;
                 FillHostList();
             }
+
+            // GitHub answers, and the download moves on, while the main page is open.
+            if (_page == Page.Main && UpdateSignature() != _shownUpdate)
+            {
+                Refresh();
+            }
         }
+
+        private static string UpdateSignature() => AppUpdater.ButtonLabel + "|" + AppUpdater.Line;
 
         private void GoTo(Page page)
         {
@@ -256,16 +266,28 @@ namespace CarRacer.Game.Menu
                 panel.Add(UiKit.Centred(UiKit.Hint(Notice)));
             }
 
+            _shownUpdate = UpdateSignature();
+            string update = AppUpdater.ButtonLabel;
+            if (update != null)
+            {
+                panel.Add(UiKit.Centred(UiKit.Hint(AppUpdater.Line)));
+            }
+
             panel.Add(UiKit.Space(20f));
             panel.Add(UiKit.Button("Host game", () => Bootstrap.HostGame(_name), primary: true));
             panel.Add(UiKit.Button("Join game", () => GoTo(Page.Join)));
             panel.Add(UiKit.Button("Practice", Bootstrap.ShowPractice));
             panel.Add(UiKit.Space(12f));
-            panel.Add(UiKit.Button("Change name", () =>
+            var changeName = UiKit.Button("Change name", () =>
             {
                 _nameDraft = _name;
                 GoTo(Page.Name);
-            }));
+            });
+
+            // The update shares a row so the page still fits a phone held sideways.
+            panel.Add(update == null
+                ? changeName
+                : UiKit.EvenRow(changeName, UiKit.Enabled(UiKit.Button(update, AppUpdater.Tap), AppUpdater.Status.State != UpdateState.Downloading)));
             panel.Add(UiKit.EvenRow(UiKit.Button("Garage", () => GoTo(Page.Garage)), UiKit.Button("Settings", () => GoTo(Page.Settings))));
         }
 

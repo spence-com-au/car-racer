@@ -49,6 +49,7 @@ namespace CarRacer.Game
             GraphicsQuality.Apply();
             PerfOverlay.Install();
             ScreenFader.Install();
+            AppUpdater.CheckForUpdate();
 
             // Fixed 50 Hz physics on every device (design doc §4).
             Time.fixedDeltaTime = 0.02f;

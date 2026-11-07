@@ -100,7 +100,9 @@ The APK is published as `CarRacer.apk` on the repository's Releases page, so
 <https://github.com/spence-com-au/car-racer/releases/latest/download/CarRacer.apk> always
 downloads the newest release. Friends can install it from there, or use
 [Obtainium](https://github.com/ImranR98/Obtainium) pointed at the repository to get updates
-automatically.
+automatically. Either way, a release build then offers each newer release itself: the main menu
+shows an **Update** button that downloads `CarRacer.apk` and opens Android's installer (design doc
+§15), so keep that asset name.
 
 The same release carries the Linux server as `CarRacer-server-v0.1.0-linux-x86_64.tar.gz`, and
 the image `ghcr.io/spence-com-au/car-racer:v0.1.0` (and `:latest`) goes to GitHub's container

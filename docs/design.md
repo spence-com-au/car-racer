@@ -568,7 +568,9 @@ leader).
 1. First launch: choose a display name (stored on the device; no accounts).
 2. Menu: **Host Game**, **Join Game** (discovered list + join by IP/QR), **Practice**, **Garage**,
    **Settings**. Built (`MainMenu`): name entry on first launch, Host, Join (game cards + join by
-   IP) and Practice (a free drive), joining from the host's QR code, Garage and Settings.
+   IP) and Practice (a free drive), joining from the host's QR code, Garage and Settings. When a
+   newer release is out, the main page says so and puts an **Update** button beside Change name
+   (§15).
    - **Settings** gathers sound and music volume, graphics quality, the performance readout,
      haptics, auto-accelerate and tilt steering on one page, with an Accessibility page beside it
      (§5); each choice is remembered as soon as it changes. Haptics and
@@ -731,6 +733,16 @@ leader).
   `master`) builds a **release-signed APK** and publishes it to **GitHub Releases**
   (Obtainium-friendly). Needs the Android keystore secrets too. Releases are immutable, so the
   assets go up to a draft that the workflow publishes last.
+- **Self-update, no Play Store:** phones are sideloaded, and a release build keeps itself up to
+  date. Once a launch it asks GitHub's API for the latest release (`AppUpdater`); if it's newer
+  (`AppUpdate.Newer`, comparing versions as numbers), the main page offers it. **Update** downloads
+  the release's `CarRacer.apk` into the app's cache and **Install** hands it to Android's installer
+  through a `FileProvider` (androidx.core, already in the build), which asks the player to confirm,
+  and the first time to let the game install apps. `AndroidManifestPostProcessor` adds the
+  provider and `REQUEST_INSTALL_PACKAGES`. Development builds don't look: they're signed with the
+  debug key, so Android would refuse a release over them. A failed check says nothing, since a LAN
+  game's Wi-Fi may have no internet. A Core test checks `release.yaml` still uploads the APK under
+  the name the game asks for.
 - **Linux server** (§2.3, [`server.md`](server.md)): the `Build` workflow builds the Linux player
   on every PR and starts it with `-server` for a few seconds to check it hosts; a release adds a
   tarball to the release and pushes a Docker image to GHCR (`server/Dockerfile`, run with host
@@ -763,6 +775,7 @@ leader).
 | **M17: More tracks and cars** | Six more Car Kit bodies (sedan, SUV, taxi, pickup, delivery truck and a kart), each with its own handling (protocol 23); three more tracks, Dune Jumps, Carousel Ring and Ridge Run, each with its own tune and in both cups (protocol 24). |
 | **M18: Monster Jam** | A fourth event type: monster trucks in a stunt stadium with ramps, scoring air time and crushes. Rules, scoring, messages (protocol 25), the truck model and bots; the stadium, truck handling and looks, stunt reporting, HUD and lobby. |
 | **M19: TV viewer** | Cast the room to a Chromecast from a Linux server: a 2D broadcast view drawn on the server and streamed with ffmpeg to the Default Media Receiver, a Cast to TV button for the room leader, and optional TV music. |
-| Later | Google Play internal testing track; a custom Cast receiver drawing the viewer on the TV. |
+| Later | A custom Cast receiver drawing the viewer on the TV. |
 
-Not planned: internet play, accounts, analytics, host migration.
+Not planned: internet play, accounts, analytics, host migration, the Play Store (phones update
+themselves, §15).
