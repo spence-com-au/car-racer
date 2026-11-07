@@ -87,12 +87,14 @@ namespace CarRacer.Game.Net
         /// </summary>
         public void CastTo(string wanted, bool takeOver)
         {
-            if (_cast != null && !_cast.Finished && !_cast.Device.Matches(wanted ?? string.Empty))
+            bool casting = _cast != null && !_cast.Finished;
+            bool same = casting && _cast.Device.Matches(wanted ?? string.Empty);
+            if (casting && !same)
             {
                 _cast.Stop();
             }
 
-            _plan.Request(wanted, takeOver);
+            _plan.Request(wanted, takeOver, alreadyShowing: same);
             Debug.Log(string.IsNullOrEmpty(wanted) ? "Casting to the first TV found" : $"Casting to \"{wanted}\"");
         }
 
@@ -154,7 +156,9 @@ namespace CarRacer.Game.Net
             {
                 _cast?.Dispose();
                 Debug.Log($"Casting to {device.Name}{(takeOver ? " (taking over)" : string.Empty)}");
-                _cast = new CastConnection(device, address => _http.UrlFor(address), _options.Name, takeOver);
+                // The cast thread asks for the URL after connecting; StopStreaming may have cleared _http by then.
+                var http = _http;
+                _cast = new CastConnection(device, address => http.UrlFor(address), _options.Name, takeOver);
                 _loggedState = null;
             }
 
@@ -170,9 +174,7 @@ namespace CarRacer.Game.Net
         {
             if (_stream.Failure != null)
             {
-                Debug.LogError("TV viewer stopped: " + _stream.Failure);
-                StopStreaming();
-                _streamFailed = true;
+                GiveUp("TV viewer stopped: " + _stream.Failure);
                 return;
             }
 
@@ -221,22 +223,32 @@ namespace CarRacer.Game.Net
             }
             catch (System.Net.Sockets.SocketException e)
             {
-                Debug.LogError($"TV viewer off: can't serve on TCP port {_options.ViewerPort} ({e.Message}); choose another with {ServerOptions.ViewerPortFlag}");
-                _streamFailed = true;
+                GiveUp($"TV viewer off: can't serve on TCP port {_options.ViewerPort} ({e.Message}); choose another with {ServerOptions.ViewerPortFlag}");
                 return;
             }
 
             _stream = ViewerStream.Start(_options.FfmpegPath, folder, out string error);
             if (_stream == null)
             {
-                Debug.LogError("TV viewer off: " + error);
-                _http.Dispose();
-                _http = null;
-                _streamFailed = true;
+                GiveUp("TV viewer off: " + error);
                 return;
             }
 
             Debug.Log($"TV viewer streaming on port {_http.Port}");
+        }
+
+        /// <summary>
+        /// Streaming can't work here any more: stops it, and any cast with it, and forgets the TV,
+        /// so the phones go back to no TV rather than a cast nobody can stop (the leader's button
+        /// goes once casting is off).
+        /// </summary>
+        private void GiveUp(string reason)
+        {
+            Debug.LogError(reason);
+            _streamFailed = true;
+            _plan.Forget();
+            _cast?.Stop();
+            StopStreaming();
         }
 
         private void StopStreaming()
@@ -279,48 +291,13 @@ namespace CarRacer.Game.Net
         /// <summary>What the phones are told: whether casting works here, the TVs found and how the cast is going.</summary>
         private TvStatusMessage Status()
         {
-            var status = new TvStatusMessage { CanCast = !_streamFailed && _discovery != null, Music = Music };
+            var names = new List<string>();
             foreach (var device in Devices)
             {
-                if (status.Devices.Count < TvStatusMessage.MaxDevices && !status.Devices.Contains(device.Name))
-                {
-                    status.Devices.Add(device.Name);
-                }
+                names.Add(device.Name);
             }
 
-            if (_cast != null)
-            {
-                status.CastingTo = _cast.Device.Name;
-                status.Detail = _cast.Detail;
-                switch (_cast.State)
-                {
-                    case CastState.Playing:
-                        status.State = TvState.Playing;
-                        break;
-                    case CastState.Busy:
-                        status.State = TvState.Busy;
-                        break;
-                    case CastState.Failed:
-                        status.State = TvState.Failed;
-                        break;
-                    case CastState.Stopped:
-                        status.State = TvState.Off;
-                        break;
-                    default:
-                        status.State = TvState.Connecting;
-                        break;
-                }
-            }
-
-            // Waiting for the stream or the TV to turn up counts as connecting to it.
-            if (_plan.Wanted != null && (_cast == null || _cast.Finished) && status.State != TvState.Busy && status.State != TvState.Failed && _plan.Pending)
-            {
-                status.State = TvState.Connecting;
-                status.CastingTo = _plan.Wanted.Length > 0 ? _plan.Wanted : status.CastingTo;
-                status.Detail = string.Empty;
-            }
-
-            return status;
+            return _plan.Status(!_streamFailed && _discovery != null, Music, names, _cast?.State, _cast?.Device.Name, _cast?.Detail);
         }
 
         private void OnDestroy()

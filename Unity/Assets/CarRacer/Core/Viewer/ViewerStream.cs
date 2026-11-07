@@ -126,8 +126,12 @@ namespace CarRacer.Core.Viewer
             return null;
         }
 
-        /// <summary>Whether <paramref name="ffmpegPath"/> runs, so the server only offers casting when it can (design doc §2.4).</summary>
-        public static bool IsAvailable(string ffmpegPath, out string error)
+        /// <summary>
+        /// Whether <paramref name="ffmpegPath"/> runs (<c>-version</c>, within <paramref name="timeoutMs"/>),
+        /// so the server only offers casting when it can (design doc §2.4). A program that doesn't
+        /// answer in time is killed and counts as unavailable, so a wrong <c>-ffmpeg</c> can't hang start-up.
+        /// </summary>
+        public static bool IsAvailable(string ffmpegPath, out string error, int timeoutMs = 5_000)
         {
             error = null;
             try
@@ -146,8 +150,25 @@ namespace CarRacer.Core.Viewer
                         return false;
                     }
 
-                    process.StandardOutput.ReadToEnd();
-                    if (!process.WaitForExit(5_000) || process.ExitCode != 0)
+                    // Drain the output as it comes, so the wait below is what bounds the check.
+                    process.OutputDataReceived += (sender, e) => { };
+                    process.BeginOutputReadLine();
+                    if (!process.WaitForExit(timeoutMs))
+                    {
+                        try
+                        {
+                            process.Kill();
+                        }
+                        catch (InvalidOperationException)
+                        {
+                            // It ended just now.
+                        }
+
+                        error = $"ffmpeg didn't answer (\"{ffmpegPath} -version\" took over {timeoutMs / 1000} s)";
+                        return false;
+                    }
+
+                    if (process.ExitCode != 0)
                     {
                         error = "ffmpeg didn't run (\"" + ffmpegPath + " -version\" failed)";
                         return false;

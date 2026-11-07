@@ -19,6 +19,7 @@ namespace CarRacer.Core.Cast
     /// </summary>
     public sealed class CastConnection : IDisposable
     {
+        /// <summary>How long connecting, and then the TLS handshake, may each take.</summary>
         public const int ConnectTimeoutMs = 5_000;
 
         private readonly object _lock = new object();
@@ -96,7 +97,10 @@ namespace CarRacer.Core.Cast
                 var local = ((IPEndPoint)_client.Client.LocalEndPoint).Address;
                 using (var tls = new SslStream(_client.GetStream(), false, (sender, certificate, chain, errors) => true))
                 {
+                    // A device that takes the connection but never finishes the handshake fails like one that never answers.
+                    _client.ReceiveTimeout = _client.SendTimeout = ConnectTimeoutMs;
                     tls.AuthenticateAsClient(Device.Address.ToString(), null, SslProtocols.Tls12, false);
+                    _client.ReceiveTimeout = _client.SendTimeout = 0;
                     var reader = new Thread(() => Read(tls)) { IsBackground = true, Name = "Cast reader" };
                     reader.Start();
                     Send(tls, _session.Begin(_mediaUrlFor(local), clock.ElapsedMilliseconds));
