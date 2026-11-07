@@ -313,7 +313,7 @@ namespace CarRacer.Core.Arena
             for (int i = 0; i < 4; i++)
             {
                 float angle = 2f * MathF.PI * (i + 0.5f) / 4f;
-                var outward = new Vec3(MathF.Sin(angle), 0f, MathF.Cos(angle));
+                var outward = Angles.Forward(angle);
                 var along = new Vec3(outward.Z, 0f, -outward.X);
                 const float length = 8f;
                 ramps.Add(new Ramp { Foot = centre + outward * ring - along * (length / 2f), Forward = along, Length = length, Width = 7f, Height = 2.4f });
@@ -343,7 +343,7 @@ namespace CarRacer.Core.Arena
             for (int i = 0; i < count; i++)
             {
                 float angle = 2f * MathF.PI * i / Math.Max(1, count);
-                var outward = new Vec3(MathF.Sin(angle), 0f, MathF.Cos(angle));
+                var outward = Angles.Forward(angle);
                 slots.Add(new ArenaSlot { Position = centre + outward * ring, Forward = -outward });
             }
 

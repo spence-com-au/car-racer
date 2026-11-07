@@ -110,7 +110,7 @@ namespace CarRacer.Core.Driving
 
         public bool SpunOut => SpinSecondsLeft > 0f;
 
-        public Vec3 Forward => new Vec3(MathF.Sin(Heading), 0f, MathF.Cos(Heading));
+        public Vec3 Forward => Angles.Forward(Heading);
 
         /// <summary>
         /// How far the current drift has charged, for the HUD meter: 0 with no drift, rising to 1
@@ -177,7 +177,7 @@ namespace CarRacer.Core.Driving
             {
                 // Spun out: no control, the car turns on the spot of its slide and slows down.
                 state.SpinSecondsLeft = Math.Max(0f, state.SpinSecondsLeft - deltaSeconds);
-                state.Heading = WrapAngle(state.Heading + tuning.SpinTurnsPerSecond * 2f * MathF.PI * deltaSeconds);
+                state.Heading = Angles.WrapPositive(state.Heading + tuning.SpinTurnsPerSecond * 2f * MathF.PI * deltaSeconds);
                 state.Velocity = velocity * MathF.Exp(-tuning.SpinDrag * deltaSeconds);
                 return state;
             }
@@ -203,7 +203,7 @@ namespace CarRacer.Core.Driving
                 ? state.DriftDirection * Lerp(tuning.DriftMinTurn, tuning.DriftMaxTurn, (steer * state.DriftDirection + 1f) / 2f)
                 : steer;
             float yawRate = turn * tuning.SteerDegreesPerSecond * (MathF.PI / 180f) * SteerFactor(forwardSpeed, tuning);
-            state.Heading = WrapAngle(state.Heading + yawRate * Math.Sign(forwardSpeed) * deltaSeconds);
+            state.Heading = Angles.WrapPositive(state.Heading + yawRate * Math.Sign(forwardSpeed) * deltaSeconds);
 
             float grip = state.Drifting ? tuning.DriftGrip : tuning.Grip;
             sideSpeed *= MathF.Exp(-grip * deltaSeconds);
@@ -353,13 +353,6 @@ namespace CarRacer.Core.Driving
 
             float fast = Clamp((speed - t.FullSteerSpeed) / Math.Max(1f, t.MaxSpeed - t.FullSteerSpeed), 0f, 1f);
             return Lerp(1f, t.TopSpeedSteerFactor, fast);
-        }
-
-        private static float WrapAngle(float radians)
-        {
-            const float twoPi = MathF.PI * 2f;
-            radians %= twoPi;
-            return radians < 0f ? radians + twoPi : radians;
         }
 
         private static float Clamp(float v, float min, float max) => v < min ? min : (v > max ? max : v);

@@ -51,7 +51,7 @@ namespace CarRacer.Core.Race
 
             _hasDistance = true;
             var tangent = sample.Forward.Flattened.Normalized;
-            var facing = new Vec3(MathF.Sin(heading), 0f, MathF.Cos(heading));
+            var facing = Angles.Forward(heading);
             Alignment = Vec3.Dot(facing, tangent);
             _wrongWay.Update(Alignment, Math.Abs(speed), deltaSeconds);
         }
