@@ -38,9 +38,6 @@ namespace CarRacer.Core.Cast
             Payload = payload;
         }
 
-        /// <summary>The payload's "type" ("PING", "RECEIVER_STATUS"…), or null.</summary>
-        public string PayloadType => Json.String(Json.TryParseObject(Payload ?? string.Empty), "type");
-
         /// <summary>The protobuf, without the length prefix.</summary>
         public byte[] Encode()
         {
