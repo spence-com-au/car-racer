@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using CarRacer.Core.Numerics;
 
@@ -27,27 +28,28 @@ namespace CarRacer.Core.Track
             new Vec3(550f, 0f, 520f),
         };
 
-        private static List<TrackLayout> _layouts;
+        /// <summary>
+        /// Built on first use, and read from more than one thread (the TV viewer renders on its own), so
+        /// <see cref="Lazy{T}"/> publishes it only once it is complete.
+        /// </summary>
+        private static readonly Lazy<IReadOnlyList<TrackLayout>> BuiltLayouts =
+            new Lazy<IReadOnlyList<TrackLayout>>(BuildLayouts);
 
         public static int Count => Offsets.Length;
 
         /// <summary>The tracks, placed in the scene, by index.</summary>
-        public static IReadOnlyList<TrackLayout> Layouts
-        {
-            get
-            {
-                if (_layouts == null)
-                {
-                    var definitions = SampleTracks.All();
-                    _layouts = new List<TrackLayout>(definitions.Length);
-                    for (int i = 0; i < definitions.Length; i++)
-                    {
-                        _layouts.Add(new TrackLayout(Moved(definitions[i], Offsets[i])));
-                    }
-                }
+        public static IReadOnlyList<TrackLayout> Layouts => BuiltLayouts.Value;
 
-                return _layouts;
+        private static IReadOnlyList<TrackLayout> BuildLayouts()
+        {
+            var definitions = SampleTracks.All();
+            var layouts = new List<TrackLayout>(definitions.Length);
+            for (int i = 0; i < definitions.Length; i++)
+            {
+                layouts.Add(new TrackLayout(Moved(definitions[i], Offsets[i])));
             }
+
+            return layouts;
         }
 
         /// <summary>A valid track index: <paramref name="index"/>, or 0 if it is out of range (e.g. from a newer host).</summary>
