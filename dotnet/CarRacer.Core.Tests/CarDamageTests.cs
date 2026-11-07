@@ -97,6 +97,19 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void ACarsFlagsCarryItsHandlingShieldAndDamage()
+        {
+            var damage = new CarDamage();
+            Assert.Equal(CarStateFlags.None, CarFlags.For(new CarState(), false, damage));
+
+            damage.AddItemHit();
+            damage.AddItemHit();
+            var state = new CarState { Drifting = true, BoostSecondsLeft = 1f, SpinSecondsLeft = 1f };
+            var flags = CarFlags.For(state, true, damage);
+            Assert.Equal(CarStateFlags.Drifting | CarStateFlags.Boosting | CarStateFlags.Shielded | CarStateFlags.SpunOut | CarStateFlags.SmokeLight, flags);
+        }
+
+        [Fact]
         public void AWreckEndsADriftWithoutItsBoostAndCutsAnyBoost()
         {
             var tuning = new CarTuning();

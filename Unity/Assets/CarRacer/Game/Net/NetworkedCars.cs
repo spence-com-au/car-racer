@@ -43,6 +43,7 @@ namespace CarRacer.Game.Net
         private float _carExaggeration;
         private readonly List<OtherCar> _others = new List<OtherCar>();
         private readonly List<Bump> _bumps = new List<Bump>();
+        private readonly List<OtherCar> _bumped = new List<OtherCar>();
         private readonly HashSet<byte> _spunOut = new HashSet<byte>();
         private readonly Shield _shield = new Shield();
 
@@ -271,13 +272,19 @@ namespace CarRacer.Game.Net
 
         private void OnHit(HitMessage hit)
         {
-            var car = _screen.Car;
-            if (car == null)
+            if (_screen.Car != null)
             {
-                return;
+                TakeHit(_screen.Car, _shield, _bumpMonitor, _me, hit);
             }
+        }
 
-            switch (ItemHitResponse.Resolve(hit, _shield))
+        /// <summary>
+        /// Applies a hit aimed at <paramref name="playerId"/>'s car, a player's or a bot's: its shield soaks up an item
+        /// hit, or else the car spins out; a bump the car missed is resolved by its bump monitor.
+        /// </summary>
+        public static void TakeHit(CarController car, Shield shield, BumpMonitor bumps, byte playerId, HitMessage hit)
+        {
+            switch (ItemHitResponse.Resolve(hit, shield))
             {
                 case ItemHitOutcome.Blocked:
                     break;
@@ -287,7 +294,7 @@ namespace CarRacer.Game.Net
                     car.TakeItemHit();
                     break;
                 default:
-                    if (_bumpMonitor.OnHit(hit, _me, NetworkSession.NowMs, out var impulse))
+                    if (bumps.OnHit(hit, playerId, NetworkSession.NowMs, out var impulse))
                     {
                         car.AddImpulse(impulse.ToUnity());
                         car.TakeBump(impulse.ToUnity());
@@ -352,7 +359,11 @@ namespace CarRacer.Game.Net
                 return;
             }
 
-            ResolveBumps(car);
+            foreach (var other in BumpOffRemotes(car, _me, _bumpMonitor))
+            {
+                ReportCrush(car.BodyVelocity.ToCore(), other.PlayerId, other.Position, other.Velocity);
+            }
+
             if (_phase != RacePhase.Racing)
             {
                 return;
@@ -372,8 +383,12 @@ namespace CarRacer.Game.Net
             }
         }
 
-        /// <summary>Pushes this phone's car off any car it touches and tells that car's phone, in case it missed the contact.</summary>
-        private void ResolveBumps(CarController car)
+        /// <summary>
+        /// Pushes <paramref name="playerId"/>'s car, this phone's own or a bot's, off the other phones' cars it touches,
+        /// which have no collider here (design doc §2.2), and tells their phones in case they missed the contact. Returns
+        /// the cars it bumped, for Monster Jam's crushes, in a list the next call reuses.
+        /// </summary>
+        public List<OtherCar> BumpOffRemotes(CarController car, byte playerId, BumpMonitor monitor)
         {
             _others.Clear();
             foreach (var pair in _remotes)
@@ -385,7 +400,8 @@ namespace CarRacer.Game.Net
             }
 
             _bumps.Clear();
-            _bumpMonitor.Step(_me, car.BodyPosition.ToCore(), car.BodyVelocity.ToCore(), _others, NetworkSession.NowMs, _bumps);
+            _bumped.Clear();
+            monitor.Step(playerId, car.BodyPosition.ToCore(), car.BodyVelocity.ToCore(), _others, NetworkSession.NowMs, _bumps);
             foreach (var bump in _bumps)
             {
                 car.AddImpulse(bump.SelfImpulse.ToUnity());
@@ -395,10 +411,12 @@ namespace CarRacer.Game.Net
                 {
                     if (other.PlayerId == bump.OtherPlayerId)
                     {
-                        ReportCrush(car.BodyVelocity.ToCore(), other.PlayerId, other.Position, other.Velocity);
+                        _bumped.Add(other);
                     }
                 }
             }
+
+            return _bumped;
         }
 
         private bool ScoringStunts => _session.Race != null && _session.Race.Mode == GameMode.Monster && _session.Race.Phase == RacePhase.Racing;
@@ -524,29 +542,6 @@ namespace CarRacer.Game.Net
             }
 
             _sendTimer = Mathf.Min(_sendTimer - SendIntervalSeconds, SendIntervalSeconds);
-            var state = car.State;
-            var flags = CarStateFlags.None;
-            if (state.Drifting)
-            {
-                flags |= CarStateFlags.Drifting;
-            }
-
-            if (state.BoostSecondsLeft > 0f)
-            {
-                flags |= CarStateFlags.Boosting;
-            }
-
-            if (_shield.IsUp)
-            {
-                flags |= CarStateFlags.Shielded;
-            }
-
-            if (state.SpunOut)
-            {
-                flags |= CarStateFlags.SpunOut;
-            }
-
-            flags |= DamageFlags.For(car.Damage.SmokeLevel, car.Damage.Wrecked);
             _session.SendCarState(new CarStateMessage
             {
                 PlayerId = _me,
@@ -554,8 +549,8 @@ namespace CarRacer.Game.Net
                 SentAtMs = now,
                 Position = car.BodyPosition.ToCore(),
                 Velocity = car.BodyVelocity.ToCore(),
-                HeadingRadians = state.Heading,
-                Flags = flags,
+                HeadingRadians = car.State.Heading,
+                Flags = CarFlags.For(car.State, _shield.IsUp, car.Damage),
             });
         }
 

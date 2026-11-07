@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using CarRacer.Core.Driving;
 using CarRacer.Core.Numerics;
 
 namespace CarRacer.Core.Net
@@ -77,6 +78,36 @@ namespace CarRacer.Core.Net
             (flags & CarStateFlags.SmokeHeavy) != 0 ? 2 : (flags & CarStateFlags.SmokeLight) != 0 ? 1 : 0;
 
         public static bool Wrecked(CarStateFlags flags) => (flags & CarStateFlags.Wrecked) != 0;
+    }
+
+    /// <summary>The flags a car's owner sends with its state, the same for a player's car as for a bot's (design doc §9).</summary>
+    public static class CarFlags
+    {
+        public static CarStateFlags For(CarState state, bool shielded, CarDamage damage)
+        {
+            var flags = DamageFlags.For(damage.SmokeLevel, damage.Wrecked);
+            if (state.Drifting)
+            {
+                flags |= CarStateFlags.Drifting;
+            }
+
+            if (state.BoostSecondsLeft > 0f)
+            {
+                flags |= CarStateFlags.Boosting;
+            }
+
+            if (shielded)
+            {
+                flags |= CarStateFlags.Shielded;
+            }
+
+            if (state.SpunOut)
+            {
+                flags |= CarStateFlags.SpunOut;
+            }
+
+            return flags;
+        }
     }
 
     public interface IGameMessage
