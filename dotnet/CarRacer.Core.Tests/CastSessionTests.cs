@@ -126,6 +126,46 @@ namespace CarRacer.Core.Tests
             Assert.Equal(CastState.Stopped, session.State);
         }
 
+        [Fact]
+        public void StoppingWhileLaunchingClosesThePlayerOnceItIsUp()
+        {
+            var session = new CastSession("Lounge", takeOver: false);
+            session.Begin(Url, 0);
+            session.Handle(Status(), 1);
+            Assert.Equal(CastState.Launching, session.State);
+
+            // Nothing to close yet, so it waits for the TV to report the player.
+            Assert.Empty(session.Stop());
+            Assert.Empty(session.Stop());
+            Assert.False(session.Finished);
+
+            var stop = Assert.Single(session.Handle(Status(App(CastSession.MediaReceiverAppId, "Default Media Receiver", idle: false, session: "s9")), 2));
+            Assert.Equal("STOP", stop.PayloadType);
+            Assert.Contains("\"sessionId\":\"s9\"", stop.Payload);
+            Assert.Equal(CastState.Stopped, session.State);
+        }
+
+        [Fact]
+        public void StoppingWhileLaunchingEndsAnywayIfThePlayerNeverAppears()
+        {
+            var session = new CastSession("Lounge", takeOver: false);
+            session.Begin(Url, 0);
+            session.Handle(Status(), 1);
+            session.Stop();
+            session.Handle(new CastMessage(CastSession.ReceiverId, CastSession.SenderId, CastMessage.HeartbeatNamespace, "{\"type\":\"PING\"}"), CastSession.StepTimeoutMs);
+            session.Tick(CastSession.StepTimeoutMs + 2);
+            Assert.Equal(CastState.Stopped, session.State);
+        }
+
+        [Fact]
+        public void StoppingBeforeLaunchingSendsNothing()
+        {
+            var session = new CastSession("Lounge", takeOver: false);
+            session.Begin(Url, 0);
+            Assert.Empty(session.Stop());
+            Assert.Equal(CastState.Stopped, session.State);
+        }
+
         internal static CastSession Playing()
         {
             var session = new CastSession("Lounge", takeOver: false);
@@ -227,6 +267,23 @@ namespace CarRacer.Core.Tests
             using var connection = new CastConnection(new CastDevice { Name = "Gone", Address = IPAddress.Loopback, Port = port }, _ => "http://x/", "Lounge", false);
             Assert.True(SpinWait.SpinUntil(() => connection.Finished, 10_000));
             Assert.Equal(CastState.Failed, connection.State);
+        }
+
+        [Fact]
+        public void ATvThatNeverFinishesTheHandshakeFails()
+        {
+            // Accepts the TCP connection, then says nothing.
+            var listener = new TcpListener(IPAddress.Loopback, 0);
+            listener.Start();
+            TcpClient held = null;
+            var accept = new Thread(() => held = listener.AcceptTcpClient()) { IsBackground = true };
+            accept.Start();
+            var device = new CastDevice { Name = "Mute", Address = IPAddress.Loopback, Port = ((IPEndPoint)listener.LocalEndpoint).Port };
+            using var connection = new CastConnection(device, _ => "http://x/", "Lounge", takeOver: false);
+            Assert.True(SpinWait.SpinUntil(() => connection.Finished, CastConnection.ConnectTimeoutMs + 5_000));
+            Assert.Equal(CastState.Failed, connection.State);
+            held?.Dispose();
+            listener.Stop();
         }
 
         private static X509Certificate2 SelfSigned()

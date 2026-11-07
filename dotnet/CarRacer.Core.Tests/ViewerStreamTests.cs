@@ -78,6 +78,26 @@ namespace CarRacer.Core.Tests
         }
     }
 
+    public class TvCastPlanAlreadyShowingTests
+    {
+        [Fact]
+        public void RequestingTheTvAlreadyShowingQueuesNoTakeOver()
+        {
+            var tvs = new List<CastDevice> { new CastDevice { Id = "b", Name = "Living Room TV", Address = IPAddress.Parse("10.0.0.3") } };
+            var plan = new TvCastPlan();
+            plan.Request("Living Room TV", takeOver: true, alreadyShowing: true);
+            Assert.Equal("Living Room TV", plan.Wanted);
+
+            // Someone else takes the TV and our cast ends: no take-over follows on its own.
+            Assert.Null(plan.Next(tvs, casting: false, true, out _));
+
+            // The next countdown still tries again, politely.
+            plan.EventStarting(casting: false);
+            Assert.NotNull(plan.Next(tvs, casting: false, true, out bool takeOver));
+            Assert.False(takeOver);
+        }
+    }
+
     public class ViewerHttpServerTests : IDisposable
     {
         private readonly string _folder = Path.Combine(Path.GetTempPath(), "viewer-http-" + Guid.NewGuid().ToString("N"));
