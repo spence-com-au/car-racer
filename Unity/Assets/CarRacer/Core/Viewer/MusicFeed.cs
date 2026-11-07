@@ -161,7 +161,7 @@ namespace CarRacer.Core.Viewer
 
                 try
                 {
-                    var info = new ProcessStartInfo(ffmpegPath, $"-hide_banner -loglevel error -nostdin -stream_loop -1 -i \"{file}\" -f s16le -ar {SampleRate} -ac {Channels} pipe:1")
+                    var info = new ProcessStartInfo(ffmpegPath, $"-hide_banner -loglevel error -nostdin -stream_loop -1 -i {ViewerStream.Quote(file)} -f s16le -ar {SampleRate} -ac {Channels} pipe:1")
                     {
                         UseShellExecute = false,
                         RedirectStandardOutput = true,

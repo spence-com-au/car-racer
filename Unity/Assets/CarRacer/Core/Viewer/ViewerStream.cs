@@ -7,6 +7,7 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
+using CarRacer.Core.Session;
 
 namespace CarRacer.Core.Viewer
 {
@@ -115,7 +116,7 @@ namespace CarRacer.Core.Viewer
             }
             catch (Win32Exception)
             {
-                error = $"ffmpeg not found (\"{ffmpegPath}\"); install it, or point -ffmpeg at it";
+                error = NotFound(ffmpegPath);
             }
             catch (Exception e) when (e is IOException || e is UnauthorizedAccessException || e is InvalidOperationException || e is SocketException)
             {
@@ -179,7 +180,7 @@ namespace CarRacer.Core.Viewer
             }
             catch (Win32Exception)
             {
-                error = $"ffmpeg not found (\"{ffmpegPath}\"); install it, or point -ffmpeg at it";
+                error = NotFound(ffmpegPath);
             }
             catch (InvalidOperationException e)
             {
@@ -350,6 +351,9 @@ namespace CarRacer.Core.Viewer
             _ffmpeg.Dispose();
         }
 
-        private static string Quote(string path) => "\"" + path.Replace("\"", "\\\"") + "\"";
+        /// <summary>A path as one ffmpeg argument, for a command line joined with spaces.</summary>
+        internal static string Quote(string path) => "\"" + path.Replace("\"", "\\\"") + "\"";
+
+        private static string NotFound(string ffmpegPath) => $"ffmpeg not found (\"{ffmpegPath}\"); install it, or point {ServerOptions.FfmpegFlag} at it";
     }
 }
