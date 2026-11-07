@@ -32,6 +32,8 @@ namespace CarRacer.Game.Platform
             }
         }
 
+        public static string Label => Enabled ? "Haptics: on" : "Haptics: off";
+
         public static void Play(HapticPulse pulse)
         {
             if (!Enabled || pulse.Milliseconds <= 0)

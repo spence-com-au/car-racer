@@ -335,10 +335,9 @@ namespace CarRacer.Game.Menu
                 Setting(GraphicsQuality.Label, GraphicsQuality.Cycle),
                 Setting(PerfOverlay.Label, () => PerfOverlay.Visible = !PerfOverlay.Visible)));
 
-            bool auto = PlayerPrefs.GetInt(PlayerCarInput.AutoAccelerateKey, 1) != 0;
             panel.Add(UiKit.EvenRow(
-                Setting(Vibration.Enabled ? "Haptics: on" : "Haptics: off", () => Vibration.Enabled = !Vibration.Enabled),
-                Setting(auto ? "Auto-accelerate: on" : "Auto-accelerate: off", () => PlayerPrefs.SetInt(PlayerCarInput.AutoAccelerateKey, auto ? 0 : 1))));
+                Setting(Vibration.Label, () => Vibration.Enabled = !Vibration.Enabled),
+                Setting(PlayerCarInput.AutoAccelerateLabel, () => PlayerCarInput.AutoAccelerateEnabled = !PlayerCarInput.AutoAccelerateEnabled)));
             panel.Add(UiKit.EvenRow(
                 Setting(PlayerCarInput.TiltEnabled ? "Tilt steering: on" : "Tilt steering: off", () => PlayerCarInput.TiltEnabled = !PlayerCarInput.TiltEnabled),
                 UiKit.Button("Accessibility", () => GoTo(Page.Accessibility))));
