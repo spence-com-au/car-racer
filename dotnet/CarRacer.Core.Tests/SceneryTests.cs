@@ -72,6 +72,65 @@ namespace CarRacer.Core.Tests
             }
         }
 
+        private static float Radius(PropPlacement p)
+        {
+            switch (p.Model)
+            {
+                case TrackScenery.StandModel:
+                    return TrackScenery.StandRadius;
+                case TrackScenery.TowerRed:
+                case TrackScenery.TowerGreen:
+                    return TrackScenery.TowerRadius;
+                default:
+                    return p.Scale * 0.25f;
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(Tracks))]
+        public void SceneryNeverOverlapsOtherScenery(int track)
+        {
+            var pieces = TrackScenery.Place(TrackCatalog.Layouts[track].Spline, Width).Where(p => p.Model != TrackScenery.Gantry).ToList();
+            for (int i = 0; i < pieces.Count; i++)
+            {
+                for (int j = i + 1; j < pieces.Count; j++)
+                {
+                    float dx = pieces[i].Position.X - pieces[j].Position.X;
+                    float dz = pieces[i].Position.Z - pieces[j].Position.Z;
+                    float reach = Radius(pieces[i]) + Radius(pieces[j]);
+                    Assert.True(dx * dx + dz * dz >= reach * reach, $"{pieces[i].Model} at {pieces[i].Position} and {pieces[j].Model} at {pieces[j].Position} on track {track}");
+                }
+            }
+        }
+
+        [Fact]
+        public void SomeTracksHaveRaisedOrSunkenRoad()
+        {
+            Assert.Contains(
+                Enumerable.Range(0, TrackCatalog.Layouts.Count),
+                track => TrackCatalog.Layouts[track].Spline.SampleEvenly(1f).Any(s => Math.Abs(s.Position.Y) > TrackScenery.MaxRoadHeight));
+        }
+
+        [Theory]
+        [MemberData(nameof(Tracks))]
+        public void SceneryStaysAwayFromRaisedAndSunkenRoad(int track)
+        {
+            var spline = TrackCatalog.Layouts[track].Spline;
+
+            // Sampled every 4 m, as placement does; a finer sample finds slivers of height that it never saw.
+            var uneven = spline.SampleEvenly(4f).Where(s => Math.Abs(s.Position.Y) > TrackScenery.MaxRoadHeight).ToList();
+            foreach (var p in TrackScenery.Place(spline, Width).Where(p => p.Model != TrackScenery.Gantry))
+            {
+                foreach (var s in uneven)
+                {
+                    float dx = s.Position.X - p.Position.X;
+                    float dz = s.Position.Z - p.Position.Z;
+                    float near = s.Width / 2f + TrackScenery.Clearance + Radius(p) + 10f;
+                    Assert.True(dx * dx + dz * dz >= near * near, $"{p.Model} at {p.Position} on track {track}");
+                }
+            }
+        }
+
         [Fact]
         public void TheOvalHasGrandstandsFacingTheStartStraight()
         {
