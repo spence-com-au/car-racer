@@ -149,7 +149,7 @@ namespace CarRacer.Core.Viewer
             scene.Phase = phase == RacePhase.Countdown ? ViewerPhase.Countdown : ViewerPhase.Racing;
             scene.Title = EventText.EventName(race.Mode, scene.TrackIndex);
             scene.Clock = ClockText(race.Mode, sinceStartMs);
-            scene.Countdown = CountdownText(sinceStartMs);
+            scene.Countdown = EventText.Countdown(phase, -sinceStartMs);
 
             var places = new Dictionary<byte, int>();
             if (race.Standings != null && race.Standings.Order.Count > 0)
@@ -225,38 +225,12 @@ namespace CarRacer.Core.Viewer
             }
         }
 
-        /// <summary>"3", "2", "1" before the start, "GO!" for a second after it, otherwise null.</summary>
-        public static string CountdownText(long sinceStartMs)
-        {
-            if (sinceStartMs < -HostRace.CountdownMs)
-            {
-                return null;
-            }
-
-            if (sinceStartMs < 0)
-            {
-                return ((-sinceStartMs + 999) / 1000).ToString(System.Globalization.CultureInfo.InvariantCulture);
-            }
-
-            return sinceStartMs < 1000 ? "GO!" : null;
-        }
-
         /// <summary>The time since the start, or in Battle and Monster Jam the time left.</summary>
         public static string ClockText(GameMode mode, long sinceStartMs)
         {
             long elapsed = Math.Max(0, sinceStartMs);
             long limit = mode == GameMode.Battle ? BattleRules.TimeLimitMs : mode == GameMode.Monster ? MonsterRules.TimeLimitMs : 0;
-            return Time(limit > 0 ? Math.Max(0, limit - elapsed) : elapsed, tenths: false);
-        }
-
-        /// <summary>"1:05" or, with tenths, "1:05.3".</summary>
-        public static string Time(long ms, bool tenths)
-        {
-            ms = Math.Max(0, ms);
-            long minutes = ms / 60000;
-            long seconds = ms / 1000 % 60;
-            string text = minutes + ":" + seconds.ToString("00", System.Globalization.CultureInfo.InvariantCulture);
-            return tenths ? text + "." + (ms / 100 % 10) : text;
+            return RaceFormat.Clock(limit > 0 ? Math.Max(0, limit - elapsed) : elapsed);
         }
 
         private static string StandingDetail(GameMode mode, int lapCount, StandingsEntry entry)

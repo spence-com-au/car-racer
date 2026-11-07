@@ -34,6 +34,23 @@ namespace CarRacer.Core.Race
             return rules.Length == 0 ? what : what + ". " + rules;
         }
 
+        /// <summary>
+        /// The big countdown, the same on the phones and the TV: "3", "2", "1" in the last
+        /// <see cref="HostRace.CountdownMs"/> before the start, then "GO!" for a second; otherwise
+        /// null. <paramref name="msToGo"/> is the time until the start (negative once it has passed).
+        /// </summary>
+        public static string Countdown(RacePhase phase, long msToGo)
+        {
+            if (msToGo > 0)
+            {
+                return phase == RacePhase.Countdown && msToGo <= HostRace.CountdownMs
+                    ? ((msToGo + 999) / 1000).ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    : null;
+            }
+
+            return (phase == RacePhase.Countdown || phase == RacePhase.Racing) && msToGo > -1000 ? "GO!" : null;
+        }
+
         /// <summary>Only the rules that are off: "Rules: no damage, equal cars", or nothing.</summary>
         public static string RulesNote(EventRules rules)
         {

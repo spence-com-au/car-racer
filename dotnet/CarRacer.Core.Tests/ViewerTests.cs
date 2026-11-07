@@ -101,17 +101,6 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
-        public void CountdownCountsDownThenSaysGo()
-        {
-            Assert.Null(ViewerScene.CountdownText(-3500));
-            Assert.Equal("3", ViewerScene.CountdownText(-2999));
-            Assert.Equal("1", ViewerScene.CountdownText(-1));
-            Assert.Equal("GO!", ViewerScene.CountdownText(0));
-            Assert.Equal("GO!", ViewerScene.CountdownText(999));
-            Assert.Null(ViewerScene.CountdownText(1000));
-        }
-
-        [Fact]
         public void BeforeStandingsEveryoneIsInGridOrder()
         {
             var race = new FakeRaceView { Phase = RacePhase.Countdown, StartAtLocalMs = 10_000 };
@@ -207,6 +196,29 @@ namespace CarRacer.Core.Tests
             Assert.Equal("Battle", EventText.EventName(GameMode.Battle, 3));
             Assert.Equal(string.Empty, EventText.RulesNote(EventRules.Default));
             Assert.Equal("Rules: no items", EventText.RulesNote(new EventRules(true, false, true)));
+        }
+
+        [Fact]
+        public void CountdownCountsDownThenSaysGo()
+        {
+            Assert.Null(EventText.Countdown(RacePhase.Countdown, 3500));
+            Assert.Equal("3", EventText.Countdown(RacePhase.Countdown, 2999));
+            Assert.Equal("1", EventText.Countdown(RacePhase.Countdown, 1));
+
+            // The phase and the clock can disagree for a frame either way; it says GO! as the clock reaches the start.
+            Assert.Equal("GO!", EventText.Countdown(RacePhase.Countdown, 0));
+            Assert.Equal("GO!", EventText.Countdown(RacePhase.Racing, -999));
+            Assert.Null(EventText.Countdown(RacePhase.Racing, -1000));
+            Assert.Null(EventText.Countdown(RacePhase.Racing, 500));
+            Assert.Null(EventText.Countdown(RacePhase.Results, 0));
+        }
+
+        [Fact]
+        public void ClocksAreWholeSeconds()
+        {
+            Assert.Equal("1:05", RaceFormat.Clock(65_999));
+            Assert.Equal("0:00", RaceFormat.Clock(-5));
+            Assert.Equal("12:00", RaceFormat.Clock(720_000));
         }
 
         [Fact]
