@@ -119,12 +119,27 @@ jobs:
       - name: 'Smoke-test the server'
         run: |
           sudo chown -R "$(id -u):$(id -g)" build
-          cp server/run-server.sh build/StandaloneLinux64/
+          cp server/run-server.sh server/Dockerfile build/StandaloneLinux64/
           ls -la build/StandaloneLinux64
           timeout 30 build/StandaloneLinux64/run-server.sh -port 47901 -name "CI" > server.log 2>&1 || true
           tail -n 40 server.log
           grep -q 'Car Racer server "CI" on port 47901' server.log
           ! grep -q 'Hosting stopped' server.log
+
+      # The release packages and containerises the same files, but only after the tag exists, so a mistake in
+      # either would otherwise surface mid-release. Keep the packaging command in step with release.yaml.
+      - name: 'Check the release packaging'
+        run: |
+          tar -czf server.tar.gz --transform "s,^build/StandaloneLinux64,car-racer-server," build/StandaloneLinux64
+          tar -tzf server.tar.gz | grep -qx 'car-racer-server/run-server.sh'
+          docker build --tag car-racer-server-ci build/StandaloneLinux64
+          docker run --rm --entrypoint ffmpeg car-racer-server-ci -version
+          docker run --detach --name car-racer-server-ci --network host car-racer-server-ci -port 47902 -name "CI"
+          sleep 30
+          docker logs car-racer-server-ci 2>&1 | tee image.log
+          docker rm --force car-racer-server-ci
+          grep -q 'Car Racer server "CI" on port 47902' image.log
+          ! grep -q 'Hosting stopped' image.log
 
       - uses: 'actions/upload-artifact@v4.6.2'
         with:
