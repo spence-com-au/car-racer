@@ -17,6 +17,12 @@ namespace CarRacer.Core.Session
     {
         public const int MaxLaps = 9;
 
+        /// <summary>The last mode the lobby offers, shared by <see cref="NextMode"/> and <see cref="Clean"/> so they agree.</summary>
+        public const GameMode LastMode = GameMode.Monster;
+
+        /// <summary>The last bot difficulty the lobby offers, shared by <see cref="NextDifficulty"/> and <see cref="Clean"/>.</summary>
+        public const BotDifficulty HardestBots = BotDifficulty.Hard;
+
         /// <summary>The bot fill choices the lobby steps through (design doc §9): off, or fill the grid to 4 or 6 cars.</summary>
         public static readonly int[] BotFills = { 0, 4, 6 };
 
@@ -44,15 +50,21 @@ namespace CarRacer.Core.Session
         /// <summary>True when the lobby is set up for a cup rather than a single event.</summary>
         public bool CupChosen => Cup > 0;
 
+        /// <summary>The mode after <paramref name="mode"/> in the lobby's mode button, wrapping back to a race.</summary>
+        public static GameMode NextMode(GameMode mode) => mode >= LastMode ? GameMode.Race : mode + 1;
+
+        /// <summary>The difficulty after <paramref name="difficulty"/> in the lobby's bot button, wrapping back to easy.</summary>
+        public static BotDifficulty NextDifficulty(BotDifficulty difficulty) => difficulty >= HardestBots ? BotDifficulty.Easy : difficulty + 1;
+
         /// <summary>These settings with anything out of range brought back in, so a bad value from a phone can't break the host.</summary>
         public LobbySettings Clean()
         {
             var clean = this;
-            clean.Mode = (byte)Mode <= (byte)GameMode.Monster ? Mode : GameMode.Race;
+            clean.Mode = Mode <= LastMode ? Mode : GameMode.Race;
             clean.Laps = Math.Max(1, Math.Min(MaxLaps, Laps));
             clean.Track = TrackCatalog.Clamp(Track);
             clean.BotFill = Math.Max(0, Math.Min(LobbyRoster.MaxPlayers, BotFill));
-            clean.BotDifficulty = (byte)BotDifficulty <= (byte)BotDifficulty.Hard ? BotDifficulty : BotDifficulty.Normal;
+            clean.BotDifficulty = BotDifficulty <= HardestBots ? BotDifficulty : BotDifficulty.Normal;
             clean.Cup = Cup >= 0 && Cup <= Cups.All.Count ? Cup : 0;
             return clean;
         }
