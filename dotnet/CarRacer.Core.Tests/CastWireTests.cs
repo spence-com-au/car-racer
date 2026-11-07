@@ -141,6 +141,15 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void SpeakersAndGroupsAreNotTvs()
+        {
+            var speaker = Reply("Google-Home-x", "Kitchen speaker", "Google Home", "x", null, 8009, includeAddress: false, capabilities: "2052");
+            Assert.Empty(Mdns.ParseReply(speaker, speaker.Length, IPAddress.Loopback));
+            var unknown = Reply("Chromecast-y", "Den", "Chromecast", "y", null, 8009, includeAddress: false, capabilities: null);
+            Assert.Single(Mdns.ParseReply(unknown, unknown.Length, IPAddress.Loopback));
+        }
+
+        [Fact]
         public void BrokenRepliesGiveNothing()
         {
             var reply = Reply("Chromecast-abc123", "Living Room TV", "Chromecast", "abc123", new byte[] { 192, 168, 1, 50 }, 8009, includeAddress: true);
@@ -190,7 +199,7 @@ namespace CarRacer.Core.Tests
         }
 
         /// <summary>A reply as a Chromecast sends it: PTR answer, then SRV, TXT and A records, names compressed.</summary>
-        internal static byte[] Reply(string instance, string name, string model, string id, byte[] address, int port, bool includeAddress)
+        internal static byte[] Reply(string instance, string name, string model, string id, byte[] address, int port, bool includeAddress, string capabilities = "4101")
         {
             var b = new List<byte> { 0, 0, 0x84, 0, 0, 0, 0, 1, 0, 0, 0, (byte)(includeAddress ? 3 : 2) };
             int service = b.Count;
@@ -216,7 +225,13 @@ namespace CarRacer.Core.Tests
             b.Add((byte)instanceAt);
             Header(b, 16);
             var txt = new List<byte>();
-            foreach (string entry in new[] { "id=" + id, "md=" + model, "fn=" + name, "bad" })
+            var entries = new List<string> { "id=" + id, "md=" + model, "fn=" + name, "bad" };
+            if (capabilities != null)
+            {
+                entries.Add("ca=" + capabilities);
+            }
+
+            foreach (string entry in entries)
             {
                 txt.Add((byte)Encoding.UTF8.GetByteCount(entry));
                 txt.AddRange(Encoding.UTF8.GetBytes(entry));
