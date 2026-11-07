@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using CarRacer.Core.Bots;
 using CarRacer.Core.Driving;
 using CarRacer.Core.Items;
+using CarRacer.Core.Net;
 using CarRacer.Core.Numerics;
 using CarRacer.Core.Track;
 using Xunit;
@@ -169,6 +170,68 @@ namespace CarRacer.Core.Tests
             Assert.True(BotItems.ShouldUse(ItemKind.Missile, t, Normal, chasing));
             chasing.HasCarAhead = false; // leading: a Missile would fly off straight
             Assert.False(BotItems.ShouldUse(ItemKind.Missile, t, Normal, chasing));
+        }
+
+        [Fact]
+        public void ObserveSplitsRivalsAheadAndBehindOnTheirOffsetAlongTheHeading()
+        {
+            var forward = new Vec3(0f, 0f, 1f);
+            var rivals = new List<Vec3> { new Vec3(0f, 0f, 30f), new Vec3(0f, 0f, 12f), new Vec3(0f, 0f, -5f), new Vec3(0f, 0f, -9f) };
+
+            var situation = BotItems.Observe(Vec3.Zero, forward, rivals, 0f, null, 1);
+
+            Assert.Equal(12f, situation.NearestAhead);
+            Assert.Equal(5f, situation.NearestBehind);
+        }
+
+        [Fact]
+        public void ObserveCountsARivalBesideTheBotAsAhead()
+        {
+            var situation = BotItems.Observe(Vec3.Zero, new Vec3(0f, 0f, 1f), new List<Vec3> { new Vec3(4f, 0f, 0f) }, 0f, null, 1);
+
+            Assert.Equal(4f, situation.NearestAhead);
+            Assert.True(float.IsPositiveInfinity(situation.NearestBehind));
+        }
+
+        [Fact]
+        public void ObserveIgnoresHeightWhenMeasuringDistance()
+        {
+            var situation = BotItems.Observe(Vec3.Zero, new Vec3(0f, 0f, 1f), new List<Vec3> { new Vec3(0f, 50f, 3f) }, 0f, null, 1);
+
+            Assert.Equal(3f, situation.NearestAhead);
+        }
+
+        [Fact]
+        public void ObserveSeesNobodyWithoutRivals()
+        {
+            var situation = BotItems.Observe(Vec3.Zero, new Vec3(0f, 0f, 1f), new List<Vec3>(), 0f, null, 1);
+
+            Assert.True(float.IsPositiveInfinity(situation.NearestAhead));
+            Assert.True(float.IsPositiveInfinity(situation.NearestBehind));
+        }
+
+        [Fact]
+        public void ObserveTreatsGentleCurvatureAsAStraight()
+        {
+            var none = new List<Vec3>();
+
+            Assert.True(BotItems.Observe(Vec3.Zero, Vec3.Zero, none, 0f, null, 1).OnStraight);
+            Assert.True(BotItems.Observe(Vec3.Zero, Vec3.Zero, none, BotItems.StraightCurvature - 0.001f, null, 1).OnStraight);
+            Assert.False(BotItems.Observe(Vec3.Zero, Vec3.Zero, none, BotItems.StraightCurvature, null, 1).OnStraight);
+        }
+
+        [Fact]
+        public void ObserveHasACarAheadUnlessTheBotLeadsOrNoStandingsExist()
+        {
+            var none = new List<Vec3>();
+            var standings = new StandingsMessage();
+            standings.Order.Add(new StandingsEntry { PlayerId = 7 });
+            standings.Order.Add(new StandingsEntry { PlayerId = 1 });
+
+            Assert.True(BotItems.Observe(Vec3.Zero, Vec3.Zero, none, 0f, standings, 1).HasCarAhead);
+            Assert.False(BotItems.Observe(Vec3.Zero, Vec3.Zero, none, 0f, standings, 7).HasCarAhead);
+            Assert.False(BotItems.Observe(Vec3.Zero, Vec3.Zero, none, 0f, new StandingsMessage(), 1).HasCarAhead);
+            Assert.False(BotItems.Observe(Vec3.Zero, Vec3.Zero, none, 0f, null, 1).HasCarAhead);
         }
 
         [Fact]
