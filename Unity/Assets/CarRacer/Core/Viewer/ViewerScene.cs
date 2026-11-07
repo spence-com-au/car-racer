@@ -138,7 +138,7 @@ namespace CarRacer.Core.Viewer
                         Place = result.Position,
                         Name = result.Name,
                         Colour = ColourOf(names, result.PlayerId),
-                        Detail = ResultDetail(race.Mode, result),
+                        Detail = EventText.ResultDetail(race.Mode, result),
                         Dim = result.DidNotFinish,
                     });
                 }
@@ -246,16 +246,6 @@ namespace CarRacer.Core.Viewer
                 default:
                     return entry.FinishPosition > 0 ? "Finished" : $"Lap {Math.Min(entry.LapsCompleted + 1, Math.Max(1, lapCount))}/{lapCount}";
             }
-        }
-
-        private static string ResultDetail(GameMode mode, RaceResultEntry result)
-        {
-            if (mode == GameMode.Monster)
-            {
-                return result.Points + " pts";
-            }
-
-            return result.DidNotFinish ? "DNF" : RaceFormat.Time(result.RaceTimeMs);
         }
 
         private static Rgb ColourOf(Dictionary<byte, RosterEntry> players, byte playerId) =>
