@@ -17,12 +17,17 @@ namespace CarRacer.Core.Cast
         /// <summary>The TV wanted: a name, id or address, or empty for the first one found; null for none.</summary>
         public string Wanted { get; private set; }
 
-        /// <summary>Casts to <paramref name="wanted"/> as soon as it can; <paramref name="takeOver"/> for the leader's own request.</summary>
-        public void Request(string wanted, bool takeOver)
+        /// <summary>
+        /// Casts to <paramref name="wanted"/> as soon as it can; <paramref name="takeOver"/> for the
+        /// leader's own request. When <paramref name="alreadyShowing"/> (that TV is being cast to
+        /// now), it is only remembered: nothing is queued, so a take-over can't fire later, after
+        /// someone else has taken the TV.
+        /// </summary>
+        public void Request(string wanted, bool takeOver, bool alreadyShowing = false)
         {
             Wanted = wanted ?? string.Empty;
-            _pending = true;
-            _takeOver = takeOver;
+            _pending = !alreadyShowing;
+            _takeOver = takeOver && !alreadyShowing;
         }
 
         /// <summary>An event's countdown began: casts again to the wanted TV if nothing is being cast, politely.</summary>

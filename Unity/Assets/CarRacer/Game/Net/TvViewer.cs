@@ -72,12 +72,14 @@ namespace CarRacer.Game.Net
         /// </summary>
         public void CastTo(string wanted, bool takeOver)
         {
-            if (_cast != null && !_cast.Finished && !_cast.Device.Matches(wanted ?? string.Empty))
+            bool casting = _cast != null && !_cast.Finished;
+            bool same = casting && _cast.Device.Matches(wanted ?? string.Empty);
+            if (casting && !same)
             {
                 _cast.Stop();
             }
 
-            _plan.Request(wanted, takeOver);
+            _plan.Request(wanted, takeOver, alreadyShowing: same);
             Debug.Log(string.IsNullOrEmpty(wanted) ? "Casting to the first TV found" : $"Casting to \"{wanted}\"");
         }
 
@@ -116,7 +118,9 @@ namespace CarRacer.Game.Net
             {
                 _cast?.Dispose();
                 Debug.Log($"Casting to {device.Name}{(takeOver ? " (taking over)" : string.Empty)}");
-                _cast = new CastConnection(device, address => _http.UrlFor(address), _options.Name, takeOver);
+                // The cast thread asks for the URL after connecting; StopStreaming may have cleared _http by then.
+                var http = _http;
+                _cast = new CastConnection(device, address => http.UrlFor(address), _options.Name, takeOver);
                 _loggedState = null;
             }
 
