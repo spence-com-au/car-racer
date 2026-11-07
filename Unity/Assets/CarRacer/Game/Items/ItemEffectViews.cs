@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using CarRacer.Core.Items;
 using CarRacer.Core.Net;
 using CarRacer.Game.Audio;
-using CarRacer.Game.Net;
 using UnityEngine;
 
 namespace CarRacer.Game.Items
