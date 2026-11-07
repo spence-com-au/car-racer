@@ -734,20 +734,7 @@ namespace CarRacer.Game.Net
         private void UpdateRace(IRaceView race, byte me)
         {
             long msToGo = race.StartAtLocalMs - NetworkSession.NowMs;
-            string big = null;
-            if (race.Phase == RacePhase.Countdown)
-            {
-                if (msToGo <= HostRace.CountdownMs)
-                {
-                    big = ((msToGo + 999) / 1000).ToString();
-                }
-            }
-            else if (msToGo > -1000)
-            {
-                big = "GO!";
-            }
-
-            Show(_countdown, big);
+            Show(_countdown, EventText.Countdown(race.Phase, msToGo));
             Show(_stunt, Time.unscaledTime < _stuntUntil ? _stuntText : null);
             if (race.Mode == GameMode.Monster)
             {
