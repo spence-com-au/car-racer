@@ -97,6 +97,7 @@ namespace CarRacer.Game.Screens
 
         private void Build(ICarInputSource inputOverride, System.Func<NetworkSession> startSession, bool server)
         {
+            // Fixed 50 Hz physics on every device (design doc §4).
             Time.fixedDeltaTime = 0.02f;
 
             var light = new GameObject("Sun").AddComponent<Light>();
