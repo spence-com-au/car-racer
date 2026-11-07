@@ -137,7 +137,7 @@ namespace CarRacer.Core.Tests
         public ItemFlowTests()
         {
             _host = new HostSession(_hostLink, "Host", Version, () => _now);
-            _hostRace = new HostRace(_host, 4, () => _now, id => 0f);
+            _hostRace = new HostRace(_host, new[] { 4 }, () => _now, id => 0f);
             _hostItems = new HostItems(_host, _hostRace, BoxPositions, () => _now, () => _nextRandom, _cars.TryGetValue);
             _host.HitReceived += _hostHits.Add;
             _hostItems.ItemUsed += _hostSaw.Add;

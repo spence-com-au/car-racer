@@ -59,8 +59,7 @@ namespace CarRacer.Core.Scoring
 
         /// <summary>
         /// Records an event result. <paramref name="finishingOrder"/> lists player keys from
-        /// first to last; for arenas use <see cref="ArenaFinishingOrder"/>. Registered players
-        /// missing from the order score nothing for this event.
+        /// first to last. Registered players missing from the order score nothing for this event.
         /// </summary>
         public void RecordEvent(IReadOnlyList<string> finishingOrder)
         {
@@ -119,23 +118,6 @@ namespace CarRacer.Core.Scoring
             if (reverseGrid)
             {
                 order.Reverse();
-            }
-
-            return order;
-        }
-
-        /// <summary>Arena results: the last car standing is first, then in reverse order of elimination.</summary>
-        public static IReadOnlyList<string> ArenaFinishingOrder(IReadOnlyList<string> eliminatedFirstToLast, string survivor)
-        {
-            var order = new List<string>();
-            if (survivor != null)
-            {
-                order.Add(survivor);
-            }
-
-            for (int i = eliminatedFirstToLast.Count - 1; i >= 0; i--)
-            {
-                order.Add(eliminatedFirstToLast[i]);
             }
 
             return order;

@@ -71,8 +71,6 @@ namespace CarRacer.Core.Track
         /// <summary>Lap length in metres along the centre line.</summary>
         public float Length { get; }
 
-        public int ControlPointCount => _points.Length;
-
         public float WrapDistance(float distance)
         {
             float d = distance % Length;

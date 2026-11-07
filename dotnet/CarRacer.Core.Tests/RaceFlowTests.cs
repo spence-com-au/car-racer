@@ -187,7 +187,7 @@ namespace CarRacer.Core.Tests
         public RaceFlowTests()
         {
             _session = new HostSession(_transport, "Host", Version, () => _now);
-            _race = new HostRace(_session, Checkpoints, () => _now, id => _fractions.TryGetValue(id, out float f) ? f : 0f);
+            _race = new HostRace(_session, new[] { Checkpoints }, () => _now, id => _fractions.TryGetValue(id, out float f) ? f : 0f);
 
             // One guest, whose clock runs 1,000,000 ms behind the host's.
             var link = new GuestLink { Host = _session, Connection = 7 };
