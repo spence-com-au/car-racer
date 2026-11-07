@@ -95,7 +95,7 @@ namespace CarRacer.Game.Arenas
             int n = 0;
             foreach (var ramp in ArenaLayout.MonsterRamps(ArenaLayout.MonsterCentre))
             {
-                var mesh = RampMesh(ramp);
+                var mesh = RampMeshBuilder.Build(ramp).ToUnityMesh("Ramp");
                 _meshes.Add(mesh);
                 var part = new GameObject($"Ramp {n++}");
                 part.transform.SetParent(transform, false);
@@ -104,40 +104,6 @@ namespace CarRacer.Game.Arenas
                 part.AddComponent<MeshCollider>().sharedMesh = mesh;
                 part.isStatic = true;
             }
-        }
-
-        /// <summary>A wedge: the slope up to the lip, a vertical back, and two triangular sides; flat-shaded.</summary>
-        private static Mesh RampMesh(Ramp ramp)
-        {
-            var forward = ramp.Forward.ToUnity();
-            var side = Vector3.Cross(Vector3.up, forward) * (ramp.Width / 2f);
-            var foot = ramp.Foot.ToUnity();
-            var lip = ramp.Lip.ToUnity();
-            var back = lip + Vector3.down * ramp.Height;
-            var vertices = new System.Collections.Generic.List<Vector3>();
-            var triangles = new System.Collections.Generic.List<int>();
-            void Face(params Vector3[] corners)
-            {
-                int start = vertices.Count;
-                vertices.AddRange(corners);
-                for (int i = 1; i + 1 < corners.Length; i++)
-                {
-                    triangles.Add(start);
-                    triangles.Add(start + i);
-                    triangles.Add(start + i + 1);
-                }
-            }
-
-            Face(foot - side, lip - side, lip + side, foot + side);
-            Face(back - side, back + side, lip + side, lip - side);
-            Face(foot - side, back - side, lip - side);
-            Face(foot + side, lip + side, back + side);
-            var mesh = new Mesh { name = "Ramp" };
-            mesh.SetVertices(vertices);
-            mesh.SetTriangles(triangles, 0);
-            mesh.RecalculateNormals();
-            mesh.RecalculateBounds();
-            return mesh;
         }
 
         private void OnDestroy()
