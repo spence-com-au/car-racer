@@ -327,7 +327,7 @@ namespace CarRacer.Core.Viewer
         {
             if (mode != GameMode.Race)
             {
-                float radius = mode == GameMode.Sumo ? SumoRules.StartRadius : mode == GameMode.Battle ? BattleRules.BowlRadius : MonsterRules.StadiumRadius;
+                float radius = ArenaLayout.StartRadiusFor(mode);
                 var centre = ArenaLayout.CentreFor(mode);
                 return MapView.Fit(centre.X - radius, centre.X + radius, centre.Z - radius, centre.Z + radius);
             }
