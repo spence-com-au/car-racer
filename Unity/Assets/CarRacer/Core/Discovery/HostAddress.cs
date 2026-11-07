@@ -67,7 +67,7 @@ namespace CarRacer.Core.Discovery
         /// </summary>
         public static IReadOnlyList<string> LocalIPv4Addresses()
         {
-            var result = new List<string>();
+            var candidates = new List<IPAddress>();
             try
             {
                 foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
@@ -79,7 +79,7 @@ namespace CarRacer.Core.Discovery
 
                     foreach (var unicast in nic.GetIPProperties().UnicastAddresses)
                     {
-                        Add(result, unicast.Address);
+                        candidates.Add(unicast.Address);
                     }
                 }
             }
@@ -88,7 +88,7 @@ namespace CarRacer.Core.Discovery
                 // NetworkInformationException, NotImplementedException, etc. on restricted platforms.
             }
 
-            if (result.Count == 0)
+            if (!candidates.Exists(IsUsable))
             {
                 try
                 {
@@ -96,7 +96,7 @@ namespace CarRacer.Core.Discovery
                     {
                         // Connecting a UDP socket only picks a route and local address; nothing is sent.
                         socket.Connect(new IPEndPoint(IPAddress.Parse("10.255.255.255"), DiscoveryConstants.DefaultGamePort));
-                        Add(result, ((IPEndPoint)socket.LocalEndPoint).Address);
+                        candidates.Add(((IPEndPoint)socket.LocalEndPoint).Address);
                     }
                 }
                 catch (SocketException)
@@ -105,21 +105,36 @@ namespace CarRacer.Core.Discovery
                 }
             }
 
+            return Usable(candidates);
+        }
+
+        /// <summary>
+        /// The distinct addresses worth showing, as text and in the order given: IPv4 only, no loopback and
+        /// not the unspecified address.
+        /// </summary>
+        public static IReadOnlyList<string> Usable(IEnumerable<IPAddress> addresses)
+        {
+            var result = new List<string>();
+            foreach (var address in addresses)
+            {
+                if (!IsUsable(address))
+                {
+                    continue;
+                }
+
+                string text = address.ToString();
+                if (!result.Contains(text))
+                {
+                    result.Add(text);
+                }
+            }
+
             return result;
         }
 
-        private static void Add(List<string> result, IPAddress address)
+        private static bool IsUsable(IPAddress address)
         {
-            if (address.AddressFamily != AddressFamily.InterNetwork || IPAddress.IsLoopback(address) || address.Equals(IPAddress.Any))
-            {
-                return;
-            }
-
-            string text = address.ToString();
-            if (!result.Contains(text))
-            {
-                result.Add(text);
-            }
+            return address.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(address) && !address.Equals(IPAddress.Any);
         }
     }
 }
