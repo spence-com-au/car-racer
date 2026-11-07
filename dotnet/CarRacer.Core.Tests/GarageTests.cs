@@ -77,6 +77,19 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void ANewerPeersHandshakeStillReadsSoItCanBeTurnedAway()
+        {
+            // A newer version may append fields; the handshake must still read rather than be dropped as malformed.
+            byte[] request = MessageCodec.Encode(new JoinRequestMessage { ProtocolVersion = 99, PlayerName = "New" });
+            var join = Assert.IsType<JoinRequestMessage>(MessageCodec.Decode(request.Concat(new byte[] { 1, 2, 3 }).ToArray()));
+            Assert.Equal(99, join.ProtocolVersion);
+
+            byte[] reply = MessageCodec.Encode(new JoinReplyMessage { Result = JoinResult.VersionMismatch });
+            var refused = Assert.IsType<JoinReplyMessage>(MessageCodec.Decode(reply.Concat(new byte[] { 1, 2, 3 }).ToArray()));
+            Assert.Equal(JoinResult.VersionMismatch, refused.Result);
+        }
+
+        [Fact]
         public void AGuestsChoiceReachesTheHostsRoster()
         {
             var transport = new RecordingTransport();
