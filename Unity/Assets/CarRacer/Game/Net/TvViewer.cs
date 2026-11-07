@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using CarRacer.Core.Cast;
 using CarRacer.Core.Discovery;
+using CarRacer.Core.Net;
 using CarRacer.Core.Race;
 using CarRacer.Core.Session;
 using CarRacer.Core.Viewer;
@@ -11,9 +12,10 @@ namespace CarRacer.Game.Net
 {
     /// <summary>
     /// The TV viewer on a server (design doc §2.4): finds Chromecasts on the network, and while a TV
-    /// is wanted (<c>-cast</c>, or <see cref="CastTo"/>) streams the room's event as video with
-    /// ffmpeg, serves it over HTTP and casts it, trying again at each countdown if nothing is cast.
-    /// Logs what it finds and how each cast goes. Everything slow runs on background threads.
+    /// is wanted (<c>-cast</c>, or the room leader's Cast to TV) streams the room's event as video
+    /// with ffmpeg, serves it over HTTP and casts it, trying again at each countdown if nothing is
+    /// cast. It tells every phone what it found and how the cast is going (<see cref="TvStatusMessage"/>),
+    /// and logs the same. Everything slow runs on background threads.
     /// </summary>
     public sealed class TvViewer : MonoBehaviour
     {
@@ -46,6 +48,13 @@ namespace CarRacer.Game.Net
             viewer._options = options;
             viewer._session = session;
             viewer._cars = cars;
+            if (!ViewerStream.IsAvailable(options.FfmpegPath, out string ffmpegError))
+            {
+                Debug.LogWarning("TV viewer off: " + ffmpegError);
+                viewer._streamFailed = true;
+            }
+
+            session.HostSide.CastCommandReceived += viewer.OnCastCommand;
             var addresses = HostAddress.LocalIPv4Addresses();
             viewer._joinAddress = addresses.Count > 0 ? addresses[0] : null;
             try
@@ -82,6 +91,29 @@ namespace CarRacer.Game.Net
             _plan.Request(wanted, takeOver, alreadyShowing: same);
             Debug.Log(string.IsNullOrEmpty(wanted) ? "Casting to the first TV found" : $"Casting to \"{wanted}\"");
         }
+
+        private void OnCastCommand(CastCommandMessage command)
+        {
+            switch (command.Command)
+            {
+                case CastCommand.Stop:
+                    Debug.Log("The room leader stopped casting");
+                    StopCasting();
+                    break;
+                case CastCommand.Cast when !_streamFailed:
+                    Debug.Log($"The room leader picked \"{command.Device}\"");
+                    CastTo(command.Device, takeOver: true);
+                    break;
+                case CastCommand.MusicOn:
+                case CastCommand.MusicOff:
+                    Music = command.Command == CastCommand.MusicOn;
+                    Debug.Log(Music ? "TV music on" : "TV music off");
+                    break;
+            }
+        }
+
+        /// <summary>Whether the TV plays the music (design doc §2.4).</summary>
+        public bool Music { get; set; }
 
         /// <summary>Stops casting and streaming until asked again.</summary>
         public void StopCasting()
@@ -125,6 +157,7 @@ namespace CarRacer.Game.Net
             }
 
             LogCastState();
+            _session.HostSide.SetTvStatus(Status());
             if (_stream != null && _plan.Wanted == null && (_cast == null || _cast.Finished))
             {
                 StopStreaming();
@@ -135,9 +168,7 @@ namespace CarRacer.Game.Net
         {
             if (_stream.Failure != null)
             {
-                Debug.LogError("TV viewer stopped: " + _stream.Failure);
-                StopStreaming();
-                _streamFailed = true;
+                GiveUp("TV viewer stopped: " + _stream.Failure);
                 return;
             }
 
@@ -170,22 +201,32 @@ namespace CarRacer.Game.Net
             }
             catch (System.Net.Sockets.SocketException e)
             {
-                Debug.LogError($"TV viewer off: can't serve on TCP port {_options.ViewerPort} ({e.Message}); choose another with {ServerOptions.ViewerPortFlag}");
-                _streamFailed = true;
+                GiveUp($"TV viewer off: can't serve on TCP port {_options.ViewerPort} ({e.Message}); choose another with {ServerOptions.ViewerPortFlag}");
                 return;
             }
 
             _stream = ViewerStream.Start(_options.FfmpegPath, folder, out string error);
             if (_stream == null)
             {
-                Debug.LogError("TV viewer off: " + error);
-                _http.Dispose();
-                _http = null;
-                _streamFailed = true;
+                GiveUp("TV viewer off: " + error);
                 return;
             }
 
             Debug.Log($"TV viewer streaming on port {_http.Port}");
+        }
+
+        /// <summary>
+        /// Streaming can't work here any more: stops it, and any cast with it, and forgets the TV,
+        /// so the phones go back to no TV rather than a cast nobody can stop (the leader's button
+        /// goes once casting is off).
+        /// </summary>
+        private void GiveUp(string reason)
+        {
+            Debug.LogError(reason);
+            _streamFailed = true;
+            _plan.Forget();
+            _cast?.Stop();
+            StopStreaming();
         }
 
         private void StopStreaming()
@@ -225,8 +266,25 @@ namespace CarRacer.Game.Net
             }
         }
 
+        /// <summary>What the phones are told: whether casting works here, the TVs found and how the cast is going.</summary>
+        private TvStatusMessage Status()
+        {
+            var names = new List<string>();
+            foreach (var device in Devices)
+            {
+                names.Add(device.Name);
+            }
+
+            return _plan.Status(!_streamFailed && _discovery != null, Music, names, _cast?.State, _cast?.Device.Name, _cast?.Detail);
+        }
+
         private void OnDestroy()
         {
+            if (_session != null && _session.HostSide != null)
+            {
+                _session.HostSide.CastCommandReceived -= OnCastCommand;
+            }
+
             _cast?.Dispose();
             StopStreaming();
             _discovery?.Dispose();

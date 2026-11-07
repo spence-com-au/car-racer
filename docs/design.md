@@ -169,8 +169,15 @@ people waiting their turn, or just watching, can follow it.
   something else is on it. `-cast <name>` gives the server a TV to cast to by itself; it, and a
   TV the leader picked, are cast to again at each countdown, but only while the TV is idle, so it
   never takes over something someone else is watching. Everyone else's lobby says "On TV: …".
-  Only a server with `ffmpeg` that has found a Chromecast offers it; phone hosts never do.
-- **Music:** optional (off by default; a toggle in the cast menu, or `-tv-music`). The TV plays
+  Only a server with `ffmpeg` offers it; phone hosts never do. The server tells every phone
+  whether it can cast, the TVs it found (up to eight, by name) and how the cast is going
+  and whether the TV plays the music (`TvStatusMessage`, on change and to each guest as it
+  joins); the leader's pick, Stop, or TV music on or off goes back as a `CastCommandMessage`,
+  which the host ignores from anyone else (protocol 26). The
+  button reads "Cast to TV", "Casting to Den...", "On TV: Den", "TV busy: Den" or "Can't reach
+  Den" (`TvText`); with one TV found and nothing cast, a tap casts straight to it
+  (`TvCastPanel`).
+- **Music** (planned, the next PR; protocol 26 already carries it): optional (off by default; a toggle in the cast menu, or `-tv-music`). The TV plays
   the tune the phones would (`MusicChoice`), and while it does the phones fade theirs out. No
   sound effects go to the TV; they would land seconds after the phones'.
 - **On the server** (`TvViewer`, `ViewerStream`, `ViewerHttpServer`, `TvCastPlan`): Chromecasts

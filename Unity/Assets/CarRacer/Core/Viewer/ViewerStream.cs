@@ -109,6 +109,69 @@ namespace CarRacer.Core.Viewer
         }
 
         /// <summary>
+        /// Whether <paramref name="ffmpegPath"/> runs (<c>-version</c>, within <paramref name="timeoutMs"/>),
+        /// so the server only offers casting when it can (design doc §2.4). A program that doesn't
+        /// answer in time is killed and counts as unavailable, so a wrong <c>-ffmpeg</c> can't hang start-up.
+        /// </summary>
+        public static bool IsAvailable(string ffmpegPath, out string error, int timeoutMs = 5_000)
+        {
+            error = null;
+            try
+            {
+                var info = new ProcessStartInfo(ffmpegPath, "-hide_banner -version")
+                {
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true,
+                };
+                using (var process = Process.Start(info))
+                {
+                    if (process == null)
+                    {
+                        error = "ffmpeg didn't start";
+                        return false;
+                    }
+
+                    // Drain the output as it comes, so the wait below is what bounds the check.
+                    process.OutputDataReceived += (sender, e) => { };
+                    process.BeginOutputReadLine();
+                    if (!process.WaitForExit(timeoutMs))
+                    {
+                        try
+                        {
+                            process.Kill();
+                        }
+                        catch (InvalidOperationException)
+                        {
+                            // It ended just now.
+                        }
+
+                        error = $"ffmpeg didn't answer (\"{ffmpegPath} -version\" took over {timeoutMs / 1000} s)";
+                        return false;
+                    }
+
+                    if (process.ExitCode != 0)
+                    {
+                        error = "ffmpeg didn't run (\"" + ffmpegPath + " -version\" failed)";
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+            catch (Win32Exception)
+            {
+                error = $"ffmpeg not found (\"{ffmpegPath}\"); install it, or point -ffmpeg at it";
+            }
+            catch (InvalidOperationException e)
+            {
+                error = "Couldn't run ffmpeg: " + e.Message;
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// ffmpeg's arguments: raw RGB frames on stdin and a silent stereo track, encoded as H.264
         /// and AAC into 1-second HLS segments, each starting with a keyframe, keeping the last six.
         /// </summary>

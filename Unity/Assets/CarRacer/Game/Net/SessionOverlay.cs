@@ -46,6 +46,7 @@ namespace CarRacer.Game.Net
         private NetworkSession _session;
         private NetworkedCars _cars;
         private CupPanel _cup;
+        private TvCastPanel _tv;
         private string _hostAddresses = string.Empty;
         private string _joinLink;
         private Texture2D _joinQr;
@@ -75,6 +76,7 @@ namespace CarRacer.Game.Net
             _session = session;
             _cars = cars;
             _cup = new CupPanel(session, host);
+            _tv = new TvCastPanel(session);
             cars.StuntScored += text =>
             {
                 _stuntText = text;
@@ -327,7 +329,7 @@ namespace CarRacer.Game.Net
 
             var settings = _session.Settings;
             _signature.Append(_session.LeaderId).Append('/').Append(settings.Mode).Append(settings.Laps).Append(settings.Track)
-                .Append(settings.BotFill).Append(settings.BotDifficulty).Append(settings.Rules.ToByte()).Append(_cup.Signature);
+                .Append(settings.BotFill).Append(settings.BotDifficulty).Append(settings.Rules.ToByte()).Append(_cup.Signature).Append(_tv.Signature);
             if (_session.LeadsRoom)
             {
                 _signature.Append(_hostAddresses).Append(_joinLink).Append(_session.CanStart);
@@ -382,6 +384,7 @@ namespace CarRacer.Game.Net
             }
 
             content.Add(UiKit.Space(8f));
+            _tv.AddTo(content);
             var settings = _session.Settings;
             if (_session.LeadsRoom)
             {
