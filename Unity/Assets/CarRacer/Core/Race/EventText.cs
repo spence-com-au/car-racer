@@ -26,7 +26,8 @@ namespace CarRacer.Core.Race
         /// <summary>What the next event will be: "Race, 3 laps, Canyon Hairpins" or the cup, and any rules turned off.</summary>
         public static string SettingsSummary(LobbySettings settings)
         {
-            string what = settings.CupChosen && settings.Cup <= Cups.All.Count
+            settings = settings.Clean();
+            string what = settings.CupChosen
                 ? Cups.All[settings.Cup - 1].Name
                 : settings.Mode == GameMode.Race
                     ? $"Race, {settings.Laps} laps, {EventName(GameMode.Race, settings.Track)}"
