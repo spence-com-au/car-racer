@@ -870,7 +870,7 @@ namespace CarRacer.Game.Net
                 bool stillHere = TryFind(r.PlayerId, out var player);
 
                 // In an arena the time is how long the player lasted; Monster Jam shows the points instead.
-                string time = race.Mode == GameMode.Monster ? $"{r.Points} pts" : r.DidNotFinish ? "DNF" : RaceFormat.Time(r.RaceTimeMs);
+                string time = EventText.ResultDetail(race.Mode, r);
                 string tag = r.PlayerId == me ? " (you)" : !stillHere ? " (left)" : player.IsBot ? " (bot)" : string.Empty;
                 var line = UiKit.Row();
                 line.Add(Dot(stillHere ? player.ColourIndex : r.PlayerId));

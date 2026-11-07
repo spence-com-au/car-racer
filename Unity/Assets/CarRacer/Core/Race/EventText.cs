@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using CarRacer.Core.Arena;
+using CarRacer.Core.Net;
 using CarRacer.Core.Scoring;
 using CarRacer.Core.Session;
 using CarRacer.Core.Track;
@@ -50,6 +51,10 @@ namespace CarRacer.Core.Race
 
             return (phase == RacePhase.Countdown || phase == RacePhase.Racing) && msToGo > -1000 ? "GO!" : null;
         }
+
+        /// <summary>A result's time on the results screen: the race time ("1:23.45"), "DNF", or Monster Jam's points ("37 pts").</summary>
+        public static string ResultDetail(GameMode mode, RaceResultEntry result) =>
+            mode == GameMode.Monster ? result.Points + " pts" : result.DidNotFinish ? "DNF" : RaceFormat.Time(result.RaceTimeMs);
 
         /// <summary>Only the rules that are off: "Rules: no damage, equal cars", or nothing.</summary>
         public static string RulesNote(EventRules rules)
