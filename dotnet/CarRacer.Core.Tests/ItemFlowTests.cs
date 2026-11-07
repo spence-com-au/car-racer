@@ -163,10 +163,15 @@ namespace CarRacer.Core.Tests
             _guestItems.Tick();
         }
 
-        private void StartRacing()
+        private void StartCountdown()
         {
             Assert.True(_hostRace.Start(3));
             Tick();
+        }
+
+        private void StartRacing()
+        {
+            StartCountdown();
             _now += HostRace.StartLeadMs + HostRace.CountdownMs;
             Tick();
             Assert.Equal(RacePhase.Racing, _hostRace.Phase);
@@ -371,12 +376,16 @@ namespace CarRacer.Core.Tests
             Tick();
             Assert.Equal(RacePhase.Results, _hostRace.Phase);
             Assert.True(_hostRace.ReturnToLobby());
-            StartRacing();
+
+            // Checked as the countdown begins, before the respawn timers could have expired on their own.
+            StartCountdown();
 
             Assert.Equal(ItemKind.None, _guestItems.Held);
             Assert.Equal(ItemKind.None, _hostItems.Held);
-            Assert.True(_hostItems.Boxes.IsUp(0, _now - 1));
-            Assert.True(_guestItems.Boxes.IsUp(1, _now - GuestClockBehindMs - 1));
+            Assert.True(_hostItems.Boxes.IsUp(0, _now));
+            Assert.True(_hostItems.Boxes.IsUp(1, _now));
+            Assert.True(_guestItems.Boxes.IsUp(0, _now - GuestClockBehindMs));
+            Assert.True(_guestItems.Boxes.IsUp(1, _now - GuestClockBehindMs));
         }
 
         [Fact]
@@ -782,7 +791,10 @@ namespace CarRacer.Core.Tests
             _hostRace.Tracker.Retire(_host.HostPlayerId);
             Tick();
             Assert.True(_hostRace.ReturnToLobby());
-            StartRacing();
+
+            // Checked as the countdown begins, before the bomb's fuse could have run out on its own.
+            StartCountdown();
+
             Assert.Empty(_hostItems.Projectiles);
             Assert.Empty(_guestItems.Projectiles);
         }
