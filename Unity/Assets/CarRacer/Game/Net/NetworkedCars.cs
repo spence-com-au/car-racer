@@ -75,7 +75,6 @@ namespace CarRacer.Game.Net
         /// <summary>Monster Jam: this phone's truck scored, with a line to show ("Big air! +12").</summary>
         public event System.Action<string> StuntScored;
 
-
         public void Initialise(TrackScreen screen, NetworkSession session)
         {
             _screen = screen;

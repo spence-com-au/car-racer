@@ -26,8 +26,14 @@ namespace CarRacer.Core.Viewer
         private const int MapY = TopBar + Margin - 4;
         private const int PanelX = MapX + MapSize + Margin;
         private const int PanelWidth = Width - PanelX - Margin;
+        private const int ResultsWidth = 840;
+        private const int ResultsX = (Width - ResultsWidth) / 2;
         private const int RowHeight = 62;
         private const int RowGap = 6;
+        private const int FooterScale = 3;
+        private const int PlaceScale = 5;
+        private const int RowScale = 4;
+        private const int MarkerScale = 2;
         private const float CarRadius = 13f;
 
         public static readonly Rgb Background = new Rgb(18, 22, 38);
@@ -67,7 +73,7 @@ namespace CarRacer.Core.Viewer
                     DrawRows(scene.Rows, frame, PanelX, PanelWidth, showPlace: false);
                     break;
                 case ViewerPhase.Results:
-                    DrawRows(scene.Rows, frame, Width / 2 - 420, 840, showPlace: true);
+                    DrawRows(scene.Rows, frame, ResultsX, ResultsWidth, showPlace: true);
                     break;
                 default:
                     DrawMap(scene, frame);
@@ -82,9 +88,9 @@ namespace CarRacer.Core.Viewer
 
             if (!string.IsNullOrEmpty(scene.Footer))
             {
-                int x = scene.Phase == ViewerPhase.Results ? Width / 2 - 420 : PanelX;
-                int width = scene.Phase == ViewerPhase.Results ? 840 : PanelWidth;
-                PixelFont.Draw(frame, x, Height - Margin - 21, PixelFont.Fit(scene.Footer, 3, width), 3, DimText);
+                int x = scene.Phase == ViewerPhase.Results ? ResultsX : PanelX;
+                int width = scene.Phase == ViewerPhase.Results ? ResultsWidth : PanelWidth;
+                PixelFont.Draw(frame, x, Height - Margin - TextHeight(FooterScale), PixelFont.Fit(scene.Footer, FooterScale, width), FooterScale, DimText);
             }
         }
 
@@ -110,7 +116,7 @@ namespace CarRacer.Core.Viewer
                 if (showPlace)
                 {
                     string place = row.Place > 0 ? row.Place.ToString(System.Globalization.CultureInfo.InvariantCulture) : "-";
-                    PixelFont.Draw(frame, cursor, y + (RowHeight - 35) / 2, place, 5, row.Place == 1 ? Accent : Text);
+                    PixelFont.Draw(frame, cursor, y + (RowHeight - TextHeight(PlaceScale)) / 2, place, PlaceScale, row.Place == 1 ? Accent : Text);
                     cursor += 70;
                 }
 
@@ -118,11 +124,12 @@ namespace CarRacer.Core.Viewer
                 frame.FillCircle(cursor + 16, y + RowHeight / 2f, 15f, row.Colour);
                 cursor += 50;
                 var nameColour = row.Dim ? DimText : Text;
-                int detailWidth = PixelFont.Measure(row.Detail, 4);
+                int detailWidth = PixelFont.Measure(row.Detail, RowScale);
                 int detailX = x + width - 16 - detailWidth;
-                PixelFont.Draw(frame, detailX, y + (RowHeight - 28) / 2, row.Detail, 4, row.Dim ? DimText : Accent);
-                string name = PixelFont.Fit(row.Name, 4, detailX - cursor - 16);
-                PixelFont.Draw(frame, cursor, y + (RowHeight - 28) / 2, name, 4, nameColour);
+                int textY = y + (RowHeight - TextHeight(RowScale)) / 2;
+                PixelFont.Draw(frame, detailX, textY, row.Detail, RowScale, row.Dim ? DimText : Accent);
+                string name = PixelFont.Fit(row.Name, RowScale, detailX - cursor - 16);
+                PixelFont.Draw(frame, cursor, textY, name, RowScale, nameColour);
                 y += RowHeight + RowGap;
             }
         }
@@ -199,7 +206,9 @@ namespace CarRacer.Core.Viewer
                 if (car.Place > 0 && car.Place < 10)
                 {
                     var label = car.Colour.Luma > 0.5f ? Outline : Text;
-                    PixelFont.Draw(frame, (int)Math.Round(x) - 5, (int)Math.Round(y) - 7, car.Place.ToString(System.Globalization.CultureInfo.InvariantCulture), 2, label);
+                    int labelX = (int)Math.Round(x) - PixelFont.GlyphWidth * MarkerScale / 2;
+                    int labelY = (int)Math.Round(y) - TextHeight(MarkerScale) / 2;
+                    PixelFont.Draw(frame, labelX, labelY, car.Place.ToString(System.Globalization.CultureInfo.InvariantCulture), MarkerScale, label);
                 }
             }
         }
@@ -346,6 +355,8 @@ namespace CarRacer.Core.Viewer
 
             return MapView.Fit(minX, maxX, minZ, maxZ);
         }
+
+        private static int TextHeight(int scale) => PixelFont.GlyphHeight * scale;
 
         private static void DrawCentred(RgbImage frame, string text, int cx, int cy, int scale, Rgb colour)
         {

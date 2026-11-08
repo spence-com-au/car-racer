@@ -71,12 +71,18 @@ namespace CarRacer.Core.Tests
         {
             public readonly List<IGameMessage> Sent = new List<IGameMessage>();
             public readonly List<IGameMessage> Held = new List<IGameMessage>();
+            public readonly List<IGameMessage> SentUnreliably = new List<IGameMessage>();
             public GuestSession Guest;
             public bool HoldBack;
 
             public void Send(ulong connection, IGameMessage message, bool reliable)
             {
                 Sent.Add(message);
+                if (!reliable)
+                {
+                    SentUnreliably.Add(message);
+                }
+
                 if (HoldBack)
                 {
                     Held.Add(message);
@@ -870,7 +876,11 @@ namespace CarRacer.Core.Tests
             var seen = Assert.Single(_guestItems.Projectiles);
             Assert.Equal(ItemKind.Missile, seen.Kind);
             Assert.True(seen.Position.Z > ProjectileRules.MissileLaunchAhead);
-            Assert.True(_hostLink.Sent.OfType<ProjectilesMessage>().Count() >= 3);
+
+            // One broadcast per 50 ms throttle window, on the 20 ms ticks at 20, 80, 140 and 200 ms, never reliably.
+            var broadcasts = _hostLink.Sent.OfType<ProjectilesMessage>().ToList();
+            Assert.Equal(4, broadcasts.Count);
+            Assert.Equal(broadcasts, _hostLink.SentUnreliably.OfType<ProjectilesMessage>());
         }
 
         [Fact]

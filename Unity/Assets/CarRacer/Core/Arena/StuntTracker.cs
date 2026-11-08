@@ -37,8 +37,6 @@ namespace CarRacer.Core.Arena
             }
         }
 
-        public IReadOnlyList<int> PlayerIds => _order;
-
         public int Points(int playerId) => _points.TryGetValue(playerId, out int points) ? points : 0;
 
         /// <summary>

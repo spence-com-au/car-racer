@@ -6,10 +6,9 @@ using UnityEngine.UIElements;
 namespace CarRacer.Game.Net
 {
     /// <summary>
-    /// The lobby's TV controls (design doc §2.4): for the room leader of a server that can cast, a
-    /// Cast to TV button that opens the list of Chromecasts the server found, with TV music on or
-    /// off and Stop casting;
-    /// for everyone, "On TV: …" while the room is on a TV.
+    /// The lobby's TV controls (design doc §2.4): for the room leader of a server that can cast, a Cast to TV button
+    /// that opens the list of Chromecasts the server found, with TV music on or off and Stop casting; for everyone, "On
+    /// TV: …" while the room is on a TV.
     /// </summary>
     public sealed class TvCastPanel
     {
@@ -52,7 +51,6 @@ namespace CarRacer.Game.Net
                 {
                     _open = !_open;
                 }
-
             }));
 
             if (!_open)

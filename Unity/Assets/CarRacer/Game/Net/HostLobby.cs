@@ -27,6 +27,22 @@ namespace CarRacer.Game.Net
         public const string ReverseGridKey = "reverseGrid";
         public const string SaveKey = "cupSave";
 
+        /// <summary>
+        /// Every key <see cref="Load"/> and <see cref="Save"/> keep the lobby settings under (not the cup's
+        /// <see cref="SaveKey"/>), for a test to put back what it overwrote. Add a new key here with its constant.
+        /// </summary>
+        public static readonly string[] SettingKeys =
+        {
+            BotFillKey,
+            BotDifficultyKey,
+            ModeKey,
+            LapsKey,
+            TrackKey,
+            RulesKey,
+            CupKey,
+            ReverseGridKey,
+        };
+
         private NetworkSession _session;
         private HostLobbyRules _rules;
 

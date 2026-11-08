@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using CarRacer.Core.Discovery;
 
 namespace CarRacer.Core.Session
@@ -78,7 +77,7 @@ namespace CarRacer.Core.Session
                 else if (string.Equals(arg, PortFlag, StringComparison.OrdinalIgnoreCase))
                 {
                     string value = NextValue(args, ref i);
-                    if (!ushort.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out ushort port) || port == 0 || port == DiscoveryConstants.DiscoveryPort)
+                    if (!HostAddress.TryParsePort(value, out ushort port) || port == DiscoveryConstants.DiscoveryPort)
                     {
                         options.Error = $"{PortFlag} needs a port from 1 to 65535 other than {DiscoveryConstants.DiscoveryPort} (used for discovery), not \"{value}\"";
                     }
@@ -123,7 +122,7 @@ namespace CarRacer.Core.Session
                 else if (string.Equals(arg, ViewerPortFlag, StringComparison.OrdinalIgnoreCase))
                 {
                     string value = NextValue(args, ref i);
-                    if (!ushort.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out ushort port) || port == 0)
+                    if (!HostAddress.TryParsePort(value, out ushort port))
                     {
                         options.Error = $"{ViewerPortFlag} needs a port from 1 to 65535, not \"{value}\"";
                     }

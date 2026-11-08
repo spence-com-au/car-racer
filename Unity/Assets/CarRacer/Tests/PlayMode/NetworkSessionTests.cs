@@ -36,18 +36,6 @@ namespace CarRacer.Tests
         /// </summary>
         private const ulong GuestConnection = 100;
 
-        private static readonly string[] SettingKeys =
-        {
-            HostLobby.BotFillKey,
-            HostLobby.BotDifficultyKey,
-            HostLobby.ModeKey,
-            HostLobby.LapsKey,
-            HostLobby.TrackKey,
-            HostLobby.RulesKey,
-            HostLobby.CupKey,
-            HostLobby.ReverseGridKey,
-        };
-
         private readonly Dictionary<string, int> _savedSettings = new Dictionary<string, int>();
         private string _savedCup;
         private TrackScreen _screen;
@@ -58,7 +46,7 @@ namespace CarRacer.Tests
         public void SetUp()
         {
             _savedSettings.Clear();
-            foreach (string key in SettingKeys)
+            foreach (string key in HostLobby.SettingKeys)
             {
                 if (PlayerPrefs.HasKey(key))
                 {
@@ -75,7 +63,7 @@ namespace CarRacer.Tests
         [TearDown]
         public void TearDown()
         {
-            foreach (string key in SettingKeys)
+            foreach (string key in HostLobby.SettingKeys)
             {
                 if (_savedSettings.TryGetValue(key, out int value))
                 {
@@ -203,6 +191,46 @@ namespace CarRacer.Tests
         }
 
         [UnityTest]
+        public IEnumerator HostingAgainBringsBackTheSettingsTheLastHostSaved()
+        {
+            _screen = TrackScreen.Create(new NoInput(), () => NetworkSession.StartHosting("Host", TestPort + 6));
+            yield return null;
+            yield return null;
+
+            // Each setting differs from its default, and from every other setting, so a swapped key shows.
+            var changed = new LobbySettings
+            {
+                Mode = CarRacer.Core.Arena.GameMode.Monster,
+                Laps = 7,
+                Track = 6,
+                Rules = new EventRules(damage: false, items: true, carStats: false),
+                BotFill = 4,
+                BotDifficulty = CarRacer.Core.Bots.BotDifficulty.Hard,
+                Cup = 1,
+                ReverseGrid = false,
+            };
+            _screen.Session.ChangeSettings(changed);
+
+            Object.Destroy(_screen.gameObject);
+            yield return null;
+            yield return null;
+
+            _screen = TrackScreen.Create(new NoInput(), () => NetworkSession.StartHosting("Host", TestPort + 7));
+            yield return null;
+            yield return null;
+
+            var loaded = _screen.Session.Settings;
+            Assert.AreEqual(changed.Mode, loaded.Mode);
+            Assert.AreEqual(changed.Laps, loaded.Laps);
+            Assert.AreEqual(changed.Track, loaded.Track);
+            Assert.AreEqual(changed.Rules.ToByte(), loaded.Rules.ToByte());
+            Assert.AreEqual(changed.BotFill, loaded.BotFill);
+            Assert.AreEqual(changed.BotDifficulty, loaded.BotDifficulty);
+            Assert.AreEqual(changed.Cup, loaded.Cup);
+            Assert.AreEqual(changed.ReverseGrid, loaded.ReverseGrid);
+        }
+
+        [UnityTest]
         public IEnumerator MonsterJamPutsTheCarInTheStadiumAsATruck()
         {
             _screen = TrackScreen.Create(new NoInput(), () => NetworkSession.StartHosting("Host", TestPort + 4));
@@ -280,7 +308,7 @@ namespace CarRacer.Tests
         [UnityTest]
         public IEnumerator AGuestsCarIsShownWhereItReportsItself()
         {
-            byte guest = HostWithAGuest(TestPort + 6);
+            byte guest = HostWithAGuest(TestPort + 8);
             yield return null;
             yield return null;
 
@@ -306,7 +334,7 @@ namespace CarRacer.Tests
         [UnityTest]
         public IEnumerator AGuestWhoPicksAnotherCarIsRestyledInPlace()
         {
-            byte guest = HostWithAGuest(TestPort + 7);
+            byte guest = HostWithAGuest(TestPort + 9);
             yield return null;
             yield return null;
 
@@ -331,7 +359,7 @@ namespace CarRacer.Tests
         [UnityTest]
         public IEnumerator AGuestWhoLeavesTheLobbyTakesTheirCarWithThem()
         {
-            HostWithAGuest(TestPort + 8);
+            HostWithAGuest(TestPort + 10);
             yield return null;
             yield return null;
 
@@ -349,7 +377,7 @@ namespace CarRacer.Tests
         [UnityTest]
         public IEnumerator AGuestsBumpReportPushesTheHostsCar()
         {
-            byte guest = HostWithAGuest(TestPort + 9);
+            byte guest = HostWithAGuest(TestPort + 11);
             yield return null;
             yield return null;
 
@@ -373,7 +401,7 @@ namespace CarRacer.Tests
         [UnityTest]
         public IEnumerator AnItemHitSpinsTheHostsCarOutUnlessAShieldSoaksItUp()
         {
-            _screen = TrackScreen.Create(new NoInput(), () => NetworkSession.StartHosting("Host", TestPort + 10));
+            _screen = TrackScreen.Create(new NoInput(), () => NetworkSession.StartHosting("Host", TestPort + 12));
             yield return null;
             yield return null;
 
@@ -403,7 +431,7 @@ namespace CarRacer.Tests
         [UnityTest]
         public IEnumerator TheHostsCarIsPushedOffAGuestsCarItRunsInto()
         {
-            byte guest = HostWithAGuest(TestPort + 11);
+            byte guest = HostWithAGuest(TestPort + 13);
             yield return null;
             yield return null;
 
@@ -435,7 +463,7 @@ namespace CarRacer.Tests
         [UnityTest]
         public IEnumerator ABotTakesOverTheCarOfAGuestWhoLeavesMidRaceFromWhereItWas()
         {
-            byte guest = HostWithAGuest(TestPort + 12);
+            byte guest = HostWithAGuest(TestPort + 14);
             yield return null;
             yield return null;
 
@@ -468,7 +496,7 @@ namespace CarRacer.Tests
         [UnityTest]
         public IEnumerator AGuestWhoGoesQuietIsReplacedByABotUntilTheyAreBack()
         {
-            byte guest = HostWithAGuest(TestPort + 13);
+            byte guest = HostWithAGuest(TestPort + 15);
             yield return null;
             yield return null;
 
