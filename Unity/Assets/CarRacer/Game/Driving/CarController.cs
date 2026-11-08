@@ -45,7 +45,9 @@ namespace CarRacer.Game.Driving
         /// <summary>A car that falls below this height is put back where it started.</summary>
         public const float FallLimit = -20f;
 
-        private const float DriftVisualYawDegrees = 22f;
+        /// <summary>How far the body swings into a drift; <c>RemoteCar</c> swings other phones' cars as far.</summary>
+        public const float DriftVisualYawDegrees = 22f;
+
         private const float MaxLeanDegrees = 5f;
         private const float VisualSharpness = 10f;
 
