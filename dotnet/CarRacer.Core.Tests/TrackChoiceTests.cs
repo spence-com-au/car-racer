@@ -80,29 +80,6 @@ namespace CarRacer.Core.Tests
     public class TrackChoiceTests
     {
         private const ushort Version = 17;
-        private const ulong GuestConnection = 7;
-
-        private sealed class HostLink : ISessionTransport
-        {
-            public GuestSession Guest;
-
-            public void Send(ulong connection, IGameMessage message, bool reliable) => Guest?.OnMessage(message);
-
-            public void Disconnect(ulong connection)
-            {
-            }
-        }
-
-        private sealed class GuestLink : ISessionTransport
-        {
-            public HostSession Host;
-
-            public void Send(ulong connection, IGameMessage message, bool reliable) => Host.OnMessage(GuestConnection, message);
-
-            public void Disconnect(ulong connection)
-            {
-            }
-        }
 
         private readonly long _now = 10_000;
         private readonly HostSession _host;
@@ -114,11 +91,7 @@ namespace CarRacer.Core.Tests
             var hostLink = new HostLink();
             _host = new HostSession(hostLink, "Host", Version, () => _now);
             _race = new HostRace(_host, new[] { 4, 6, 10 }, () => _now, id => 0f);
-            var guest = new GuestSession(new GuestLink { Host = _host }, "Guest", Version, () => _now);
-            hostLink.Guest = guest;
-            guest.OnConnected();
-            guest.OnMessage(new ClockPongMessage { GuestSentMs = _now - 20, HostMs = _now - 10 });
-            _guestRace = new GuestRace(guest, () => _now);
+            _guestRace = new GuestRace(hostLink.Join(_host, "Guest", Version, () => _now), () => _now);
         }
 
         [Fact]

@@ -11,20 +11,7 @@ namespace CarRacer.Core.Tests
     {
         private const ushort Version = 3;
 
-        private sealed class FakeTransport : ISessionTransport
-        {
-            public readonly List<(ulong To, IGameMessage Message)> Sent = new List<(ulong, IGameMessage)>();
-
-            public void Send(ulong connection, IGameMessage message, bool reliable) => Sent.Add((connection, message));
-
-            public void Disconnect(ulong connection)
-            {
-            }
-
-            public List<T> To<T>(ulong connection) => Sent.Where(s => s.To == connection).Select(s => s.Message).OfType<T>().ToList();
-        }
-
-        private readonly FakeTransport _transport = new FakeTransport();
+        private readonly RecordingTransport _transport = new RecordingTransport();
         private readonly HostSession _server;
         private readonly List<CastCommandMessage> _commands = new List<CastCommandMessage>();
 
@@ -147,7 +134,7 @@ namespace CarRacer.Core.Tests
         [Fact]
         public void TheGuestKeepsTheLatestStatusAndSendsCommands()
         {
-            var toHost = new FakeTransport();
+            var toHost = new RecordingTransport();
             var guest = new GuestSession(toHost, "Alice", Version, () => 0);
             guest.OnMessage(new JoinReplyMessage { Result = JoinResult.Accepted, PlayerId = 1 });
             Assert.Equal(GuestState.Joined, guest.State);

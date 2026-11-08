@@ -7,17 +7,6 @@ namespace CarRacer.Core.Tests
     /// <summary>A guest that stops hearing from the host (design doc §12): "Reconnecting…", then giving up.</summary>
     public class HostSilenceTests
     {
-        private sealed class NullLink : ISessionTransport
-        {
-            public void Send(ulong connection, IGameMessage message, bool reliable)
-            {
-            }
-
-            public void Disconnect(ulong connection)
-            {
-            }
-        }
-
         private sealed class PingLink : ISessionTransport
         {
             public ClockPingMessage Pending;
@@ -42,7 +31,7 @@ namespace CarRacer.Core.Tests
 
         public HostSilenceTests()
         {
-            _guest = new GuestSession(new NullLink(), "Guest", 17, () => _now);
+            _guest = new GuestSession(new RecordingTransport(), "Guest", 17, () => _now);
             _guest.OnConnected();
             _guest.OnMessage(new JoinReplyMessage { Result = JoinResult.Accepted, PlayerId = 1 });
         }
@@ -105,7 +94,7 @@ namespace CarRacer.Core.Tests
         [Fact]
         public void BeforeJoiningThereIsNothingToLose()
         {
-            var connecting = new GuestSession(new NullLink(), "Guest", 17, () => _now);
+            var connecting = new GuestSession(new RecordingTransport(), "Guest", 17, () => _now);
             connecting.OnConnected();
             _now += GuestSession.GiveUpAfterMs * 2;
             Assert.False(connecting.HostQuiet);

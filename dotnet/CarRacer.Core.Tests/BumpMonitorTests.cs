@@ -137,18 +137,7 @@ namespace CarRacer.Core.Tests
 
     public class HitRoutingTests
     {
-        private sealed class Transport : ISessionTransport
-        {
-            public readonly List<(ulong To, IGameMessage Message, bool Reliable)> Sent = new List<(ulong, IGameMessage, bool)>();
-
-            public void Send(ulong connection, IGameMessage message, bool reliable) => Sent.Add((connection, message, reliable));
-
-            public void Disconnect(ulong connection)
-            {
-            }
-        }
-
-        private readonly Transport _transport = new Transport();
+        private readonly RecordingTransport _transport = new RecordingTransport();
         private readonly HostSession _host;
 
         public HitRoutingTests()
@@ -199,7 +188,7 @@ namespace CarRacer.Core.Tests
         [Fact]
         public void AGuestRaisesOnlyHitsAddressedToIt()
         {
-            var link = new Transport();
+            var link = new RecordingTransport();
             var guest = new GuestSession(link, "A", 3, () => 0);
             guest.OnMessage(new JoinReplyMessage { Result = JoinResult.Accepted, PlayerId = 1 });
             var received = new List<byte>();

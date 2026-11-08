@@ -14,17 +14,6 @@ namespace CarRacer.Core.Tests
         private const ushort Version = 5;
         private const int Gates = 4;
 
-        private sealed class NoTransport : ISessionTransport
-        {
-            public void Send(ulong connection, IGameMessage message, bool reliable)
-            {
-            }
-
-            public void Disconnect(ulong connection)
-            {
-            }
-        }
-
         private sealed class MemoryStore : ICupSaveStore
         {
             public string Text = string.Empty;
@@ -44,7 +33,7 @@ namespace CarRacer.Core.Tests
 
         public HostLobbyRulesTests()
         {
-            Create(new HostSession(new NoTransport(), "Host", Version, () => _now));
+            Create(new HostSession(new RecordingTransport(), "Host", Version, () => _now));
         }
 
         private void Create(HostSession host)
@@ -176,7 +165,7 @@ namespace CarRacer.Core.Tests
 
             // A new session on the same phone finds the save and picks the cup back up.
             string save = _store.Text;
-            Create(new HostSession(new NoTransport(), "Host", Version, () => _now));
+            Create(new HostSession(new RecordingTransport(), "Host", Version, () => _now));
             Assert.Equal(save, _store.Text);
             Assert.Equal(1, _host.SavedCup);
             Assert.Equal(1, _host.SavedCupDone);
@@ -217,7 +206,7 @@ namespace CarRacer.Core.Tests
         public void AnUnreadableSaveIsNotOffered()
         {
             _store.Text = "not a save";
-            Create(new HostSession(new NoTransport(), "Host", Version, () => _now));
+            Create(new HostSession(new RecordingTransport(), "Host", Version, () => _now));
             Assert.Equal(0, _host.SavedCup);
 
             _rules.RunCommand(LobbyCommand.ResumeSavedCup);
@@ -228,7 +217,7 @@ namespace CarRacer.Core.Tests
         [Fact]
         public void AServerWithNobodyLeftGoesBackToTheLobbyOnceTheResultsAreIn()
         {
-            Create(HostSession.Dedicated(new NoTransport(), Version, () => _now));
+            Create(HostSession.Dedicated(new RecordingTransport(), Version, () => _now));
             Join(1, "Alice");
             byte bob = Join(2, "Bob");
             _host.OnMessage(2, new SetReadyMessage { Ready = true });

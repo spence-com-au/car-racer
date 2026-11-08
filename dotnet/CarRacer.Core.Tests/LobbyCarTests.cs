@@ -83,11 +83,11 @@ namespace CarRacer.Core.Tests
         [Fact]
         public void AGuestAsksForItsLatestPickWhenItConnects()
         {
-            var link = new RecordingLink();
+            var link = new RecordingTransport();
             var guest = new GuestSession(link, "Guest", Version, () => 0, new CarChoice(0, 0));
             guest.ChangeCar(new CarChoice(3, 2));
             guest.OnConnected();
-            var request = Assert.IsType<JoinRequestMessage>(link.Last);
+            var request = Assert.IsType<JoinRequestMessage>(link.Sent.Last().Message);
             Assert.Equal(3, request.BodyIndex);
             Assert.Equal(2, request.ColourIndex);
         }
@@ -95,47 +95,13 @@ namespace CarRacer.Core.Tests
         /// <summary>A host and a joined guest wired straight to each other.</summary>
         private static (HostSession Host, GuestSession Guest) Connect()
         {
-            var toGuest = new Loopback();
+            var toGuest = new HostLink();
             var host = new HostSession(toGuest, "Host", Version, () => 0, new CarChoice(0, 0));
-            var toHost = new Loopback { Host = host };
-            var guest = new GuestSession(toHost, "Guest", Version, () => 0, new CarChoice(1, 1));
+            var guest = new GuestSession(new GuestLink { Host = host }, "Guest", Version, () => 0, new CarChoice(1, 1));
             toGuest.Guest = guest;
             guest.OnConnected();
             Assert.Equal(GuestState.Joined, guest.State);
             return (host, guest);
-        }
-
-        private sealed class Loopback : ISessionTransport
-        {
-            public HostSession Host;
-            public GuestSession Guest;
-
-            public void Send(ulong connection, IGameMessage message, bool reliable)
-            {
-                if (Host != null)
-                {
-                    Host.OnMessage(7, message);
-                }
-                else
-                {
-                    Guest?.OnMessage(message);
-                }
-            }
-
-            public void Disconnect(ulong connection)
-            {
-            }
-        }
-
-        private sealed class RecordingLink : ISessionTransport
-        {
-            public IGameMessage Last;
-
-            public void Send(ulong connection, IGameMessage message, bool reliable) => Last = message;
-
-            public void Disconnect(ulong connection)
-            {
-            }
         }
     }
 }

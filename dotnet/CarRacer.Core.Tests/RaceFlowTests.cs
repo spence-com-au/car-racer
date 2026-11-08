@@ -160,12 +160,11 @@ namespace CarRacer.Core.Tests
         {
             public readonly List<(ulong To, IGameMessage Message, bool Reliable)> Sent = new List<(ulong, IGameMessage, bool)>();
             public GuestSession Guest;
-            public ulong GuestConnection;
 
             public void Send(ulong connection, IGameMessage message, bool reliable)
             {
                 Sent.Add((connection, message, reliable));
-                if (Guest != null && connection == GuestConnection)
+                if (Guest != null && connection == GuestLink.Connection)
                 {
                     Guest.OnMessage(message);
                 }
@@ -176,18 +175,6 @@ namespace CarRacer.Core.Tests
             }
 
             public List<T> All<T>() => Sent.Select(s => s.Message).OfType<T>().ToList();
-        }
-
-        private sealed class GuestLink : ISessionTransport
-        {
-            public HostSession Host;
-            public ulong Connection;
-
-            public void Send(ulong connection, IGameMessage message, bool reliable) => Host.OnMessage(Connection, message);
-
-            public void Disconnect(ulong connection)
-            {
-            }
         }
 
         private long _now = 10_000;
@@ -204,10 +191,9 @@ namespace CarRacer.Core.Tests
             _race = new HostRace(_session, new[] { Checkpoints }, () => _now, id => _fractions.TryGetValue(id, out float f) ? f : 0f);
 
             // One guest, whose clock runs 1,000,000 ms behind the host's.
-            var link = new GuestLink { Host = _session, Connection = 7 };
+            var link = new GuestLink { Host = _session };
             _guest = new GuestSession(link, "Guest", Version, () => _now - 1_000_000);
             _transport.Guest = _guest;
-            _transport.GuestConnection = 7;
             _guest.OnConnected();
             _guest.OnMessage(new ClockPongMessage { GuestSentMs = _now - 1_000_020, HostMs = _now - 10 }); // 20 ms round trip
             _guestRace = new GuestRace(_guest, () => _now - 1_000_000);

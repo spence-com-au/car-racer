@@ -15,21 +15,8 @@ namespace CarRacer.Core.Tests
     {
         private const ushort Version = 3;
 
-        private sealed class FakeTransport : ISessionTransport
-        {
-            public readonly List<(ulong To, IGameMessage Message)> Sent = new List<(ulong, IGameMessage)>();
-
-            public void Send(ulong connection, IGameMessage message, bool reliable) => Sent.Add((connection, message));
-
-            public void Disconnect(ulong connection)
-            {
-            }
-
-            public List<T> To<T>(ulong connection) => Sent.Where(s => s.To == connection).Select(s => s.Message).OfType<T>().ToList();
-        }
-
         private long _now = 1000;
-        private readonly FakeTransport _transport = new FakeTransport();
+        private readonly RecordingTransport _transport = new RecordingTransport();
         private readonly HostSession _server;
         private readonly List<LobbyCommand> _commands = new List<LobbyCommand>();
 
@@ -39,7 +26,7 @@ namespace CarRacer.Core.Tests
             _server.LobbyCommandReceived += _commands.Add;
         }
 
-        private static byte Join(HostSession host, FakeTransport transport, ulong connection, string name)
+        private static byte Join(HostSession host, RecordingTransport transport, ulong connection, string name)
         {
             host.OnMessage(connection, new JoinRequestMessage { ProtocolVersion = Version, PlayerName = name });
             return transport.To<JoinReplyMessage>(connection).Last().PlayerId;
@@ -188,7 +175,7 @@ namespace CarRacer.Core.Tests
         [Fact]
         public void OnAPhoneTheHostLeadsAndGuestsCantCommand()
         {
-            var transport = new FakeTransport();
+            var transport = new RecordingTransport();
             var host = new HostSession(transport, "Host", Version, () => _now);
             var commands = new List<LobbyCommand>();
             host.LobbyCommandReceived += commands.Add;
@@ -222,7 +209,7 @@ namespace CarRacer.Core.Tests
         [Fact]
         public void AGuestKnowsWhetherItLeadsAndSendsCommandsToTheHost()
         {
-            var link = new FakeTransport();
+            var link = new RecordingTransport();
             var guest = new GuestSession(link, "Alice", Version, () => _now);
             guest.OnConnected();
             guest.OnMessage(new JoinReplyMessage { Result = JoinResult.Accepted, PlayerId = 2 });

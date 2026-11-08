@@ -10,29 +10,6 @@ namespace CarRacer.Core.Tests
     public class AwayTests
     {
         private const ushort Version = 17;
-        private const ulong GuestConnection = 7;
-
-        private sealed class HostLink : ISessionTransport
-        {
-            public GuestSession Guest;
-
-            public void Send(ulong connection, IGameMessage message, bool reliable) => Guest?.OnMessage(message);
-
-            public void Disconnect(ulong connection)
-            {
-            }
-        }
-
-        private sealed class GuestLink : ISessionTransport
-        {
-            public HostSession Host;
-
-            public void Send(ulong connection, IGameMessage message, bool reliable) => Host.OnMessage(GuestConnection, message);
-
-            public void Disconnect(ulong connection)
-            {
-            }
-        }
 
         private long _now = 10_000;
         private readonly HostSession _host;
@@ -44,9 +21,7 @@ namespace CarRacer.Core.Tests
         {
             var hostLink = new HostLink();
             _host = new HostSession(hostLink, "Host", Version, () => _now);
-            _guest = new GuestSession(new GuestLink { Host = _host }, "Guest", Version, () => _now);
-            hostLink.Guest = _guest;
-            _guest.OnConnected();
+            _guest = hostLink.Join(_host, "Guest", Version, () => _now);
             _host.PlayerTakenOver += _takenOver.Add;
             _host.PlayerReturned += _returned.Add;
         }
@@ -141,7 +116,7 @@ namespace CarRacer.Core.Tests
         {
             _host.EventInProgress = true;
             Wait(HostSession.AwayAfterMs);
-            _host.OnDisconnected(GuestConnection);
+            _host.OnDisconnected(GuestLink.Connection);
 
             Assert.Single(_takenOver);
             Assert.True(_host.IsBot(GuestId));

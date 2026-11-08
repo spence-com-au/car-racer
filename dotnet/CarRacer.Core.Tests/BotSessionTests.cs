@@ -72,19 +72,8 @@ namespace CarRacer.Core.Tests
     {
         private const ushort Version = 17;
 
-        private sealed class Transport : ISessionTransport
-        {
-            public readonly List<(ulong To, IGameMessage Message)> Sent = new List<(ulong, IGameMessage)>();
-
-            public void Send(ulong connection, IGameMessage message, bool reliable) => Sent.Add((connection, message));
-
-            public void Disconnect(ulong connection)
-            {
-            }
-        }
-
         private long _now = 10_000;
-        private readonly Transport _transport = new Transport();
+        private readonly RecordingTransport _transport = new RecordingTransport();
         private readonly HostSession _host;
         private readonly HostRace _race;
         private readonly HostItems _items;
