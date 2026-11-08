@@ -355,8 +355,7 @@ namespace CarRacer.Game.Bots
         /// <summary>Puts a bot in a departed player's car: where it was, moving as it was, with its race progress.</summary>
         private void TakeOver(Bot bot, Vector3 position, float headingRadians, Vector3 velocity)
         {
-            bot.Car.Place(position, headingRadians);
-            bot.Car.AddImpulse(velocity * bot.Car.GetComponent<Rigidbody>().mass);
+            bot.Car.Place(position, headingRadians, velocity);
             bot.LastPosition = position;
             var racer = (_session.Race as HostRace)?.Tracker?.Get(bot.PlayerId);
             bot.Detector.Resume(racer != null ? racer.CheckpointsPassed : 0);
