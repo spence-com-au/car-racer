@@ -63,12 +63,14 @@ namespace CarRacer.Core.Art
 
         /// <param name="modelWidth">A model's width (x extent) before scaling, to fit the gantry across the road.</param>
         /// <param name="treeShare">The share of the trees to keep, from 0 to 1 (fewer on Low quality, design doc §14).</param>
-        public static List<PropPlacement> Place(TrackSpline spline, Func<string, float> modelWidth, int seed = 1, float treeShare = 1f)
+        public static List<PropPlacement> Place(TrackSpline spline, Func<string, float> modelWidth, float treeShare = 1f)
         {
             var placements = new List<PropPlacement>();
             var footprints = new List<(Vec3 Centre, float Radius)>();
             var road = spline.SampleEvenly(4f);
-            var random = new Random(seed);
+
+            // A fixed seed, so the placement is the same every time.
+            var random = new Random(1);
 
             // The gantry spans the start line at the road's height, its posts just outside the walls.
             var start = spline.SampleAtDistance(0f);
