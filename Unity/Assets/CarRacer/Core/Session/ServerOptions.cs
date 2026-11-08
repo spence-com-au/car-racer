@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Text;
 using CarRacer.Core.Discovery;
 
 namespace CarRacer.Core.Session
@@ -153,6 +155,33 @@ namespace CarRacer.Core.Session
             }
 
             return null;
+        }
+    }
+
+    /// <summary>The dedicated server's log (design doc §2.3), which shows text that other devices choose.</summary>
+    public static class ServerLog
+    {
+        /// <summary>
+        /// <paramref name="text"/> with each control character written as <c>\uXXXX</c>, so text from another device (a
+        /// player's or TV's name, the TV the room leader picks or what a TV reports) can't start a log line of its own
+        /// or send the operator's terminal escape sequences.
+        /// </summary>
+        public static string Escape(string text)
+        {
+            var escaped = new StringBuilder();
+            foreach (char c in text ?? string.Empty)
+            {
+                if (char.IsControl(c))
+                {
+                    escaped.Append("\\u").Append(((int)c).ToString("X4", CultureInfo.InvariantCulture));
+                }
+                else
+                {
+                    escaped.Append(c);
+                }
+            }
+
+            return escaped.ToString();
         }
     }
 }

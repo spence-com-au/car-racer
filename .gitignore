@@ -44,7 +44,7 @@ sysinfo.txt
 *.keystore
 *.jks
 *.b64
-# The shared debug key is deliberately public (see BuildScript.UseSharedDebugKeystore).
+# The shared debug key is deliberately public (see `AndroidSigning.SharedDebug`).
 !/Unity/Keystores/debug.keystore
 *.ulf
 *.alf

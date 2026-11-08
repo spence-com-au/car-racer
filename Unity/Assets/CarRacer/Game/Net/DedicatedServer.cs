@@ -107,7 +107,7 @@ namespace CarRacer.Game.Net
             string roster = text.Length > 0 ? text.ToString() : "nobody";
             if (roster != _lastRoster)
             {
-                Debug.Log("Players: " + roster);
+                Debug.Log("Players: " + ServerLog.Escape(roster));
                 _lastRoster = roster;
             }
         }
@@ -137,7 +137,7 @@ namespace CarRacer.Game.Net
                     }
                 }
 
-                Debug.Log(winner != null ? "Finished; won by " + winner : "Finished");
+                Debug.Log(winner != null ? "Finished; won by " + ServerLog.Escape(winner) : "Finished");
             }
 
             _lastPhase = race.Phase;
