@@ -40,12 +40,17 @@ namespace CarRacer.Core.Physics
         public CarStateMessage Latest => _latest;
 
         /// <summary>
-        /// Accepts a state if it's newer than the current one (sequence numbers wrap safely).
-        /// <paramref name="oneWayLatencyMs"/> is the current estimate, typically RTT / 2.
+        /// Accepts a state if it's newer than the current one (sequence numbers wrap safely), or if
+        /// it comes from a different driver. <paramref name="oneWayLatencyMs"/> is the current
+        /// estimate, typically RTT / 2.
         /// </summary>
         public bool OnState(CarStateMessage state, long receivedAtMs, float oneWayLatencyMs)
         {
-            if (_latest != null && unchecked((int)(state.Sequence - _latest.Sequence)) <= 0)
+            // A bot taking over a player's car, or handing it back (design doc §12), sends from its
+            // own sequence counter, so the old driver's sequence says nothing about the new one's.
+            bool sameDriver = _latest != null
+                && (state.Flags & CarStateFlags.BotControlled) == (_latest.Flags & CarStateFlags.BotControlled);
+            if (sameDriver && unchecked((int)(state.Sequence - _latest.Sequence)) <= 0)
             {
                 return false;
             }

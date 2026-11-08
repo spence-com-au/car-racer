@@ -150,6 +150,27 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void PredictorFollowsTheCarWhenABotTakesOverOrHandsBack()
+        {
+            var predictor = new RemoteCarPredictor();
+            Assert.True(predictor.OnState(State(5000, Vec3.Zero, Vec3.Zero), 0, 0f));
+
+            var bot = State(1, new Vec3(1f, 0f, 0f), Vec3.Zero);
+            bot.Flags = CarStateFlags.BotControlled;
+            Assert.True(predictor.OnState(bot, 10, 0f));
+            Assert.Equal(1u, predictor.Latest.Sequence);
+
+            // The bot counts past the guest's sequence, so the guest's hand-back state is older by sequence alone.
+            var botLater = State(6000, new Vec3(2f, 0f, 0f), Vec3.Zero);
+            botLater.Flags = CarStateFlags.BotControlled;
+            Assert.True(predictor.OnState(botLater, 20, 0f));
+            Assert.False(predictor.OnState(bot, 30, 0f));
+
+            Assert.True(predictor.OnState(State(5001, new Vec3(3f, 0f, 0f), Vec3.Zero), 40, 0f));
+            Assert.Equal(5001u, predictor.Latest.Sequence);
+        }
+
+        [Fact]
         public void CorrectionsAreSmoothedNotSnapped()
         {
             var predictor = new RemoteCarPredictor(new PredictionSettings { SmoothingSeconds = 0.1f });
