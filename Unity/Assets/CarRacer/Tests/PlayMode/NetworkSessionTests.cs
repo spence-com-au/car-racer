@@ -4,6 +4,7 @@ using CarRacer.Core.Net;
 using CarRacer.Core.Race;
 using CarRacer.Core.Session;
 using CarRacer.Game;
+using CarRacer.Game.Bots;
 using CarRacer.Game.Driving;
 using CarRacer.Game.Net;
 using CarRacer.Game.Screens;
@@ -171,6 +172,68 @@ namespace CarRacer.Tests
                 Assert.Less(Vector3.Distance(screen.Car.BodyPosition, centre), CarRacer.Core.Arena.MonsterRules.StadiumRadius);
                 Assert.IsNotNull(GameObject.Find("Ramp 0"), "the stadium has its ramps");
                 Assert.IsNull(screen.CameraRig.ArenaCentre, "Monster Jam keeps the chase camera");
+            }
+            finally
+            {
+                Object.Destroy(screen.gameObject);
+            }
+
+            yield return null;
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator BotsFillTheGridAreHeldUntilGoThenDriveOffAndReportCheckpoints()
+        {
+            var screen = TrackScreen.Create(new NoInput(), () => NetworkSession.StartHosting("Host", TestPort + 5));
+            try
+            {
+                yield return null;
+                yield return null;
+
+                var session = screen.Session;
+                var settings = LobbySettings.Default;
+                settings.BotFill = 3;
+                session.ChangeSettings(settings);
+                session.Command(LobbyCommand.Start);
+                yield return null;
+                yield return null;
+
+                var botIds = new System.Collections.Generic.List<byte>();
+                foreach (var player in session.Players)
+                {
+                    if (player.IsBot)
+                    {
+                        botIds.Add(player.PlayerId);
+                    }
+                }
+
+                Assert.AreEqual(2, botIds.Count, "the bots fill the grid up to the setting");
+                var bots = screen.GetComponent<BotCars>();
+                var race = (HostRace)session.Race;
+                var grid = new Vector3[botIds.Count];
+                for (int i = 0; i < botIds.Count; i++)
+                {
+                    Assert.IsTrue(bots.TryGetPosition(botIds[i], out grid[i]), "every bot in the roster has a car");
+                }
+
+                Assert.AreEqual(RacePhase.Countdown, race.Phase);
+                yield return new WaitForSeconds(0.5f);
+                for (int i = 0; i < botIds.Count; i++)
+                {
+                    bots.TryGetPosition(botIds[i], out var now);
+                    Assert.Less(Vector3.Distance(grid[i], now), 0.5f, "a bot is held on the grid through the countdown");
+                }
+
+                yield return new WaitForSeconds((HostRace.StartLeadMs + HostRace.CountdownMs) / 1000f);
+                Assert.AreEqual(RacePhase.Racing, race.Phase);
+
+                // Driving off the grid crosses the start line, checkpoint 0.
+                yield return new WaitForSeconds(3f);
+                foreach (byte id in botIds)
+                {
+                    Assert.GreaterOrEqual(race.Tracker.Get(id).CheckpointsPassed, 1, "a bot's checkpoints are reported to the referee");
+                }
             }
             finally
             {
