@@ -30,17 +30,30 @@ namespace CarRacer.Core.Driving
         public const float BrakeThreshold = 0.1f;
 
         /// <summary>
-        /// The strongest steer wins, so a gamepad and the touch screen can be used side by side.
+        /// The strongest steer wins, so a gamepad and the touch screen can be used side by side; on a
+        /// tie, <paramref name="a"/>'s. The harder press of each pedal counts, and so does a button
+        /// pressed on either device.
+        /// </summary>
+        public static DriverControls Merge(DriverControls a, DriverControls b) => new DriverControls
+        {
+            Steer = Math.Abs(a.Steer) >= Math.Abs(b.Steer) ? a.Steer : b.Steer,
+            Accelerate = Math.Max(a.Accelerate, b.Accelerate),
+            Brake = Math.Max(a.Brake, b.Brake),
+            Drift = a.Drift || b.Drift,
+            UseItem = a.UseItem || b.UseItem,
+            LookBack = a.LookBack || b.LookBack,
+        };
+
+        /// <summary>
         /// Braking overrides accelerating. With auto-accelerate on (design doc §5) the car drives at
         /// full throttle unless braking.
         /// </summary>
-        public static CarInput Combine(DriverControls a, DriverControls b, bool autoAccelerate)
+        public static CarInput ToCarInput(DriverControls controls, bool autoAccelerate)
         {
-            float steer = Math.Abs(a.Steer) >= Math.Abs(b.Steer) ? a.Steer : b.Steer;
-            float brake = Math.Clamp(Math.Max(a.Brake, b.Brake), 0f, 1f);
-            float accelerate = autoAccelerate ? 1f : Math.Clamp(Math.Max(a.Accelerate, b.Accelerate), 0f, 1f);
+            float brake = Math.Clamp(controls.Brake, 0f, 1f);
+            float accelerate = autoAccelerate ? 1f : Math.Clamp(controls.Accelerate, 0f, 1f);
             float throttle = brake > BrakeThreshold ? -brake : accelerate;
-            return new CarInput(Math.Clamp(steer, -1f, 1f), throttle, a.Drift || b.Drift);
+            return new CarInput(Math.Clamp(controls.Steer, -1f, 1f), throttle, controls.Drift);
         }
     }
 }
