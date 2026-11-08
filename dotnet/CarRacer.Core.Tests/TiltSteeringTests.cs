@@ -29,6 +29,18 @@ namespace CarRacer.Core.Tests
             Assert.Equal(-TiltSteering.Steer(Turned(15f)), TiltSteering.Steer(Turned(-15f)), 5);
         }
 
+        [Theory]
+        [InlineData(0.25f)]
+        [InlineData(0.5f)]
+        [InlineData(0.75f)]
+        public void SteeringRisesLinearlyFromTheDeadZoneToFullLock(float fraction)
+        {
+            float span = TiltSteering.FullLockDegrees - TiltSteering.DeadZoneDegrees;
+            float degrees = TiltSteering.DeadZoneDegrees + fraction * span;
+            Assert.Equal(fraction, TiltSteering.Steer(Turned(degrees)), 4);
+            Assert.Equal(-fraction, TiltSteering.Steer(Turned(-degrees)), 4);
+        }
+
         [Fact]
         public void FullLockAtThirtyDegreesAndNoFurther()
         {
