@@ -7,7 +7,8 @@ namespace CarRacer.Core.Discovery
     {
         /// <summary>
         /// Bump whenever any network message format changes, or a message's meaning does (e.g. a
-        /// new track index an older build doesn't have); mismatched hosts show as "Update required".
+        /// new track index an older build doesn't have); mismatched hosts show as "Update this app
+        /// to join" or "Host needs updating", depending on which side is older.
         /// </summary>
         public const ushort ProtocolVersion = 27;
 
@@ -61,7 +62,7 @@ namespace CarRacer.Core.Discovery
         /// <summary>
         /// Decodes a datagram. Returns false for anything that isn't one of our announcements.
         /// An announcement from a different protocol version decodes only its version and
-        /// session id (enough to show "Update required").
+        /// session id (enough to say which side needs updating).
         /// </summary>
         public static bool TryDecode(byte[] data, int length, out DiscoveryAnnouncement announcement)
         {
