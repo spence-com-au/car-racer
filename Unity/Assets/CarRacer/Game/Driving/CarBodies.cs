@@ -113,6 +113,33 @@ namespace CarRacer.Game.Driving
                 return material;
             }
 
+            var bytes = PaintedPalette(model, colour, out int width, out int height);
+            if (bytes == null)
+            {
+                return null;
+            }
+
+            var texture = new Texture2D(width, height, TextureFormat.RGBA32, false)
+            {
+                name = $"{model.Name} {ColorUtility.ToHtmlStringRGB(colour)}",
+                wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear,
+            };
+            texture.LoadRawTextureData(bytes);
+            texture.Apply(false, true);
+
+            material = SimpleMaterials.Textured(texture);
+            Materials[(model.Name, colour)] = material;
+            return material;
+        }
+
+        /// <summary>
+        /// The shared palette as RGBA bytes, rows from the bottom up, with <paramref name="model"/>'s paint
+        /// recoloured to <paramref name="colour"/>; null if the palette can't be loaded. The texture can't be
+        /// read back once uploaded, so this is also what tests check.
+        /// </summary>
+        public static byte[] PaintedPalette(CarModel model, Color colour, out int width, out int height)
+        {
             if (_palette == null)
             {
                 var asset = Resources.Load<TextAsset>("Models/" + CarModels.Palette + ".png");
@@ -121,6 +148,8 @@ namespace CarRacer.Game.Driving
                 {
                     Debug.LogError("The car palette is missing; using the placeholder body.");
                     Object.DestroyImmediate(source);
+                    width = 0;
+                    height = 0;
                     return null;
                 }
 
@@ -129,6 +158,9 @@ namespace CarRacer.Game.Driving
                 _paletteHeight = source.height;
                 Object.DestroyImmediate(source);
             }
+
+            width = _paletteWidth;
+            height = _paletteHeight;
 
             // Color32 is laid out as RGBA bytes, rows from the bottom up, as PaintRecolour expects.
             var bytes = new byte[_palette.Length * 4];
@@ -142,19 +174,8 @@ namespace CarRacer.Game.Driving
             }
 
             Color32 paint = colour;
-            PaintRecolour.Recolour(bytes, _paletteWidth, _paletteHeight, model.Paint, paint.r, paint.g, paint.b);
-            var texture = new Texture2D(_paletteWidth, _paletteHeight, TextureFormat.RGBA32, false)
-            {
-                name = $"{model.Name} {ColorUtility.ToHtmlStringRGB(colour)}",
-                wrapMode = TextureWrapMode.Clamp,
-                filterMode = FilterMode.Bilinear,
-            };
-            texture.LoadRawTextureData(bytes);
-            texture.Apply(false, true);
-
-            material = SimpleMaterials.Textured(texture);
-            Materials[(model.Name, colour)] = material;
-            return material;
+            PaintRecolour.Recolour(bytes, width, height, model.Paint, paint.r, paint.g, paint.b);
+            return bytes;
         }
     }
 }
