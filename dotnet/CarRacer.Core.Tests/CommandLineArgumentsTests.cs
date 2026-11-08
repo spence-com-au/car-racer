@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using CarRacer.Core.Session;
 using Xunit;
 
@@ -26,12 +27,12 @@ namespace CarRacer.Core.Tests
             Assert.False(args.ContainsKey("secret"));
         }
 
+        public static IEnumerable<object[]> BuildFlags =>
+            typeof(CommandLineArguments.BuildFlag).GetFields().Select(field => new[] { field.GetRawConstantValue() });
+
         [Theory]
-        [InlineData("androidKeystoreName")]
-        [InlineData("androidKeystorePass")]
-        [InlineData("androidKeyaliasName")]
-        [InlineData("androidKeyaliasPass")]
-        public void TheBuildsPasswordAndNameFlagsTakeAValueThatStartsWithADash(string flag)
+        [MemberData(nameof(BuildFlags))]
+        public void EveryBuildFlagTakesAValueThatStartsWithADash(string flag)
         {
             string[] argv = { "-" + flag, "-secret", "-quit" };
             var args = CommandLineArguments.Parse(argv, CommandLineArguments.BuildValueArguments);

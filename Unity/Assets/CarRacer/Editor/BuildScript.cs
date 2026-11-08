@@ -8,6 +8,7 @@ using UnityEditor;
 using UnityEditor.Build.Reporting;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using BuildFlag = CarRacer.Core.Session.CommandLineArguments.BuildFlag;
 
 namespace CarRacer.Editor
 {
@@ -100,12 +101,12 @@ namespace CarRacer.Editor
         {
             var args = ParseArguments(Environment.GetCommandLineArgs());
             PrepareProject(BuildTarget.StandaloneLinux64);
-            if (args.TryGetValue("buildVersion", out string version) && !string.IsNullOrEmpty(version))
+            if (args.TryGetValue(BuildFlag.BuildVersion, out string version) && !string.IsNullOrEmpty(version))
             {
                 PlayerSettings.bundleVersion = version;
             }
 
-            string output = args.TryGetValue("customBuildPath", out string path) && !string.IsNullOrEmpty(path) ? path : DefaultLinuxServerPath;
+            string output = args.TryGetValue(BuildFlag.CustomBuildPath, out string path) && !string.IsNullOrEmpty(path) ? path : DefaultLinuxServerPath;
             bool succeeded = Build(output, BuildTarget.StandaloneLinux64, development: false) && CopyServerMusic(output);
             EditorApplication.Exit(succeeded ? 0 : 1);
         }
@@ -151,24 +152,24 @@ namespace CarRacer.Editor
             var args = ParseArguments(Environment.GetCommandLineArgs());
             PrepareProject();
 
-            if (args.TryGetValue("buildVersion", out string version) && !string.IsNullOrEmpty(version))
+            if (args.TryGetValue(BuildFlag.BuildVersion, out string version) && !string.IsNullOrEmpty(version))
             {
                 PlayerSettings.bundleVersion = version;
             }
 
-            if (args.TryGetValue("androidVersionCode", out string code) && int.TryParse(code, out int versionCode) && versionCode > 0)
+            if (args.TryGetValue(BuildFlag.AndroidVersionCode, out string code) && int.TryParse(code, out int versionCode) && versionCode > 0)
             {
                 PlayerSettings.Android.bundleVersionCode = versionCode;
             }
 
             bool development = args.ContainsKey("carRacerDevelopment");
-            if (args.TryGetValue("androidKeystoreName", out string keystore) && !string.IsNullOrEmpty(keystore))
+            if (args.TryGetValue(BuildFlag.AndroidKeystoreName, out string keystore) && !string.IsNullOrEmpty(keystore))
             {
                 PlayerSettings.Android.useCustomKeystore = true;
                 PlayerSettings.Android.keystoreName = keystore;
-                PlayerSettings.Android.keystorePass = args.TryGetValue("androidKeystorePass", out string kp) ? kp : string.Empty;
-                PlayerSettings.Android.keyaliasName = args.TryGetValue("androidKeyaliasName", out string an) ? an : string.Empty;
-                PlayerSettings.Android.keyaliasPass = args.TryGetValue("androidKeyaliasPass", out string ap) ? ap : string.Empty;
+                PlayerSettings.Android.keystorePass = args.TryGetValue(BuildFlag.AndroidKeystorePass, out string kp) ? kp : string.Empty;
+                PlayerSettings.Android.keyaliasName = args.TryGetValue(BuildFlag.AndroidKeyaliasName, out string an) ? an : string.Empty;
+                PlayerSettings.Android.keyaliasPass = args.TryGetValue(BuildFlag.AndroidKeyaliasPass, out string ap) ? ap : string.Empty;
             }
             else if (development)
             {
@@ -181,7 +182,7 @@ namespace CarRacer.Editor
                 PlayerSettings.Android.useCustomKeystore = false;
             }
 
-            string output = args.TryGetValue("customBuildPath", out string path) && !string.IsNullOrEmpty(path)
+            string output = args.TryGetValue(BuildFlag.CustomBuildPath, out string path) && !string.IsNullOrEmpty(path)
                 ? path
                 : "build/Android/CarRacer.apk";
 
