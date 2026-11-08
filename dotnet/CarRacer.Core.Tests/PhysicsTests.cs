@@ -10,6 +10,24 @@ namespace CarRacer.Core.Tests
         private static readonly BumpSettings Settings = new BumpSettings();
 
         [Fact]
+        public void BumpSeverityRunsFromTheGentlestToTheHardestBump()
+        {
+            Assert.Equal(0f, Settings.Severity(0f));
+            Assert.Equal(0f, Settings.Severity(Settings.MinImpulsePerMass));
+            Assert.Equal(0.5f, Settings.Severity((Settings.MinImpulsePerMass + Settings.MaxImpulsePerMass) / 2f), 4);
+            Assert.Equal(1f, Settings.Severity(Settings.MaxImpulsePerMass));
+            Assert.Equal(1f, Settings.Severity(Settings.MaxImpulsePerMass * 2f));
+        }
+
+        [Fact]
+        public void AnEmptyBumpRangeMakesEveryBumpTheHardest()
+        {
+            var flat = new BumpSettings { MinImpulsePerMass = 5f, MaxImpulsePerMass = 5f };
+            Assert.Equal(1f, flat.Severity(0f));
+            Assert.Equal(1f, flat.Severity(5f));
+        }
+
+        [Fact]
         public void HeadOnBumpPushesBothCarsApartEqually()
         {
             var a = new CarBody(new Vec3(0f, 0f, 0f), new Vec3(0f, 0f, 10f));

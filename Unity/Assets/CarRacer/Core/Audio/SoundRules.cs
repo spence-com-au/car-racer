@@ -46,15 +46,12 @@ namespace CarRacer.Core.Audio
 
         /// <summary>
         /// The crunch a bump of <paramref name="impulse"/> makes: bigger and louder the harder it was,
-        /// over the same range as its haptic pulse (<see cref="BumpSettings"/>, per unit of the two cars'
-        /// <paramref name="reducedMass"/>).
+        /// by <see cref="BumpSettings.Severity"/> per unit of the two cars' <paramref name="reducedMass"/>, like its
+        /// haptic pulse.
         /// </summary>
         public static (CrunchSize Size, float Volume) Crunch(float impulse, float reducedMass, BumpSettings settings)
         {
-            float perMass = reducedMass > 0f ? impulse / reducedMass : 0f;
-            float range = settings.MaxImpulsePerMass - settings.MinImpulsePerMass;
-            float t = range > 0f ? (perMass - settings.MinImpulsePerMass) / range : 1f;
-            t = Math.Max(0f, Math.Min(1f, t));
+            float t = settings.Severity(reducedMass > 0f ? impulse / reducedMass : 0f);
             var size = t < 1f / 3f ? CrunchSize.Light : t < 2f / 3f ? CrunchSize.Medium : CrunchSize.Heavy;
             return (size, 0.4f + 0.6f * t);
         }

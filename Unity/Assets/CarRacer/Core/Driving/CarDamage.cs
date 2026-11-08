@@ -17,7 +17,7 @@ namespace CarRacer.Core.Driving
         /// <summary>An item hit that lands (not soaked up by a Shield).</summary>
         public const float ItemHitDamage = 0.25f;
 
-        /// <summary>A car-to-car bump does this much, from the gentlest to the hardest (by <see cref="BumpSettings"/>' range).</summary>
+        /// <summary>A car-to-car bump does this much, from the gentlest to the hardest (by <see cref="BumpSettings.Severity"/>).</summary>
         public const float BumpMinDamage = 0.02f;
         public const float BumpMaxDamage = 0.12f;
 
@@ -60,8 +60,7 @@ namespace CarRacer.Core.Driving
         /// </summary>
         public bool AddBump(float impulsePerMass, BumpSettings settings)
         {
-            float t = (impulsePerMass - settings.MinImpulsePerMass) / Math.Max(1e-3f, settings.MaxImpulsePerMass - settings.MinImpulsePerMass);
-            return Add(BumpMinDamage + (BumpMaxDamage - BumpMinDamage) * Clamp01(t));
+            return Add(BumpMinDamage + (BumpMaxDamage - BumpMinDamage) * settings.Severity(impulsePerMass));
         }
 
         /// <summary>A wall hit at <paramref name="speedIntoWall"/> m/s, straight into it. True if it wrecked the car.</summary>

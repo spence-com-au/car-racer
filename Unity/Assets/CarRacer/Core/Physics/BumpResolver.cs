@@ -37,6 +37,18 @@ namespace CarRacer.Core.Physics
 
         /// <summary>Upward "pop" as a fraction of the horizontal impulse. Applied equally to both cars.</summary>
         public float LiftFraction = 0.15f;
+
+        /// <summary>
+        /// How hard a bump of <paramref name="impulsePerMass"/>, its impulse per unit of the two cars' reduced mass,
+        /// was: 0 at <see cref="MinImpulsePerMass"/> or less, 1 at <see cref="MaxImpulsePerMass"/> or more. Its crunch,
+        /// haptic pulse and damage all scale with this.
+        /// </summary>
+        public float Severity(float impulsePerMass)
+        {
+            float range = MaxImpulsePerMass - MinImpulsePerMass;
+            float t = range > 0f ? (impulsePerMass - MinImpulsePerMass) / range : 1f;
+            return Math.Max(0f, Math.Min(1f, t));
+        }
     }
 
     /// <summary>
