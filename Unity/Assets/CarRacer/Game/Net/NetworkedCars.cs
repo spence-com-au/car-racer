@@ -190,14 +190,12 @@ namespace CarRacer.Game.Net
                 return;
             }
 
-            bool spun = car.State.SpunOut;
-            if (spun && !_ownSpunOut && _session.Race is HostRace race)
+            if (EventCars.SpinOutStarted(car.State.SpunOut, ref _ownSpunOut) && _session.Race is HostRace race)
             {
                 race.ReportSpinOut(_me);
             }
 
-            _ownSpunOut = spun;
-            if (_phase == RacePhase.Racing && _session.Race.Mode != GameMode.Race)
+            if (_phase == RacePhase.Racing)
             {
                 car.InputLocked = ArenaStandings.IsOut(_session.Race, _me);
             }
@@ -458,7 +456,7 @@ namespace CarRacer.Game.Net
             // Line up for the countdown (or straight away if GO came before the countdown was seen),
             // and come back to the track from an arena or the stadium for the lobby. With no car of its own yet (or
             // ever, on a dedicated host), the screen still moves to the event's track, which standings use.
-            bool lineUp = phase == RacePhase.Countdown || (phase == RacePhase.Racing && _phase != RacePhase.Countdown);
+            bool lineUp = EventCars.LinesUp(_phase, phase);
             if (lineUp)
             {
                 _screen.FollowEventTrack(_session.Race);
@@ -493,9 +491,9 @@ namespace CarRacer.Game.Net
             _screen.Car.InputLocked = phase == RacePhase.Countdown;
 
             // Monster Jam: truck handling and heavier bumps for the event (the look follows the roster sync).
-            bool trucks = phase != RacePhase.Lobby && _session.Race.Mode == GameMode.Monster;
+            bool trucks = EventCars.AreTrucks(_session.Race.Mode, phase);
             _screen.Car.MonsterTruck = trucks;
-            _bumpSettings.Exaggeration = trucks ? MonsterRules.BumpExaggeration : _carExaggeration;
+            _bumpSettings.Exaggeration = EventCars.BumpExaggeration(trucks, _carExaggeration);
 
             var rules = _session.Race.Rules;
             _screen.Car.DamageEnabled = rules.DamageIn(_session.Race.Mode, phase);
@@ -562,7 +560,7 @@ namespace CarRacer.Game.Net
         {
             _inRoster.Clear();
             var race = _session.Race;
-            bool truck = race != null && race.Mode == GameMode.Monster && race.Phase != RacePhase.Lobby;
+            bool truck = race != null && EventCars.AreTrucks(race.Mode, race.Phase);
             foreach (var player in _session.Players)
             {
                 _inRoster.Add(player.PlayerId);
