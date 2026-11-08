@@ -77,8 +77,6 @@ namespace CarRacer.Game.Bots
         private readonly HashSet<byte> _inRoster = new HashSet<byte>();
         private readonly List<byte> _gone = new List<byte>();
         private readonly List<Vec3> _rivals = new List<Vec3>();
-        private readonly List<OtherCar> _others = new List<OtherCar>();
-        private readonly List<Bump> _bumps = new List<Bump>();
 
         /// <summary>Shared by every bot's bump monitor; Monster Jam's trucks hit harder.</summary>
         private readonly BumpSettings _bumpSettings = new BumpSettings();
@@ -262,35 +260,14 @@ namespace CarRacer.Game.Bots
         }
 
         /// <summary>
-        /// Bumps a bot off other phones' cars, which have no collider here (design doc §2.2), and tells
-        /// those phones in case they missed it. This phone's own car and the other bots are real
+        /// Bumps a bot off other phones' cars. This phone's own car and the other bots are real
         /// physics bodies, so the physics engine handles those.
         /// </summary>
         private void ResolveBumps(Bot bot)
         {
-            _others.Clear();
-            foreach (var remote in _cars.RemoteCars)
+            foreach (var other in _cars.BumpOffRemotes(bot.Car, bot.PlayerId, bot.Bumps))
             {
-                if (remote.HasState)
-                {
-                    _others.Add(new OtherCar(remote.PlayerId, remote.transform.position.ToCore(), remote.Velocity.ToCore()));
-                }
-            }
-
-            _bumps.Clear();
-            bot.Bumps.Step(bot.PlayerId, bot.Car.BodyPosition.ToCore(), bot.Car.BodyVelocity.ToCore(), _others, NetworkSession.NowMs, _bumps);
-            foreach (var bump in _bumps)
-            {
-                bot.Car.AddImpulse(bump.SelfImpulse.ToUnity());
-                bot.Car.TakeBump(bump.SelfImpulse.ToUnity());
-                _session.SendHit(bump.Fallback);
-                foreach (var other in _others)
-                {
-                    if (other.PlayerId == bump.OtherPlayerId)
-                    {
-                        ReportCrush(bot, bot.Car.BodyVelocity.ToCore(), other.PlayerId, other.Position, other.Velocity);
-                    }
-                }
+                ReportCrush(bot, bot.Car.BodyVelocity.ToCore(), other.PlayerId, other.Position, other.Velocity);
             }
         }
 
@@ -315,28 +292,9 @@ namespace CarRacer.Game.Bots
 
         private void OnBotHit(HitMessage hit)
         {
-            if (!_bots.TryGetValue(hit.TargetId, out var bot))
+            if (_bots.TryGetValue(hit.TargetId, out var bot))
             {
-                return;
-            }
-
-            switch (ItemHitResponse.Resolve(hit, bot.Shield))
-            {
-                case ItemHitOutcome.Blocked:
-                    break;
-                case ItemHitOutcome.SpinOut:
-                    bot.Car.AddImpulse(hit.Impulse.ToUnity());
-                    bot.Car.SpinOut();
-                    bot.Car.TakeItemHit();
-                    break;
-                default:
-                    if (bot.Bumps.OnHit(hit, bot.PlayerId, NetworkSession.NowMs, out var impulse))
-                    {
-                        bot.Car.AddImpulse(impulse.ToUnity());
-                        bot.Car.TakeBump(impulse.ToUnity());
-                    }
-
-                    break;
+                NetworkedCars.TakeHit(bot.Car, bot.Shield, bot.Bumps, bot.PlayerId, hit);
             }
         }
 
@@ -554,29 +512,6 @@ namespace CarRacer.Game.Bots
             long now = NetworkSession.NowMs;
             foreach (var bot in _bots.Values)
             {
-                var state = bot.Car.State;
-                var flags = CarStateFlags.BotControlled;
-                if (state.Drifting)
-                {
-                    flags |= CarStateFlags.Drifting;
-                }
-
-                if (state.BoostSecondsLeft > 0f)
-                {
-                    flags |= CarStateFlags.Boosting;
-                }
-
-                if (bot.Shield.IsUp)
-                {
-                    flags |= CarStateFlags.Shielded;
-                }
-
-                if (state.SpunOut)
-                {
-                    flags |= CarStateFlags.SpunOut;
-                }
-
-                flags |= DamageFlags.For(bot.Car.Damage.SmokeLevel, bot.Car.Damage.Wrecked);
                 _session.SendCarState(new CarStateMessage
                 {
                     PlayerId = bot.PlayerId,
@@ -584,8 +519,8 @@ namespace CarRacer.Game.Bots
                     SentAtMs = now,
                     Position = bot.Car.BodyPosition.ToCore(),
                     Velocity = bot.Car.BodyVelocity.ToCore(),
-                    HeadingRadians = state.Heading,
-                    Flags = flags,
+                    HeadingRadians = bot.Car.State.Heading,
+                    Flags = CarStateFlags.BotControlled | CarFlags.For(bot.Car.State, bot.Shield.IsUp, bot.Car.Damage),
                 });
             }
         }
