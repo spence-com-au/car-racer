@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using CarRacer.Core.Audio;
+using CarRacer.Game.Platform;
 using UnityEngine;
 
 namespace CarRacer.Game.Audio
@@ -25,11 +26,12 @@ namespace CarRacer.Game.Audio
         private static readonly Dictionary<UiSound, AudioClip> UiClips = new Dictionary<UiSound, AudioClip>();
         private static AudioClip _engine;
         private static AudioSource _speaker;
+        private static int? _volumeStep;
 
         public static int VolumeStep
         {
-            get => SoundRules.ClampVolumeStep(PlayerPrefs.GetInt(VolumeKey, SoundRules.DefaultVolumeStep));
-            private set => PlayerPrefs.SetInt(VolumeKey, value);
+            get => SoundRules.ClampVolumeStep(Accessibility.Get(ref _volumeStep, VolumeKey, SoundRules.DefaultVolumeStep));
+            private set => Accessibility.Set(ref _volumeStep, VolumeKey, value);
         }
 
         /// <summary>The sound-effects volume, 0 (off) to 1.</summary>
