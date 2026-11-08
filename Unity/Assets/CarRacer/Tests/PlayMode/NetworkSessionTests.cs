@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using CarRacer.Core.Driving;
 using CarRacer.Core.Net;
 using CarRacer.Core.Race;
@@ -16,12 +17,19 @@ using UnityEngine.TestTools;
 namespace CarRacer.Tests
 {
     /// <summary>
-    /// Starts a real NGO host from code (one process can't also join it). The session protocol
-    /// itself is tested by `dotnet test`; this checks the NGO and Unity Transport setup.
+    /// Starts a real NGO host from code (one process can't also join it). The session protocol and the framing of its
+    /// messages (`MessageCodec.TryDecodeFrame`, which reads everything a guest sends) are tested by `dotnet test`; this
+    /// checks the NGO and Unity Transport setup, and what a session does with the frames it is handed: with no peer to
+    /// send them, the tests pass them to `NetworkSession.Receive`.
     /// </summary>
     public class NetworkSessionTests
     {
         private const ushort TestPort = 47790;
+
+        // Nothing listens on this one, so a guest that joins it stays connecting.
+        private const ushort NobodyPort = TestPort + 6;
+
+        private const ushort ServerPort = TestPort + 7;
 
         private static readonly string[] SettingKeys =
         {
@@ -35,9 +43,25 @@ namespace CarRacer.Tests
             HostLobby.ReverseGridKey,
         };
 
+        // Each is something anyone on the LAN could send, and every one has to be dropped without a word to the game.
+        private static readonly byte[][] MalformedFrames =
+        {
+            // Not even a length.
+            new byte[0],
+            // A length of nothing.
+            new byte[] { 0, 0, 0, 0 },
+            // A length of 2049 bytes, one past the cap.
+            new byte[] { 0x01, 0x08, 0, 0 },
+            // Five bytes of message promised and one sent.
+            new byte[] { 5, 0, 0, 0, 1 },
+            // A message type nobody has.
+            new byte[] { 1, 0, 0, 0, 200 },
+        };
+
         private readonly Dictionary<string, int> _savedSettings = new Dictionary<string, int>();
         private string _savedCup;
         private TrackScreen _screen;
+        private NetworkSession _session;
 
         // Hosting saves the lobby settings to `PlayerPrefs` and loads them back on the next host, so each test starts
         // from the defaults and leaves the developer's own saved settings as it found them.
@@ -85,16 +109,22 @@ namespace CarRacer.Tests
         }
 
         [UnityTearDown]
-        public IEnumerator DestroyTheScreen()
+        public IEnumerator DestroyTheScreenAndSession()
         {
             if (_screen != null)
             {
                 Object.Destroy(_screen.gameObject);
             }
 
+            if (_session != null)
+            {
+                Object.Destroy(_session.gameObject);
+            }
+
             // Let NGO shut down before anything else starts a NetworkManager. This runs even when an assertion failed.
             yield return null;
             yield return null;
+            LogAssert.ignoreFailingMessages = false;
         }
 
         private sealed class NoInput : ICarInputSource
@@ -262,6 +292,120 @@ namespace CarRacer.Tests
             {
                 Assert.GreaterOrEqual(race.Tracker.Get(id).CheckpointsPassed, 1, "a bot's checkpoints are reported to the referee");
             }
+        }
+
+        private static byte[] AcceptedFrame() =>
+            MessageCodec.EncodeFrame(new JoinReplyMessage { Result = JoinResult.Accepted, PlayerId = 3 });
+
+        private NetworkSession JoinNobody() => _session = NetworkSession.Join("Guest", "127.0.0.1", NobodyPort);
+
+        [UnityTest]
+        public IEnumerator AHostThatCannotBindItsPortEndsWithWhy()
+        {
+            // The transport logs an error when another socket holds the port.
+            LogAssert.ignoreFailingMessages = true;
+            using (new System.Net.Sockets.UdpClient(new System.Net.IPEndPoint(System.Net.IPAddress.Any, ServerPort)))
+            {
+                _session = NetworkSession.StartServer("Test server", ServerPort);
+                yield return null;
+            }
+
+            Assert.IsTrue(_session.IsHost);
+            Assert.IsTrue(_session.Ended);
+            Assert.AreEqual($"Couldn't host on port {ServerPort}", _session.Status);
+        }
+
+        [UnityTest]
+        public IEnumerator AGuestWaitsToBeLetIn()
+        {
+            JoinNobody();
+            yield return null;
+
+            Assert.IsFalse(_session.IsHost);
+            Assert.IsFalse(_session.Ended, _session.Status);
+            Assert.AreEqual(GuestState.Connecting, _session.GuestSide.State);
+            StringAssert.StartsWith("Connecting to 127.0.0.1", _session.Status);
+            Assert.IsFalse(_session.TryGetLocalPlayerId(out _));
+        }
+
+        [UnityTest]
+        public IEnumerator AnAcceptedGuestIsJoined()
+        {
+            JoinNobody();
+            yield return null;
+
+            _session.Receive(GuestSession.HostConnection, AcceptedFrame());
+
+            Assert.IsFalse(_session.Ended, _session.Status);
+            Assert.AreEqual("Joined", _session.Status);
+            Assert.IsTrue(_session.TryGetLocalPlayerId(out byte me));
+            Assert.AreEqual(3, me);
+        }
+
+        [UnityTest]
+        public IEnumerator ARefusedGuestEndsWithWhy()
+        {
+            JoinNobody();
+            yield return null;
+
+            _session.Receive(
+                GuestSession.HostConnection,
+                MessageCodec.EncodeFrame(new JoinReplyMessage { Result = JoinResult.EventInProgress }));
+
+            Assert.IsTrue(_session.Ended);
+            Assert.AreEqual(GuestSession.RefusalText(JoinResult.EventInProgress), _session.Status);
+            Assert.IsFalse(_session.TryGetLocalPlayerId(out _));
+        }
+
+        [UnityTest]
+        public IEnumerator AGuestGivesUpOnAHostThatGoesQuiet()
+        {
+            // This guest joins a host that isn't there and pings it all the same, which may make the transport log
+            // errors; what's checked is that the guest gives up.
+            LogAssert.ignoreFailingMessages = true;
+            JoinNobody();
+            yield return null;
+            _session.Receive(GuestSession.HostConnection, AcceptedFrame());
+            Assert.IsFalse(_session.Ended, _session.Status);
+
+            yield return new WaitForSecondsRealtime(GuestSession.GiveUpAfterMs / 1000f + 1f);
+
+            Assert.IsTrue(_session.Ended);
+            Assert.AreEqual("Lost the connection to the host", _session.Status);
+        }
+
+        [UnityTest]
+        public IEnumerator AGuestDropsMalformedMessagesAndCarriesOn()
+        {
+            JoinNobody();
+            yield return null;
+
+            foreach (byte[] frame in MalformedFrames)
+            {
+                LogAssert.Expect(LogType.Warning, new Regex("Dropped a malformed message from client 0"));
+                _session.Receive(GuestSession.HostConnection, frame);
+            }
+
+            Assert.IsFalse(_session.Ended, _session.Status);
+            Assert.AreEqual(GuestState.Connecting, _session.GuestSide.State);
+            _session.Receive(GuestSession.HostConnection, AcceptedFrame());
+            Assert.AreEqual("Joined", _session.Status);
+        }
+
+        [UnityTest]
+        public IEnumerator AHostDropsMalformedMessagesAndCarriesOn()
+        {
+            _session = NetworkSession.StartServer("Test server", ServerPort);
+            yield return null;
+
+            foreach (byte[] frame in MalformedFrames)
+            {
+                LogAssert.Expect(LogType.Warning, new Regex("Dropped a malformed message from client 9"));
+                _session.Receive(9, frame);
+            }
+
+            Assert.IsFalse(_session.Ended, _session.Status);
+            Assert.AreEqual(0, _session.Players.Count);
         }
 
         private sealed class FullThrottle : ICarInputSource

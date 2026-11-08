@@ -297,15 +297,59 @@ namespace CarRacer.Core.Net
         };
     }
 
-    /// <summary>Frames game messages as [type byte][payload].</summary>
+    /// <summary>Frames game messages as [type byte][payload], and on the wire each as [length][that].</summary>
     public static class MessageCodec
     {
+        /// <summary>The length ahead of every message on the wire, a little-endian int.</summary>
+        public const int FrameHeaderBytes = sizeof(int);
+
+        /// <summary>Messages are a few dozen bytes; anything bigger than this is malformed.</summary>
+        public const int MaxMessageBytes = 2048;
+
         public static byte[] Encode(IGameMessage message)
         {
             var writer = new NetWriter();
             writer.WriteByte((byte)message.Type);
             message.Write(writer);
             return writer.ToArray();
+        }
+
+        /// <summary>The message as it travels: its length, then its <see cref="Encode"/>d bytes.</summary>
+        public static byte[] EncodeFrame(IGameMessage message)
+        {
+            byte[] bytes = Encode(message);
+            var writer = new NetWriter(FrameHeaderBytes + bytes.Length);
+            writer.WriteInt(bytes.Length);
+            writer.WriteBytes(bytes);
+            return writer.ToArray();
+        }
+
+        /// <summary>
+        /// Reads the message in a frame that anyone on the LAN could have sent. Anything that isn't a whole,
+        /// well-formed message is reported in <paramref name="error"/> rather than thrown, so a bad packet can't take
+        /// the session down.
+        /// </summary>
+        public static bool TryDecodeFrame(byte[] frame, out IGameMessage message, out string error)
+        {
+            message = null;
+            error = null;
+            try
+            {
+                var reader = new NetReader(frame);
+                int length = reader.ReadInt();
+                if (length <= 0 || length > MaxMessageBytes)
+                {
+                    throw new NetFormatException($"Message length {length} is outside 1 to {MaxMessageBytes}.");
+                }
+
+                message = Decode(reader.ReadBytes(length));
+                return true;
+            }
+            catch (Exception e) when (e is NetFormatException || e is OverflowException || e is IndexOutOfRangeException)
+            {
+                error = e.Message;
+                return false;
+            }
         }
 
         public static IGameMessage Decode(byte[] data) => Decode(data, 0, data.Length);

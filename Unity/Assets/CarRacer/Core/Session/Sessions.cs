@@ -19,6 +19,34 @@ namespace CarRacer.Core.Session
     }
 
     /// <summary>
+    /// Connections to drop once their time comes. A refused guest's reply goes out just before it is disconnected, and
+    /// a transport that disconnects at once can drop the reply unsent, leaving the guest not knowing why.
+    /// </summary>
+    public sealed class DelayedDisconnects
+    {
+        private readonly List<(ulong Connection, float AtTime)> _pending = new List<(ulong, float)>();
+
+        public void Add(ulong connection, float atTime) => _pending.Add((connection, atTime));
+
+        /// <summary>Takes the first connection due at <paramref name="now"/> (its time has come), if there is one.</summary>
+        public bool TryTakeDue(float now, out ulong connection)
+        {
+            for (int i = 0; i < _pending.Count; i++)
+            {
+                if (now >= _pending[i].AtTime)
+                {
+                    connection = _pending[i].Connection;
+                    _pending.RemoveAt(i);
+                    return true;
+                }
+            }
+
+            connection = 0;
+            return false;
+        }
+    }
+
+    /// <summary>
     /// The host's side of the session protocol (design doc §2.1): admits or refuses guests,
     /// keeps the roster and the next event's settings, answers clock pings, and relays car states
     /// between guests (NGO guests can only reach the host). On a phone the host is a player too;
@@ -648,6 +676,22 @@ namespace CarRacer.Core.Session
 
         /// <summary>The app is back from the background: time spent there doesn't count as the host going quiet.</summary>
         public void ForgiveSilence() => _lastHeardMs = _clockMs();
+
+        /// <summary>Tells the player why the host refused them (see <see cref="RefusalReason"/>).</summary>
+        public static string RefusalText(JoinResult result)
+        {
+            switch (result)
+            {
+                case JoinResult.SessionFull:
+                    return "That game is full";
+                case JoinResult.VersionMismatch:
+                    return "That game needs a different version of Car Racer";
+                case JoinResult.EventInProgress:
+                    return "That game has already started";
+                default:
+                    return "Couldn't join";
+            }
+        }
 
         public void OnMessage(IGameMessage message)
         {
