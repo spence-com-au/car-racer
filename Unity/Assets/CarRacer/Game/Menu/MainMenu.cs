@@ -6,6 +6,7 @@ using CarRacer.Core.Discovery;
 using CarRacer.Core.Session;
 using CarRacer.Game.Audio;
 using CarRacer.Game.Driving;
+using CarRacer.Game.Net;
 using CarRacer.Game.Platform;
 using CarRacer.Game.Screens;
 using CarRacer.Game.Ui;
@@ -60,8 +61,6 @@ namespace CarRacer.Game.Menu
         /// <summary>Shown on the main page, e.g. why the last session ended.</summary>
         public string Notice { get; set; }
 
-        private static long NowMs => (long)(Time.realtimeSinceStartupAsDouble * 1000.0);
-
         private void OnEnable()
         {
             _name = PlayerPrefs.GetString(NameKey, string.Empty);
@@ -87,7 +86,7 @@ namespace CarRacer.Game.Menu
         {
             if (_listener != null)
             {
-                long now = NowMs;
+                long now = NetworkSession.NowMs;
                 _listener.Poll(_hosts, now);
                 _hosts.Expire(now);
             }

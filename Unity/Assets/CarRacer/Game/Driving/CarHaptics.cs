@@ -1,5 +1,6 @@
 using CarRacer.Core.Driving;
 using CarRacer.Core.Physics;
+using CarRacer.Game.Net;
 using CarRacer.Game.Platform;
 using UnityEngine;
 
@@ -12,8 +13,6 @@ namespace CarRacer.Game.Driving
         private readonly HapticLimiter _limiter = new HapticLimiter();
         private readonly BumpSettings _bumpSettings = new BumpSettings();
         private CarController _car;
-
-        private static long NowMs => (long)(Time.realtimeSinceStartupAsDouble * 1000.0);
 
         private void OnEnable()
         {
@@ -38,7 +37,7 @@ namespace CarRacer.Game.Driving
 
         private void Play(HapticPulse pulse)
         {
-            if (_limiter.TryPlay(NowMs))
+            if (_limiter.TryPlay(NetworkSession.NowMs))
             {
                 Vibration.Play(pulse);
             }
