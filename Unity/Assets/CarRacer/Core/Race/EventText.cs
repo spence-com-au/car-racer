@@ -30,7 +30,7 @@ namespace CarRacer.Core.Race
             string what = settings.CupChosen
                 ? Cups.All[settings.Cup - 1].Name
                 : settings.Mode == GameMode.Race
-                    ? $"Race, {settings.Laps} laps, {EventName(GameMode.Race, settings.Track)}"
+                    ? $"Race, {settings.Laps} {(settings.Laps == 1 ? "lap" : "laps")}, {EventName(GameMode.Race, settings.Track)}"
                     : ModeName(settings.Mode);
             string rules = RulesNote(settings.Rules);
             return rules.Length == 0 ? what : what + ". " + rules;
