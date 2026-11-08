@@ -452,7 +452,7 @@ namespace CarRacer.Core.Session
                 return;
             }
 
-            Roster.Find(HostPlayerId).Name = LobbyRoster.CleanName(name);
+            Roster.Rename(HostPlayerId, name);
             BroadcastRoster();
         }
 
