@@ -268,6 +268,14 @@ namespace CarRacer.Core.Tests
                 var truck = MonsterTruck.Build(ObjModel.Parse(File.ReadAllText(ModelFiles.Resolve(body.Name + ".obj.bytes"))));
                 Assert.Equal(4, truck.Parts.Count(MonsterTruck.IsRoadWheel));
                 Assert.True(truck.Max.Y > truck.Min.Y);
+
+                // The grown wheels may meet between the axles but not cut through each other.
+                foreach (string side in new[] { "left", "right" })
+                {
+                    float frontWheelBack = truck.Parts.Single(p => p.Name == "wheel-front-" + side).Positions.Min(v => v.Z);
+                    float backWheelFront = truck.Parts.Single(p => p.Name == "wheel-back-" + side).Positions.Max(v => v.Z);
+                    Assert.True(frontWheelBack >= backWheelFront - 0.001f, $"{body.Name}'s {side} wheels overlap");
+                }
             }
         }
 
