@@ -14,6 +14,9 @@ namespace CarRacer.Core.Tests
         private const ushort Version = 17;
         private const ulong GuestConnection = 7;
 
+        /// <summary>The format version <see cref="CupRun"/> and <see cref="Championship"/> both write, 1 today.</summary>
+        private const ushort SaveFormatVersion = 1;
+
         /// <summary>Three Battles: quick to end, by spinning the guest out three times.</summary>
         private static readonly Cup ThreeBattles = new Cup("grand-prix", "Grand Prix", new[]
         {
@@ -94,6 +97,30 @@ namespace CarRacer.Core.Tests
             _now += 100;
             Tick(run);
             Assert.Equal(RacePhase.Results, _race.Phase);
+        }
+
+        /// <summary>A <see cref="CupRun.ToBytes"/> save, built by hand so a field can be made invalid.</summary>
+        private static byte[] Save(string cupId, byte[] championship)
+        {
+            var w = new NetWriter();
+            w.WriteUShort(SaveFormatVersion);
+            w.WriteString(cupId);
+            w.WriteBool(false);
+            w.WriteUShort((ushort)championship.Length);
+            w.WriteBytes(championship);
+            return w.ToArray();
+        }
+
+        /// <summary>A <see cref="Championship.ToBytes"/> save with no points table and no players.</summary>
+        private static byte[] ChampionshipSave(int totalEvents, int eventsCompleted)
+        {
+            var w = new NetWriter();
+            w.WriteUShort(SaveFormatVersion);
+            w.WriteByte((byte)totalEvents);
+            w.WriteByte((byte)eventsCompleted);
+            w.WriteByte(0);
+            w.WriteByte(0);
+            return w.ToArray();
         }
 
         private static int Points(CupRun run, string name) => run.Championship.Standings().Single(e => e.DisplayName == name).Points;
@@ -246,6 +273,38 @@ namespace CarRacer.Core.Tests
             Assert.Null(CupRun.Resume(new byte[] { 1, 2, 3 }, _host, _race, () => _now));
             var other = new CupRun(_host, _race, () => _now, new Cup("no-such-cup", "Gone", ThreeBattles.Events), false);
             Assert.Null(CupRun.Resume(other.ToBytes(), _host, _race, () => _now));
+        }
+
+        [Fact]
+        public void SavesTheFixtureBuildsAreResumable()
+        {
+            Assert.NotNull(CupRun.Resume(Save(Cups.GrandPrix.Id, ChampionshipSave(Cups.GrandPrix.Events.Count, 0)), _host, _race, () => _now));
+        }
+
+        [Fact]
+        public void ATruncatedSaveDoesNotResume()
+        {
+            var save = Save(Cups.GrandPrix.Id, ChampionshipSave(Cups.GrandPrix.Events.Count, 0));
+            Assert.Null(CupRun.Resume(save.Take(save.Length - 1).ToArray(), _host, _race, () => _now));
+        }
+
+        [Fact]
+        public void ASaveWithAnInvalidChampionshipDoesNotResume()
+        {
+            Assert.Null(CupRun.Resume(Save(Cups.GrandPrix.Id, ChampionshipSave(0, 0)), _host, _race, () => _now));
+        }
+
+        [Fact]
+        public void ASaveWithTheWrongNumberOfEventsDoesNotResume()
+        {
+            Assert.Null(CupRun.Resume(Save(Cups.GrandPrix.Id, ChampionshipSave(Cups.GrandPrix.Events.Count + 1, 0)), _host, _race, () => _now));
+        }
+
+        [Fact]
+        public void ACompletedCupDoesNotResume()
+        {
+            int events = Cups.GrandPrix.Events.Count;
+            Assert.Null(CupRun.Resume(Save(Cups.GrandPrix.Id, ChampionshipSave(events, events)), _host, _race, () => _now));
         }
 
         [Fact]
