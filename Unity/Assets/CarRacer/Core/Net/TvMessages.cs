@@ -25,6 +25,13 @@ namespace CarRacer.Core.Net
     {
         public const int MaxDevices = 8;
 
+        /// <summary>
+        /// The most <see cref="MessageCodec.Encode"/> makes of a status: a byte each for the type, <see cref="CanCast"/>,
+        /// the TV count, <see cref="State"/> and <see cref="Music"/>, and every TV name, <see cref="CastingTo"/> and
+        /// <see cref="Detail"/> a length byte and <see cref="NetWriter.MaxStringBytes"/>.
+        /// </summary>
+        public const int MaxEncodedBytes = 5 + (MaxDevices + 2) * (1 + NetWriter.MaxStringBytes);
+
         public bool CanCast;
 
         /// <summary>The TVs found, by name; at most <see cref="MaxDevices"/>.</summary>

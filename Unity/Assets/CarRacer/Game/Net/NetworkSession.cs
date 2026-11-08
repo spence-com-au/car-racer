@@ -27,8 +27,8 @@ namespace CarRacer.Game.Net
     {
         public const string MessageName = "car-racer";
 
-        /// <summary>Messages are a few dozen bytes; anything bigger than this is malformed.</summary>
-        public const int MaxMessageBytes = 2048;
+        /// <summary>The largest message is a TV status full of long names; anything bigger than that is malformed.</summary>
+        public const int MaxMessageBytes = TvStatusMessage.MaxEncodedBytes;
 
         /// <summary>A refused guest is disconnected after this long, so the reply explaining why reaches it first.</summary>
         public const float RefusalDisconnectDelaySeconds = 0.5f;
@@ -335,7 +335,11 @@ namespace CarRacer.Game.Net
             {
                 writer.WriteValueSafe(bytes.Length);
                 writer.WriteBytesSafe(bytes);
-                var delivery = reliable ? NetworkDelivery.ReliableSequenced : NetworkDelivery.Unreliable;
+
+                // Fragmented, because NGO throws on an unfragmented message over its `NonFragmentedMessageMaxSize`
+                // (about 1.3 KB) and a TV status can be twice that. Unity Transport sends both kinds down the same
+                // reliable pipeline.
+                var delivery = reliable ? NetworkDelivery.ReliableFragmentedSequenced : NetworkDelivery.Unreliable;
                 _network.CustomMessagingManager.SendNamedMessage(MessageName, connection, writer, delivery);
             }
 
@@ -360,6 +364,7 @@ namespace CarRacer.Game.Net
                 reader.ReadValueSafe(out int length);
                 if (length <= 0 || length > MaxMessageBytes)
                 {
+                    Debug.LogWarning($"Dropped a message from client {sender} claiming {length} bytes; the limit is {MaxMessageBytes}.");
                     return;
                 }
 
