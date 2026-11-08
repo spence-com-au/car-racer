@@ -86,7 +86,7 @@ namespace CarRacer.Core.Tests
         {
             var tvs = new List<CastDevice> { new CastDevice { Id = "b", Name = "Living Room TV", Address = IPAddress.Parse("10.0.0.3") } };
             var plan = new TvCastPlan();
-            plan.Request("Living Room TV", takeOver: true, alreadyShowing: true);
+            Assert.False(plan.Request("Living Room TV", takeOver: true, tvs[0], CastState.Playing));
             Assert.Equal("Living Room TV", plan.Wanted);
 
             // Someone else takes the TV and our cast ends: no take-over follows on its own.
@@ -96,6 +96,30 @@ namespace CarRacer.Core.Tests
             plan.EventStarting(casting: false);
             Assert.NotNull(plan.Next(tvs, casting: false, true, out bool takeOver));
             Assert.False(takeOver);
+        }
+
+        [Fact]
+        public void ATakeOverReplacesAPoliteCastTheTvCouldStillTurnAway()
+        {
+            var tvs = new List<CastDevice> { new CastDevice { Id = "b", Name = "Living Room TV", Address = IPAddress.Parse("10.0.0.3") } };
+            var plan = new TvCastPlan();
+            plan.Request("Living Room TV", takeOver: false);
+            Assert.NotNull(plan.Next(tvs, casting: false, true, out bool polite));
+            Assert.False(polite);
+
+            // It hasn't heard from the TV yet and may still find it busy, so the leader's pick stops it and waits.
+            Assert.True(plan.Request("Living Room TV", takeOver: true, tvs[0], CastState.Connecting));
+            Assert.Null(plan.Next(tvs, casting: true, true, out _));
+            Assert.NotNull(plan.Next(tvs, casting: false, true, out bool takeOver));
+            Assert.True(takeOver);
+
+            // A take-over still connecting can't be turned away, so picking the TV again leaves it be.
+            Assert.False(plan.Request("Living Room TV", takeOver: true, tvs[0], CastState.Connecting));
+            Assert.False(plan.Pending);
+
+            // Another TV replaces even a cast that is playing.
+            Assert.True(plan.Request("Kitchen", takeOver: true, tvs[0], CastState.Playing));
+            Assert.True(plan.Pending);
         }
     }
 

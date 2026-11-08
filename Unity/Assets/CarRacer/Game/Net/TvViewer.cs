@@ -85,14 +85,11 @@ namespace CarRacer.Game.Net
         /// </summary>
         private void CastTo(string wanted, bool takeOver)
         {
-            bool casting = _cast != null && !_cast.Finished;
-            bool same = casting && _cast.Device.Matches(wanted ?? string.Empty);
-            if (casting && !same)
+            if (_plan.Request(wanted, takeOver, _cast?.Device, _cast?.State))
             {
                 _cast.Stop();
             }
 
-            _plan.Request(wanted, takeOver, alreadyShowing: same);
             Debug.Log(string.IsNullOrEmpty(wanted) ? "Casting to the first TV found" : $"Casting to \"{ServerLog.Escape(wanted)}\"");
         }
 

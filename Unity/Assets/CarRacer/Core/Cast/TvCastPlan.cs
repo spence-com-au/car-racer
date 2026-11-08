@@ -15,6 +15,9 @@ namespace CarRacer.Core.Cast
         private bool _pending;
         private bool _takeOver;
 
+        /// <summary>Whether the latest cast <see cref="Next"/> handed out takes over its TV.</summary>
+        private bool _castTakesOver;
+
         /// <summary>Whether a cast is waiting to start (for the stream to be ready, or the TV to be found).</summary>
         public bool Pending => _pending && Wanted != null;
 
@@ -23,15 +26,21 @@ namespace CarRacer.Core.Cast
 
         /// <summary>
         /// Casts to <paramref name="wanted"/> as soon as it can; <paramref name="takeOver"/> for the
-        /// leader's own request. When <paramref name="alreadyShowing"/> (that TV is being cast to
-        /// now), it is only remembered: nothing is queued, so a take-over can't fire later, after
-        /// someone else has taken the TV.
+        /// leader's own request. <paramref name="castDevice"/> and <paramref name="cast"/> are the
+        /// latest cast's TV and state, or null if there hasn't been one; returns whether that cast
+        /// must stop to make way. A cast running to the same TV that the TV can no longer turn away
+        /// (past connecting, or itself a take-over) is kept and the request only remembered: nothing
+        /// is queued, so a take-over can't fire later, after someone else has taken the TV. A polite
+        /// cast still connecting may yet find the TV busy, so a take-over replaces it.
         /// </summary>
-        public void Request(string wanted, bool takeOver, bool alreadyShowing = false)
+        public bool Request(string wanted, bool takeOver, CastDevice castDevice = null, CastState? cast = null)
         {
             Wanted = wanted ?? string.Empty;
-            _pending = !alreadyShowing;
-            _takeOver = takeOver && !alreadyShowing;
+            bool casting = cast.HasValue && !cast.Value.IsFinished();
+            bool showing = casting && castDevice.Matches(Wanted) && (!takeOver || _castTakesOver || cast != CastState.Connecting);
+            _pending = !showing;
+            _takeOver = takeOver && !showing;
+            return casting && !showing;
         }
 
         /// <summary>An event's countdown began: casts again to the wanted TV if nothing is being cast, politely.</summary>
@@ -54,7 +63,7 @@ namespace CarRacer.Core.Cast
         /// <summary>
         /// The TV to cast to now, and whether to take it over, or null to wait. While something is
         /// being cast, the server's own polite tries are dropped, but a leader's request waits for
-        /// the old cast to end (the caller stops it to switch TVs).
+        /// the old cast to end (the caller stops it when <see cref="Request"/> says to).
         /// </summary>
         public CastDevice Next(IReadOnlyList<CastDevice> devices, bool casting, bool streamReady, out bool takeOver)
         {
@@ -86,6 +95,7 @@ namespace CarRacer.Core.Cast
             }
 
             takeOver = _takeOver;
+            _castTakesOver = takeOver;
             _pending = false;
             _takeOver = false;
             return device;
