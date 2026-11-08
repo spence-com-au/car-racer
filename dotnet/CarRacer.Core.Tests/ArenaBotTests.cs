@@ -75,13 +75,17 @@ namespace CarRacer.Core.Tests
         [Fact]
         public void InSumoItAimsPastTheRivalsOuterSide()
         {
-            var driver = new ArenaBotDriver(BotSkill.For(BotDifficulty.Normal), Tuning, GameMode.Sumo, 1);
-            var position = new Vec3(0f, 0f, 0f);
+            // The rival sits on the line out from the centre and the bot is off to one side, so the aim point's offset changes the bearing.
+            var position = new Vec3(-3f, 0f, 0f);
             var rival = new Vec3(0f, 0f, 10f);
-            // Facing straight at the rival, which sits on the line out from the centre: no steering needed.
-            var input = driver.Drive(new CarState { Heading = 0f }, position, Vec3.Zero, 30f, new List<Vec3> { rival });
-            Assert.Equal(0f, input.Steer, 3);
-            Assert.Equal(1f, input.Throttle);
+            float Steer(GameMode mode)
+            {
+                var driver = new ArenaBotDriver(BotSkill.For(BotDifficulty.Normal), Tuning, mode, 1);
+                return driver.Drive(new CarState { Heading = 0f }, position, Vec3.Zero, 30f, new List<Vec3> { rival }).Steer;
+            }
+
+            Assert.Equal(MathF.Atan2(3f, 10f) / BotDriver.FullLockAngle, Steer(GameMode.Battle), 3);
+            Assert.Equal(MathF.Atan2(3f, 10f + ArenaBotDriver.PushOffset) / BotDriver.FullLockAngle, Steer(GameMode.Sumo), 3);
         }
 
         [Fact]
