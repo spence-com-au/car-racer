@@ -4,7 +4,7 @@ namespace CarRacer.Core.Audio
 {
     /// <summary>
     /// Which tune plays (design doc §13): the menu tune in the menus and a session's lobby, each
-    /// track's own tune while racing on it (and practising), and one tune for both arenas.
+    /// track's own tune while racing on it (and practising), and one tune for every arena.
     /// </summary>
     public static class MusicChoice
     {
