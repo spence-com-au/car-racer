@@ -204,16 +204,11 @@ namespace CarRacer.Core.Tests
         public void NamesAreUniqueIgnoringCase()
         {
             var roster = new LobbyRoster();
-            var host = roster.Add("Sam", isHost: true);
+            roster.Add("Sam", isHost: true);
             Assert.Equal("sam 2", roster.Add(" sam ").Name);
             Assert.Equal("Sam 3", roster.Add("Sam").Name);
             Assert.Equal("Player", roster.Add("").Name);
             Assert.Equal("Player 2", roster.Add(null).Name);
-
-            roster.Rename(host.PlayerId, "player");
-            Assert.Equal("player 3", host.Name);
-            roster.Rename(host.PlayerId, "Sam");
-            Assert.Equal("Sam", host.Name); // its own name isn't taken
         }
 
         [Fact]

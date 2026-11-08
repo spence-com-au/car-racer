@@ -111,7 +111,7 @@ namespace CarRacer.Core.Session
             var player = new LobbyPlayer
             {
                 PlayerId = LowestFree(p => p.PlayerId),
-                Name = UniqueName(name, null),
+                Name = UniqueName(name),
                 ColourIndex = FreeColourFrom(car.Colour),
                 BodyIndex = (byte)(car.Body % BodyCount),
                 Ready = isHost,
@@ -136,16 +136,6 @@ namespace CarRacer.Core.Session
             }
 
             return bot;
-        }
-
-        /// <summary>Renames a player, numbering the name if someone else already has it.</summary>
-        public void Rename(byte playerId, string name)
-        {
-            var player = Find(playerId);
-            if (player != null)
-            {
-                player.Name = UniqueName(name, player);
-            }
         }
 
         /// <summary>Removes every bot, returning how many there were.</summary>
@@ -269,7 +259,7 @@ namespace CarRacer.Core.Session
         {
             foreach (string name in BotNames)
             {
-                if (!NameTaken(name, null))
+                if (!NameTaken(name))
                 {
                     return name;
                 }
@@ -278,12 +268,12 @@ namespace CarRacer.Core.Session
             return "Bot";
         }
 
-        /// <summary>The cleaned name, or with " 2", " 3"… after it if someone other than <paramref name="self"/> has it.</summary>
-        private string UniqueName(string name, LobbyPlayer self)
+        /// <summary>The cleaned name, or with " 2", " 3"… after it if someone already has it.</summary>
+        private string UniqueName(string name)
         {
             string clean = CleanName(name);
             string unique = clean;
-            for (int n = 2; NameTaken(unique, self); n++)
+            for (int n = 2; NameTaken(unique); n++)
             {
                 string suffix = " " + n;
                 unique = clean.Substring(0, Math.Min(clean.Length, MaxNameChars - suffix.Length)).TrimEnd() + suffix;
@@ -292,9 +282,9 @@ namespace CarRacer.Core.Session
             return unique;
         }
 
-        /// <summary>Whether someone other than <paramref name="self"/> has <paramref name="name"/>, compared the way a cup tells players apart.</summary>
-        private bool NameTaken(string name, LobbyPlayer self) =>
-            _players.Exists(p => p != self && p.Name.ToLowerInvariant() == name.ToLowerInvariant());
+        /// <summary>Whether someone has <paramref name="name"/>, compared the way a cup tells players apart.</summary>
+        private bool NameTaken(string name) =>
+            _players.Exists(p => p.Name.ToLowerInvariant() == name.ToLowerInvariant());
 
         /// <summary><paramref name="wanted"/> if nobody has it, otherwise the next free colour after it (wrapping round).</summary>
         private byte FreeColourFrom(byte wanted)
