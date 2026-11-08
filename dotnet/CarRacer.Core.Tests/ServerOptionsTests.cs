@@ -117,5 +117,14 @@ namespace CarRacer.Core.Tests
                 .OrderBy(flag => flag, StringComparer.Ordinal);
             Assert.Equal(flags, listed);
         }
+
+        [Theory]
+        [InlineData("Zoë \\o/ 🏎️", "Zoë \\o/ 🏎️")]
+        [InlineData("x\nHosting stopped: crash", "x\\u000AHosting stopped: crash")]
+        [InlineData("\u001B[2J\rDen\t", "\\u001B[2J\\u000DDen\\u0009")]
+        [InlineData("\u009B31mDen\u007F", "\\u009B31mDen\\u007F")]
+        [InlineData(null, "")]
+        public void TheLogEscapesControlCharacters_SoANameCantStartALineOrDriveTheTerminal(string text, string logged) =>
+            Assert.Equal(logged, ServerLog.Escape(text));
     }
 }
