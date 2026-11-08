@@ -160,7 +160,8 @@ namespace CarRacer.Core.Tests
             Assert.True(predictor.OnState(bot, 10, 0f));
             Assert.Equal(1u, predictor.Latest.Sequence);
 
-            var botLater = State(2, new Vec3(2f, 0f, 0f), Vec3.Zero);
+            // The bot counts past the guest's sequence, so the guest's hand-back state is older by sequence alone.
+            var botLater = State(6000, new Vec3(2f, 0f, 0f), Vec3.Zero);
             botLater.Flags = CarStateFlags.BotControlled;
             Assert.True(predictor.OnState(botLater, 20, 0f));
             Assert.False(predictor.OnState(bot, 30, 0f));
