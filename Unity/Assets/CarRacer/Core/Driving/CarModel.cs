@@ -203,7 +203,7 @@ namespace CarRacer.Core.Driving
             forwardSpeed = ApplyThrottle(forwardSpeed, throttle, state, deltaSeconds, tuning, performance);
 
             float turn = state.Drifting
-                ? state.DriftDirection * Lerp(tuning.DriftMinTurn, tuning.DriftMaxTurn, (steer * state.DriftDirection + 1f) / 2f)
+                ? state.DriftDirection * Interpolation.Lerp(tuning.DriftMinTurn, tuning.DriftMaxTurn, (steer * state.DriftDirection + 1f) / 2f)
                 : steer;
             float yawRate = turn * tuning.SteerDegreesPerSecond * (MathF.PI / 180f) * SteerFactor(forwardSpeed, tuning);
             state.Heading = Angles.WrapPositive(state.Heading + yawRate * Math.Sign(forwardSpeed) * deltaSeconds);
@@ -362,11 +362,9 @@ namespace CarRacer.Core.Driving
             }
 
             float fast = Clamp((speed - t.FullSteerSpeed) / Math.Max(1f, t.MaxSpeed - t.FullSteerSpeed), 0f, 1f);
-            return Lerp(1f, t.TopSpeedSteerFactor, fast);
+            return Interpolation.Lerp(1f, t.TopSpeedSteerFactor, fast);
         }
 
         private static float Clamp(float v, float min, float max) => v < min ? min : (v > max ? max : v);
-
-        private static float Lerp(float a, float b, float t) => a + (b - a) * t;
     }
 }
