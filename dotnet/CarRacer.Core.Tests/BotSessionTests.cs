@@ -95,7 +95,7 @@ namespace CarRacer.Core.Tests
         public BotSessionTests()
         {
             _host = new HostSession(_transport, "Host", Version, () => _now);
-            _race = new HostRace(_host, 4, () => _now, id => 0f);
+            _race = new HostRace(_host, new[] { 4 }, () => _now, id => 0f);
             _items = new HostItems(_host, _race, new List<Vec3> { new Vec3(0f, 0.75f, 20f) }, () => _now, () => 0.0, _cars.TryGetValue);
             _host.BotHitReceived += _botHits.Add;
             _host.OnMessage(5, new JoinRequestMessage { ProtocolVersion = Version, PlayerName = "Alice" });

@@ -52,7 +52,7 @@ namespace CarRacer.Core.Tests
         public ArenaFlowTests()
         {
             _host = new HostSession(_hostLink, "Host", Version, () => _now);
-            _race = new HostRace(_host, 4, () => _now, id => 0f, _cars.TryGetValue);
+            _race = new HostRace(_host, new[] { 4 }, () => _now, id => 0f, _cars.TryGetValue);
             var guestLink = new GuestLink { Host = _host };
             _guest = new GuestSession(guestLink, "Guest", Version, () => _now);
             _hostLink.Guest = _guest;

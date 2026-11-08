@@ -92,14 +92,9 @@ namespace CarRacer.Core.Race
         private long _firstFinishMs = -1;
         private long _nextStandingsMs;
 
+        /// <param name="checkpointCounts">Each track's checkpoint count, by track index.</param>
         /// <param name="fractionToNextCheckpoint">How far (0..1) a player's car is towards its next checkpoint, from track geometry.</param>
         /// <param name="carPositions">Where the host sees each car, for Sumo's platform edge; not needed for races.</param>
-        public HostRace(HostSession session, int checkpointCount, Func<long> clockMs, Func<int, float> fractionToNextCheckpoint, CarPositionLookup carPositions = null)
-            : this(session, new[] { checkpointCount }, clockMs, fractionToNextCheckpoint, carPositions)
-        {
-        }
-
-        /// <param name="checkpointCounts">Each track's checkpoint count, by track index.</param>
         public HostRace(HostSession session, IReadOnlyList<int> checkpointCounts, Func<long> clockMs, Func<int, float> fractionToNextCheckpoint, CarPositionLookup carPositions = null)
         {
             _session = session;
@@ -488,7 +483,7 @@ namespace CarRacer.Core.Race
                     message.Order.Add(new StandingsEntry
                     {
                         PlayerId = (byte)placing.PlayerId,
-                        LapsCompleted = (byte)Arena.Lives(placing.PlayerId),
+                        LapsCompleted = (byte)placing.Lives,
                         FinishPosition = Arena.IsOut(placing.PlayerId) ? (byte)placing.Position : (byte)0,
                     });
                 }

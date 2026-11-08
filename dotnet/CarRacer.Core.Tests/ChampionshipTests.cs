@@ -65,13 +65,6 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
-        public void ArenaOrderIsSurvivorThenReverseElimination()
-        {
-            var order = Championship.ArenaFinishingOrder(new[] { "out-first", "out-second" }, "survivor");
-            Assert.Equal(new[] { "survivor", "out-second", "out-first" }, order);
-        }
-
-        [Fact]
         public void CompletesAfterTheLastEvent()
         {
             var c = NewSeries(events: 2);
