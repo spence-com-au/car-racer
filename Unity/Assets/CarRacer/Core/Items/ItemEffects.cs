@@ -123,9 +123,8 @@ namespace CarRacer.Core.Items
         {
             foreach (var h in _hazards)
             {
-                float radius = ItemEffects.HazardRadius(h.Item);
                 if (nowMs >= h.ArmedAtMs && nowMs < h.ExpiresAtMs
-                    && (h.Position - carPosition).Flattened.LengthSquared <= radius * radius)
+                    && Vec3.WithinFlat(h.Position, carPosition, ItemEffects.HazardRadius(h.Item)))
                 {
                     hazard = h;
                     return true;

@@ -334,7 +334,7 @@ namespace CarRacer.Core.Items
             foreach (var player in _session.Roster.Players)
             {
                 if (player.PlayerId != missile.OwnerId && _carPositions(player.PlayerId, out var position)
-                    && (position - missile.Position).Flattened.LengthSquared <= ProjectileRules.HitRadius * ProjectileRules.HitRadius)
+                    && Vec3.WithinFlat(position, missile.Position, ProjectileRules.HitRadius))
                 {
                     Hit(missile.OwnerId, player.PlayerId, ProjectileRules.MissileImpulse(missile));
                     return true;
@@ -351,12 +351,12 @@ namespace CarRacer.Core.Items
         private bool SeekerDone(Projectile seeker, long now)
         {
             if (seeker.TargetId != ProjectileRules.NoTarget && _carPositions(seeker.TargetId, out var target)
-                && (target - seeker.Position).Flattened.LengthSquared <= ProjectileRules.HitRadius * ProjectileRules.HitRadius)
+                && Vec3.WithinFlat(target, seeker.Position, ProjectileRules.HitRadius))
             {
                 foreach (var player in _session.Roster.Players)
                 {
                     if (player.PlayerId != seeker.OwnerId && _carPositions(player.PlayerId, out var position)
-                        && (position - target).Flattened.LengthSquared <= ProjectileRules.SeekerBlastRadius * ProjectileRules.SeekerBlastRadius)
+                        && Vec3.WithinFlat(position, target, ProjectileRules.SeekerBlastRadius))
                     {
                         Hit(seeker.OwnerId, player.PlayerId, ProjectileRules.SeekerImpulse(seeker.Position, position));
                     }
@@ -371,20 +371,7 @@ namespace CarRacer.Core.Items
         /// <summary>A Bomb goes off when it meets a car (its thrower only after a moment) or its fuse runs out, hitting everyone near.</summary>
         private bool BombDone(Projectile bomb, long now)
         {
-            bool explode = now >= bomb.ExpiresAtMs;
-            foreach (var player in _session.Roster.Players)
-            {
-                if (explode)
-                {
-                    break;
-                }
-
-                bool safe = player.PlayerId == bomb.OwnerId && now < bomb.LaunchedAtMs + ProjectileRules.BombSafeMs;
-                explode = !safe && _carPositions(player.PlayerId, out var position)
-                    && (position - bomb.Position).Flattened.LengthSquared <= ProjectileRules.HitRadius * ProjectileRules.HitRadius;
-            }
-
-            if (!explode)
+            if (now < bomb.ExpiresAtMs && !CarMeetsBomb(bomb, now))
             {
                 return false;
             }
@@ -392,7 +379,7 @@ namespace CarRacer.Core.Items
             foreach (var player in _session.Roster.Players)
             {
                 if (_carPositions(player.PlayerId, out var position)
-                    && (position - bomb.Position).Flattened.LengthSquared <= ProjectileRules.BombBlastRadius * ProjectileRules.BombBlastRadius)
+                    && Vec3.WithinFlat(position, bomb.Position, ProjectileRules.BombBlastRadius))
                 {
                     Hit(bomb.OwnerId, player.PlayerId, ProjectileRules.BlastImpulse(bomb.Position, position));
                 }
@@ -401,12 +388,28 @@ namespace CarRacer.Core.Items
             return true;
         }
 
+        /// <summary>Whether a car is on the bomb; its thrower doesn't count until the safe moment after the throw has passed.</summary>
+        private bool CarMeetsBomb(Projectile bomb, long now)
+        {
+            foreach (var player in _session.Roster.Players)
+            {
+                bool safe = player.PlayerId == bomb.OwnerId && now < bomb.LaunchedAtMs + ProjectileRules.BombSafeMs;
+                if (!safe && _carPositions(player.PlayerId, out var position)
+                    && Vec3.WithinFlat(position, bomb.Position, ProjectileRules.HitRadius))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         private void HitEveryoneNear(ItemUsedMessage used)
         {
             foreach (var player in _session.Roster.Players)
             {
                 if (player.PlayerId != used.PlayerId && _carPositions(player.PlayerId, out var position)
-                    && (position - used.Position).Flattened.LengthSquared <= ItemEffects.ShockwaveRadius * ItemEffects.ShockwaveRadius)
+                    && Vec3.WithinFlat(position, used.Position, ItemEffects.ShockwaveRadius))
                 {
                     Hit(used.PlayerId, player.PlayerId, ItemEffects.ShockwaveImpulse(used.Position, position));
                 }
