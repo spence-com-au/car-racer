@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using CarRacer.Core.Session;
 using CarRacer.Game;
 using CarRacer.Game.Net;
 using UnityEditor;
@@ -227,37 +228,7 @@ namespace CarRacer.Editor
             return summary.result == BuildResult.Succeeded;
         }
 
-        /// <summary>Arguments that always take the next argv entry as their value, even if it starts with "-" (e.g. a password).</summary>
-        private static readonly HashSet<string> ValueArguments = new HashSet<string>(StringComparer.Ordinal)
-        {
-            "customBuildPath",
-            "buildVersion",
-            "androidVersionCode",
-            "androidKeystoreName",
-            "androidKeystorePass",
-            "androidKeyaliasName",
-            "androidKeyaliasPass",
-        };
-
-        private static Dictionary<string, string> ParseArguments(string[] argv)
-        {
-            var result = new Dictionary<string, string>(StringComparer.Ordinal);
-            for (int i = 0; i < argv.Length; i++)
-            {
-                if (!argv[i].StartsWith("-", StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                string key = argv[i].TrimStart('-');
-                bool hasNext = i + 1 < argv.Length;
-                string value = hasNext && (ValueArguments.Contains(key) || !argv[i + 1].StartsWith("-", StringComparison.Ordinal))
-                    ? argv[++i]
-                    : string.Empty;
-                result[key] = value;
-            }
-
-            return result;
-        }
+        private static Dictionary<string, string> ParseArguments(string[] argv) =>
+            CommandLineArguments.Parse(argv, CommandLineArguments.BuildValueArguments);
     }
 }
