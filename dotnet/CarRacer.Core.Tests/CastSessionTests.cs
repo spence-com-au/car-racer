@@ -253,55 +253,7 @@ namespace CarRacer.Core.Tests
             listener.Start();
             var seen = new List<string>();
             string loadedUrl = null;
-            var server = new Thread(() =>
-            {
-                using var client = listener.AcceptTcpClient();
-                using var tls = new SslStream(client.GetStream());
-                tls.AuthenticateAsServer(cert, false, System.Security.Authentication.SslProtocols.Tls12, false);
-                void Send(CastMessage m)
-                {
-                    var f = m.Frame();
-                    tls.Write(f, 0, f.Length);
-                }
-
-                try
-                {
-                    while (true)
-                    {
-                        var m = CastMessage.ReadFrom(tls);
-                        if (m == null)
-                        {
-                            break;
-                        }
-
-                        lock (seen)
-                        {
-                            seen.Add(m.PayloadType);
-                        }
-
-                        switch (m.PayloadType)
-                        {
-                            case "GET_STATUS":
-                                Send(CastSessionTests.Status(CastSessionTests.App("E8C28D3C", "Backdrop", idle: true)));
-                                break;
-                            case "LAUNCH":
-                                Send(CastSessionTests.Status(CastSessionTests.App(CastSession.MediaReceiverAppId, "Default Media Receiver", idle: false)));
-                                break;
-                            case "LOAD":
-                                loadedUrl = Json.String(Json.Object(Json.TryParseObject(m.Payload), "media"), "contentId");
-                                Send(CastSessionTests.Media("{\"playerState\":\"PLAYING\"}"));
-                                break;
-                            case "STOP":
-                                return;
-                        }
-                    }
-                }
-                catch (IOException)
-                {
-                }
-            })
-            { IsBackground = true };
-            server.Start();
+            var server = StartFakeChromecast(listener, cert, hangUpAfterLoad: false, seen, m => loadedUrl = Json.String(Json.Object(Json.TryParseObject(m.Payload), "media"), "contentId"));
 
             var device = new CastDevice { Name = "Fake", Address = IPAddress.Loopback, Port = ((IPEndPoint)listener.LocalEndpoint).Port };
             using var connection = new CastConnection(device, local => $"http://{local}:47780/live.m3u8", "Lounge", takeOver: false);
@@ -337,18 +289,108 @@ namespace CarRacer.Core.Tests
         [Fact]
         public void ATvThatNeverFinishesTheHandshakeFails()
         {
-            // Accepts the TCP connection, then says nothing.
-            var listener = new TcpListener(IPAddress.Loopback, 0);
-            listener.Start();
-            TcpClient held = null;
-            var accept = new Thread(() => held = listener.AcceptTcpClient()) { IsBackground = true };
-            accept.Start();
-            var device = new CastDevice { Name = "Mute", Address = IPAddress.Loopback, Port = ((IPEndPoint)listener.LocalEndpoint).Port };
-            using var connection = new CastConnection(device, _ => "http://x/", "Lounge", takeOver: false);
+            using var tv = new MuteChromecast();
+            using var connection = new CastConnection(tv.Device, _ => "http://x/", "Lounge", takeOver: false);
             Assert.True(SpinWait.SpinUntil(() => connection.Finished, CastConnection.ConnectTimeoutMs + 5_000));
             Assert.Equal(CastState.Failed, connection.State);
-            held?.Dispose();
+        }
+
+        [Fact]
+        public void ReportsATvThatDropsTheConnectionMidCast()
+        {
+            using var cert = SelfSigned();
+            var listener = new TcpListener(IPAddress.Loopback, 0);
+            listener.Start();
+            var server = StartFakeChromecast(listener, cert, hangUpAfterLoad: true);
+
+            var device = new CastDevice { Name = "Flaky", Address = IPAddress.Loopback, Port = ((IPEndPoint)listener.LocalEndpoint).Port };
+            using var connection = new CastConnection(device, _ => "http://x/", "Lounge", takeOver: false);
+
+            // The fake closes the socket right after reporting PLAYING, so the cast starts and is then cut off.
+            Assert.True(SpinWait.SpinUntil(() => connection.Finished, 10_000), connection.Detail);
+            Assert.Equal(CastState.Failed, connection.State);
+            Assert.Equal("The TV dropped the connection", connection.Detail);
+            Assert.True(server.Join(5_000));
             listener.Stop();
+        }
+
+        [Fact]
+        public void DisposingAbandonsAHandshakeThatNeverFinishes()
+        {
+            using var tv = new MuteChromecast();
+            var connection = new CastConnection(tv.Device, _ => "http://x/", "Lounge", takeOver: false);
+            Assert.True(tv.Accepted(5_000));
+
+            // Stopping can't interrupt the handshake, so Dispose gives up waiting and closes the socket instead.
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            connection.Dispose();
+            Assert.True(clock.ElapsedMilliseconds < CastConnection.ConnectTimeoutMs, $"Dispose took {clock.ElapsedMilliseconds} ms");
+            Assert.True(SpinWait.SpinUntil(() => connection.Finished, 2_000));
+            Assert.Equal(CastState.Failed, connection.State);
+        }
+
+        // Plays the TV's side of a cast over TLS: answers the status request, the launch and the load, and hangs up on
+        // a STOP, or straight after reporting PLAYING when `hangUpAfterLoad` is set.
+        private static Thread StartFakeChromecast(TcpListener listener, X509Certificate2 cert, bool hangUpAfterLoad, List<string> seen = null, Action<CastMessage> onLoad = null)
+        {
+            var server = new Thread(() =>
+            {
+                using var client = listener.AcceptTcpClient();
+                using var tls = new SslStream(client.GetStream());
+                tls.AuthenticateAsServer(cert, false, System.Security.Authentication.SslProtocols.Tls12, false);
+                void Send(CastMessage m)
+                {
+                    var f = m.Frame();
+                    tls.Write(f, 0, f.Length);
+                }
+
+                try
+                {
+                    while (true)
+                    {
+                        var m = CastMessage.ReadFrom(tls);
+                        if (m == null)
+                        {
+                            break;
+                        }
+
+                        if (seen != null)
+                        {
+                            lock (seen)
+                            {
+                                seen.Add(m.PayloadType);
+                            }
+                        }
+
+                        switch (m.PayloadType)
+                        {
+                            case "GET_STATUS":
+                                Send(CastSessionTests.Status(CastSessionTests.App("E8C28D3C", "Backdrop", idle: true)));
+                                break;
+                            case "LAUNCH":
+                                Send(CastSessionTests.Status(CastSessionTests.App(CastSession.MediaReceiverAppId, "Default Media Receiver", idle: false)));
+                                break;
+                            case "LOAD":
+                                onLoad?.Invoke(m);
+                                Send(CastSessionTests.Media("{\"playerState\":\"PLAYING\"}"));
+                                if (hangUpAfterLoad)
+                                {
+                                    return;
+                                }
+
+                                break;
+                            case "STOP":
+                                return;
+                        }
+                    }
+                }
+                catch (IOException)
+                {
+                }
+            })
+            { IsBackground = true };
+            server.Start();
+            return server;
         }
 
         private static X509Certificate2 SelfSigned()
@@ -357,6 +399,32 @@ namespace CarRacer.Core.Tests
             var request = new CertificateRequest("CN=Chromecast", key, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
             using var cert = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(1));
             return new X509Certificate2(cert.Export(X509ContentType.Pfx));
+        }
+
+        // A TV that accepts the TCP connection, then says nothing.
+        private sealed class MuteChromecast : IDisposable
+        {
+            private readonly TcpListener _listener = new TcpListener(IPAddress.Loopback, 0);
+            private readonly Thread _accept;
+            private TcpClient _held;
+
+            public MuteChromecast()
+            {
+                _listener.Start();
+                _accept = new Thread(() => _held = _listener.AcceptTcpClient()) { IsBackground = true };
+                _accept.Start();
+                Device = new CastDevice { Name = "Mute", Address = IPAddress.Loopback, Port = ((IPEndPoint)_listener.LocalEndpoint).Port };
+            }
+
+            public CastDevice Device { get; }
+
+            public bool Accepted(int timeoutMs) => _accept.Join(timeoutMs);
+
+            public void Dispose()
+            {
+                _held?.Dispose();
+                _listener.Stop();
+            }
         }
     }
 }
