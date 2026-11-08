@@ -331,8 +331,10 @@ namespace CarRacer.Core.Items
         /// <summary>A Missile hits the first car it reaches (any but its owner's) or runs out of time.</summary>
         private bool MissileDone(Projectile missile, long now)
         {
-            foreach (var player in _session.Roster.Players)
+            var players = _session.Roster.Players;
+            for (int i = 0; i < players.Count; i++)
             {
+                var player = players[i];
                 if (player.PlayerId != missile.OwnerId && _carPositions(player.PlayerId, out var position)
                     && (position - missile.Position).Flattened.LengthSquared <= ProjectileRules.HitRadius * ProjectileRules.HitRadius)
                 {
@@ -353,8 +355,10 @@ namespace CarRacer.Core.Items
             if (seeker.TargetId != ProjectileRules.NoTarget && _carPositions(seeker.TargetId, out var target)
                 && (target - seeker.Position).Flattened.LengthSquared <= ProjectileRules.HitRadius * ProjectileRules.HitRadius)
             {
-                foreach (var player in _session.Roster.Players)
+                var players = _session.Roster.Players;
+                for (int i = 0; i < players.Count; i++)
                 {
+                    var player = players[i];
                     if (player.PlayerId != seeker.OwnerId && _carPositions(player.PlayerId, out var position)
                         && (position - target).Flattened.LengthSquared <= ProjectileRules.SeekerBlastRadius * ProjectileRules.SeekerBlastRadius)
                     {
@@ -372,8 +376,10 @@ namespace CarRacer.Core.Items
         private bool BombDone(Projectile bomb, long now)
         {
             bool explode = now >= bomb.ExpiresAtMs;
-            foreach (var player in _session.Roster.Players)
+            var players = _session.Roster.Players;
+            for (int i = 0; i < players.Count; i++)
             {
+                var player = players[i];
                 if (explode)
                 {
                     break;
@@ -389,8 +395,9 @@ namespace CarRacer.Core.Items
                 return false;
             }
 
-            foreach (var player in _session.Roster.Players)
+            for (int i = 0; i < players.Count; i++)
             {
+                var player = players[i];
                 if (_carPositions(player.PlayerId, out var position)
                     && (position - bomb.Position).Flattened.LengthSquared <= ProjectileRules.BombBlastRadius * ProjectileRules.BombBlastRadius)
                 {
@@ -403,8 +410,10 @@ namespace CarRacer.Core.Items
 
         private void HitEveryoneNear(ItemUsedMessage used)
         {
-            foreach (var player in _session.Roster.Players)
+            var players = _session.Roster.Players;
+            for (int i = 0; i < players.Count; i++)
             {
+                var player = players[i];
                 if (player.PlayerId != used.PlayerId && _carPositions(player.PlayerId, out var position)
                     && (position - used.Position).Flattened.LengthSquared <= ItemEffects.ShockwaveRadius * ItemEffects.ShockwaveRadius)
                 {
@@ -421,8 +430,10 @@ namespace CarRacer.Core.Items
                 return;
             }
 
-            foreach (var player in _session.Roster.Players)
+            var players = _session.Roster.Players;
+            for (int i = 0; i < players.Count; i++)
             {
+                var player = players[i];
                 if (_carPositions(player.PlayerId, out var position) && Hazards.TryFindTouched(position, now, out var hazard))
                 {
                     Hazards.Remove(hazard.EffectId);

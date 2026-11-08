@@ -84,12 +84,7 @@ namespace CarRacer.Game.Menu
 
         private void Update()
         {
-            if (_listener != null)
-            {
-                long now = NetworkSession.NowMs;
-                _listener.Poll(_hosts, now);
-                _hosts.Expire(now);
-            }
+            _listener?.Poll(_hosts, NetworkSession.NowMs);
 
             if (_page == Page.Join && Time.unscaledTime >= _nextHostRefresh)
             {

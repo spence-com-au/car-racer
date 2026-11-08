@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using CarRacer.Core.Cast;
@@ -122,6 +123,31 @@ namespace CarRacer.Core.Tests
 
             Join(2, "Bob");
             Assert.Equal("Kitchen", Assert.Single(_transport.To<TvStatusMessage>(2)).CastingTo);
+        }
+
+        [Fact]
+        public void ChangingAnyFieldOfTheStatusBroadcastsIt()
+        {
+            var changes = new (string Field, Action<TvStatusMessage> Change)[]
+            {
+                ("CanCast", s => s.CanCast = false),
+                ("Music", s => s.Music = true),
+                ("State", s => s.State = TvState.Failed),
+                ("Detail", s => s.Detail = "The TV is showing YouTube"),
+                ("Devices removed", s => s.Devices.RemoveAt(1)),
+                ("Devices renamed", s => s.Devices[1] = "Bedroom"),
+            };
+
+            Join(1, "Alice");
+            foreach (var (field, change) in changes)
+            {
+                _server.SetTvStatus(Playing());
+                int before = _transport.To<TvStatusMessage>(1).Count;
+                var changed = Playing();
+                change(changed);
+                _server.SetTvStatus(changed);
+                Assert.True(_transport.To<TvStatusMessage>(1).Count == before + 1, $"Changing {field} alone was not broadcast.");
+            }
         }
 
         [Fact]
