@@ -61,6 +61,9 @@ namespace CarRacer.Core.Session
 
         public bool IsDedicated => HostPlayerId == NoPlayer;
 
+        /// <summary>Whether any guest is still connected, counting one away with a bot at the wheel.</summary>
+        public bool HasGuests => _playerByConnection.Count > 0;
+
         /// <summary>
         /// Who runs the room (design doc §2.3): the host's own player, or on a dedicated host the
         /// guest who joined first and is still driving their own car (one away with a bot at the
@@ -814,8 +817,9 @@ namespace CarRacer.Core.Session
 
             // A server whose players have all left (their cars now bots) has nobody to press Back to
             // lobby, and would refuse every new guest as mid-event; once the event's results are in,
-            // it goes back by itself. A cup in progress is left, keeping its save to resume.
-            if (_session.IsDedicated && _session.LeaderId == HostSession.NoPlayer && _race.Phase == RacePhase.Results)
+            // it goes back by itself. A cup in progress is left, keeping its save to resume. Players
+            // who are only away haven't left: the results and the cup stay for them to come back to.
+            if (_session.IsDedicated && !_session.HasGuests && _race.Phase == RacePhase.Results)
             {
                 Run = null;
                 _race.ReturnToLobby();
