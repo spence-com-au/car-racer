@@ -469,7 +469,6 @@ namespace CarRacer.Core.Items
         private readonly GuestSession _session;
         private readonly IRaceView _race;
         private readonly Func<long> _clockMs;
-        private RacePhase _lastPhase = RacePhase.Lobby;
         private int _pendingBox = -1;
         private long _pendingSinceMs;
         private readonly List<ProjectileSnapshot> _snapshots = new List<ProjectileSnapshot>();
@@ -484,6 +483,7 @@ namespace CarRacer.Core.Items
             _clockMs = clockMs;
             Boxes = new ItemBoxField(boxPositions);
             _session.ItemMessageReceived += OnMessage;
+            _session.RaceMessageReceived += OnRaceMessage;
         }
 
         public ItemBoxField Boxes { get; }
@@ -497,18 +497,6 @@ namespace CarRacer.Core.Items
 
         public void Tick()
         {
-            var phase = _race.Phase;
-            if (phase == RacePhase.Countdown && _lastPhase != RacePhase.Countdown)
-            {
-                Boxes.Reset();
-                Hazards.Clear();
-                _snapshots.Clear();
-                _gone.Clear();
-                Held = ItemKind.None;
-                _pendingBox = -1;
-            }
-
-            _lastPhase = phase;
             Hazards.Expire(_clockMs());
         }
 
@@ -589,6 +577,12 @@ namespace CarRacer.Core.Items
                     {
                         ItemUsed?.Invoke(used);
                     }
+                    else
+                    {
+                        // A bot may have used it while this app was away. The host handles a use before any
+                        // later claim, so this relay always arrives before the next item's ItemBoxTaken.
+                        Held = ItemKind.None;
+                    }
 
                     break;
                 case HazardGoneMessage gone:
@@ -617,6 +611,24 @@ namespace CarRacer.Core.Items
                     }
 
                     break;
+            }
+        }
+
+        /// <summary>
+        /// The host empties every slot and restores every box when an event counts down. This resets on the
+        /// countdown itself rather than on a phase change seen in <see cref="Tick"/>, because a phone back from the
+        /// background can take a whole event's messages in one frame and a late countdown goes straight to Racing.
+        /// </summary>
+        private void OnRaceMessage(IGameMessage message)
+        {
+            if (message is RaceCountdownMessage)
+            {
+                Boxes.Reset();
+                Hazards.Clear();
+                _snapshots.Clear();
+                _gone.Clear();
+                Held = ItemKind.None;
+                _pendingBox = -1;
             }
         }
     }
