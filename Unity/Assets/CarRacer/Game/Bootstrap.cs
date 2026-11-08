@@ -39,7 +39,6 @@ namespace CarRacer.Game
 #endif
             if (server)
             {
-                Time.fixedDeltaTime = 0.02f;
                 DedicatedServer.Run(options);
                 return;
             }
@@ -49,9 +48,6 @@ namespace CarRacer.Game
             GraphicsQuality.Apply();
             PerfOverlay.Install();
             ScreenFader.Install();
-
-            // Fixed 50 Hz physics on every device (design doc §4).
-            Time.fixedDeltaTime = 0.02f;
             ShowMainMenu();
 
             // A guest's camera app opens the host's QR code link, launching (or switching to) the game.
