@@ -27,9 +27,6 @@ namespace CarRacer.Game.Net
     {
         public const string MessageName = "car-racer";
 
-        /// <summary>The largest message is a TV status full of long names; anything bigger than that is malformed.</summary>
-        public const int MaxMessageBytes = TvStatusMessage.MaxEncodedBytes;
-
         /// <summary>A refused guest is disconnected after this long, so the reply explaining why reaches it first.</summary>
         public const float RefusalDisconnectDelaySeconds = 0.5f;
 
@@ -362,9 +359,12 @@ namespace CarRacer.Game.Net
             try
             {
                 reader.ReadValueSafe(out int length);
-                if (length <= 0 || length > MaxMessageBytes)
+
+                // Checked before `new byte[length]`, so a bad length can't allocate more than the message carries.
+                int received = reader.Length - reader.Position;
+                if (length <= 0 || length > received)
                 {
-                    Debug.LogWarning($"Dropped a message from client {sender} claiming {length} bytes; the limit is {MaxMessageBytes}.");
+                    Debug.LogWarning($"Dropped a message from connection {sender} claiming {length} bytes when {received} arrived.");
                     return;
                 }
 

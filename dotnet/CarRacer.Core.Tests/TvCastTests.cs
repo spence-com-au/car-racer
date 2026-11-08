@@ -96,19 +96,6 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
-        public void TheFullestStatusEncodesToMaxEncodedBytes()
-        {
-            string longName = new string('x', 300);
-            var full = new TvStatusMessage { CastingTo = longName, Detail = longName };
-            for (int i = 0; i < 12; i++)
-            {
-                full.Devices.Add(longName);
-            }
-
-            Assert.Equal(TvStatusMessage.MaxEncodedBytes, MessageCodec.Encode(full).Length);
-        }
-
-        [Fact]
         public void OnlyTheLeadersCastCommandsReachTheGame()
         {
             Join(1, "Alice");
