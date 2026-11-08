@@ -87,11 +87,34 @@ namespace CarRacer.Core.Tests
             var stunts = new StuntTracker(new[] { 1, 2 });
             Assert.Equal(10, stunts.AddAir(1, 1000, 5_000));
 
-            // 1.5 s since the last jump landed can't hold a 2 s jump.
-            Assert.Equal(0, stunts.AddAir(1, 2000, 6_500));
+            // 1.5 s since the last jump landed can't hold a jump any longer than that and the slack.
+            Assert.Equal(0, stunts.AddAir(1, 1500 + MonsterRules.AirSlackMs + 1, 6_500));
             Assert.Equal(15, stunts.AddAir(1, 1500, 6_500));
             Assert.Equal(0, stunts.AddAir(9, 1000, 20_000));
             Assert.Equal(25, stunts.Points(1));
+        }
+
+        [Fact]
+        public void AJumpStillScoresWhenTheReportBeforeItRanLate()
+        {
+            var stunts = new StuntTracker(new[] { 1 });
+
+            // A hop lands at 5 s and its report reaches the host 60 ms late. 40 ms later the truck
+            // takes off for 1.5 s, and that report arrives on time: the host sees 1.48 s between them.
+            Assert.Equal(0, stunts.AddAir(1, 100, 5_060));
+            Assert.Equal(15, stunts.AddAir(1, 1500, 6_540));
+        }
+
+        [Fact]
+        public void TheSlackNeverAddsUpToMoreAirThanTime()
+        {
+            var stunts = new StuntTracker(new[] { 1 });
+            for (long now = 1_000; now <= 60_000; now += 1_000)
+            {
+                stunts.AddAir(1, 1_000 + MonsterRules.AirSlackMs, now);
+            }
+
+            Assert.True(stunts.Points(1) <= (60_000 + MonsterRules.AirSlackMs) / MonsterRules.MsPerAirPoint);
         }
 
         [Fact]

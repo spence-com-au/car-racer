@@ -110,9 +110,7 @@ namespace CarRacer.Game.Screens
             DrawOnlyCurrentTrack();
             if (server)
             {
-                _session = startSession();
-                ArenaVenues.Build(transform, _session);
-                gameObject.AddComponent<NetworkedCars>().Initialise(this, _session);
+                StartSession(startSession);
                 return;
             }
 
@@ -153,10 +151,15 @@ namespace CarRacer.Game.Screens
             }
             else
             {
-                _session = startSession();
-                ArenaVenues.Build(transform, _session);
-                gameObject.AddComponent<NetworkedCars>().Initialise(this, _session);
+                StartSession(startSession);
             }
+        }
+
+        private void StartSession(System.Func<NetworkSession> startSession)
+        {
+            _session = startSession();
+            ArenaVenues.Build(transform, _session);
+            gameObject.AddComponent<NetworkedCars>().Initialise(this, _session);
         }
 
         /// <summary>Builds a track's road, walls and its own patch of grass (<see cref="TrackCatalog.Ground"/>).</summary>

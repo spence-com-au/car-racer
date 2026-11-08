@@ -87,7 +87,10 @@ git push origin v0.1.0
 
 or, from the browser or phone, open **Actions → Release → Run workflow**, keep the branch on
 `master` and enter the version (`v0.1.0`). The run tags `master` itself and then does the same as
-a tag push. Claude can start it too (the `release` skill in `.claude/skills`).
+a tag push. Claude can start it too (the `release` skill in `.claude/skills`). Either way the
+version must look like `v0.1.0`, with no leading zeros, and its tag must be on a commit `master`
+has, or the workflow stops before building. Delete a tag on any other commit before releasing
+its version again.
 
 Don't create the release on the Releases page. The repository's releases
 are immutable, so assets can only be attached while a release is a draft: the workflow uploads
@@ -122,7 +125,7 @@ is mostly automatic:
    editor is on another platform, it switches to Android instead and stops; run it again once
    the scripts recompile.
 
-Leave what Unity generates uncommitted: the rest of `ProjectSettings/`,
+`.gitignore` keeps what Unity generates uncommitted: the rest of `ProjectSettings/`,
 `Packages/packages-lock.json` and `Assets/Scenes/`. Every build applies the player settings
 (**Car Racer → Apply Project Settings**) and creates the bootstrap scene (**Car Racer → Create
 Bootstrap Scene**) from code, so CI and other machines get the same configuration without them.
@@ -133,7 +136,8 @@ Bootstrap Scene**) from code, so CI and other machines get the same configuratio
 dotnet test dotnet/CarRacer.sln
 ```
 
-Requires the .NET 8 SDK. No Unity needed.
+Requires the .NET 8 SDK, and `ffmpeg` and `ffprobe` on `PATH` (`sudo apt install ffmpeg`): the
+viewer stream tests run them, and fail without them. No Unity needed.
 
 ## 7. Adding files outside the Unity editor
 

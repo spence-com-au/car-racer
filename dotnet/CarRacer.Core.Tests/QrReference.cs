@@ -2,7 +2,8 @@ namespace CarRacer.Core.Tests
 {
     /// <summary>
     /// QR codes made by python-qrcode 7.4.2, an independent encoder (byte mode), to check
-    /// <c>QrCode</c> against. Cases with mask -1 had python-qrcode pick the mask itself.
+    /// <c>QrCode</c> against. <c>Mask</c> is the one python-qrcode used, which it chose itself for the join URL and
+    /// <c>https://example.com/a</c>.
     /// </summary>
     internal static class QrReference
     {
@@ -32,7 +33,7 @@ namespace CarRacer.Core.Tests
                 "#.....#..##...#.#..#.",
                 "#######.#.#.#.##..###",
             }),
-            ("carracer://join?host=192.168.1.20&port=7777", Platform.QrErrorCorrection.Medium, -1, 4, new[]
+            ("carracer://join?host=192.168.1.20&port=7777", Platform.QrErrorCorrection.Medium, 4, 4, new[]
             {
                 "#######.##..##.#....#..#..#######",
                 "#.....#...#..##...##......#.....#",
@@ -216,7 +217,7 @@ namespace CarRacer.Core.Tests
                 "#.....#.#.#..###.....#.#...##.#.....#",
                 "#######....#.###.#.....####......####",
             }),
-            ("https://example.com/a", Platform.QrErrorCorrection.Quartile, -1, 3, new[]
+            ("https://example.com/a", Platform.QrErrorCorrection.Quartile, 1, 3, new[]
             {
                 "#######....##..#.#.##.#######",
                 "#.....#..#..##.#....#.#.....#",
@@ -249,8 +250,5 @@ namespace CarRacer.Core.Tests
                 "#######..##.#.###....#.###..#",
             }),
         };
-
-        /// <summary>The mask python-qrcode used for each case (its own choice where the case leaves it open).</summary>
-        public static readonly int[] ChosenMasks = { 0, 4, 3, 6, 2, 1 };
     }
 }

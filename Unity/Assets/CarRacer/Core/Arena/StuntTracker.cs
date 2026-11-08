@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace CarRacer.Core.Arena
@@ -17,8 +18,8 @@ namespace CarRacer.Core.Arena
     /// Monster Jam's scores (host side, design doc §7.0). Each phone times its own truck's jumps
     /// and spots its own crushes, as it does checkpoints, and reports them; the host keeps the
     /// score and only believes what fits: no more time in the air than has passed since that
-    /// player's last jump, and a crush only on a truck the host sees close by, and not the same
-    /// one again straight away.
+    /// player's last jump (give or take the network's unevenness), and a crush only on a truck
+    /// the host sees close by, and not the same one again straight away.
     /// </summary>
     public sealed class StuntTracker
     {
@@ -42,16 +43,19 @@ namespace CarRacer.Core.Arena
         /// <summary>
         /// A jump of <paramref name="airMs"/> that landed at <paramref name="nowMs"/> (from the
         /// event's start). Returns the points it scored: none for a short hop, an unknown player, or
-        /// more air than time has passed since their last jump landed.
+        /// more air than time has passed since their last jump landed, give or take
+        /// <see cref="MonsterRules.AirSlackMs"/>.
         /// </summary>
         public int AddAir(int playerId, long airMs, long nowMs)
         {
-            if (!_lastAirEndMs.TryGetValue(playerId, out long lastEnd) || airMs <= 0 || airMs > nowMs - lastEnd)
+            if (!_lastAirEndMs.TryGetValue(playerId, out long lastEnd) || airMs <= 0 || airMs > nowMs - lastEnd + MonsterRules.AirSlackMs)
             {
                 return 0;
             }
 
-            _lastAirEndMs[playerId] = nowMs;
+            // A jump that used the slack moves the landing on, so its excess comes out of the next
+            // jump and the air never adds up to more than the event's time plus one slack.
+            _lastAirEndMs[playerId] = Math.Max(nowMs, lastEnd + airMs);
             int points = MonsterRules.AirPoints(airMs);
             _points[playerId] += points;
             return points;

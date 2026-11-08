@@ -89,7 +89,9 @@ namespace CarRacer.Core.Art
             for (int i = -1; i <= 1; i++)
             {
                 var s = spline.SampleAtDistance(spline.WrapDistance(i * (StandScale + 1f)));
-                var spot = s.Position - s.Right * (s.Width / 2f + Clearance + StandRadius + 0.5f);
+
+                // Set back behind the towers, or the red one leaves no room for the stand at the start line.
+                var spot = s.Position - s.Right * (s.Width / 2f + Clearance + 2f * TowerRadius + StandRadius + 1f);
 
                 // A stand's seats face its -z, so its +z points away from the road (to the left).
                 TryAdd(placements, footprints, road, StandModel, spot, Angles.Heading(s.Forward) - MathF.PI / 2f, StandScale, StandRadius);

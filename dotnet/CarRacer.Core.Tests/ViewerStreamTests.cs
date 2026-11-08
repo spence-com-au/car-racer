@@ -236,6 +236,28 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void OnlyALiveConnectionFromTheSameUserIsTakenForFfmpegs()
+        {
+            var us = new IPEndPoint(IPAddress.Loopback, 40000);
+            var them = new IPEndPoint(IPAddress.Loopback, 50000);
+            static string Row(string local, string remote, string state, int uid, int inode) =>
+                $"   1: {local} {remote} {state} 00000000:00000000 00:00000000 00000000 {uid,5} 0 {inode} 1 0000000000000000 20 4 30 10 -1";
+            static string Ours(string state, int uid) => Row("0100007F:9C40", "0100007F:C350", state, uid, 101694263);
+            static string Theirs(string state, int uid, int inode) => Row("0100007F:C350", "0100007F:9C40", state, uid, inode);
+            const string header = "  sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode";
+
+            Assert.True(ViewerStream.ConnectedBySameUser(new[] { header, Ours("01", 1000), Theirs("01", 1000, 101864147) }, us, them));
+            Assert.False(ViewerStream.ConnectedBySameUser(new[] { header, Ours("01", 1000), Theirs("01", 1001, 101864147) }, us, them));
+
+            // Closed before it was taken, the far end lingers in FIN_WAIT2, which the kernel lists as root's: a server
+            // run as root would otherwise take it for ffmpeg's.
+            Assert.False(ViewerStream.ConnectedBySameUser(new[] { header, Ours("08", 0), Theirs("05", 0, 0) }, us, them));
+
+            // A connection from an IPv6 socket is listed in /proc/net/tcp6 instead.
+            Assert.False(ViewerStream.ConnectedBySameUser(new[] { header, Ours("01", 1000) }, us, them));
+        }
+
+        [Fact]
         public void AnFfmpegThatHangsIsGivenUpOn()
         {
             if (!File.Exists("/bin/sh"))

@@ -12,25 +12,36 @@ namespace CarRacer.Tests
     public class DrivingTipsTests
     {
         private bool _seen;
+        private TrackScreen _screen;
 
         [SetUp]
         public void SetUp() => _seen = DrivingTipsPanel.Seen;
 
         [TearDown]
-        public void TearDown() => DrivingTipsPanel.Seen = _seen;
+        public void TearDown()
+        {
+            DrivingTipsPanel.Seen = _seen;
+
+            // Here rather than at the end of the test, so a failed assertion can't leave its car on the grid for the
+            // next test to drive into.
+            if (_screen != null)
+            {
+                Object.Destroy(_screen.gameObject);
+            }
+        }
 
         [UnityTest]
         public IEnumerator TheTipsShowUntilSeen()
         {
             DrivingTipsPanel.Seen = false;
-            var first = TrackScreen.Create();
+            _screen = TrackScreen.Create();
             yield return null;
-            var panel = first.GetComponent<DrivingTipsPanel>();
+            var panel = _screen.GetComponent<DrivingTipsPanel>();
             Assert.IsNotNull(panel, "a first drive should show the tips");
             Assert.IsFalse(DrivingTipsPanel.Seen, "showing the tips isn't seeing them");
 
             // The race HUD is a UiRoot layer too, so pick the tips layer by name rather than by child order.
-            var layer = first.transform.Find("Driving tips").GetComponent<UiRoot>();
+            var layer = _screen.transform.Find("Driving tips").GetComponent<UiRoot>();
 
             // "Got it" is what makes the tips seen: it persists that and takes the panel and its layer down.
             var gotIt = layer.Safe.Q<Button>();
@@ -45,13 +56,12 @@ namespace CarRacer.Tests
             Assert.IsTrue(DrivingTipsPanel.Seen, "pressing Got it should remember the tips were seen");
             Assert.IsTrue(panel == null, "pressing Got it should remove the panel");
             Assert.IsTrue(layer == null, "pressing Got it should remove the tips layer");
-            Object.Destroy(first.gameObject);
+            Object.Destroy(_screen.gameObject);
             yield return null;
 
-            var later = TrackScreen.Create();
+            _screen = TrackScreen.Create();
             yield return null;
-            Assert.IsNull(later.GetComponent<DrivingTipsPanel>(), "tips already seen shouldn't show again");
-            Object.Destroy(later.gameObject);
+            Assert.IsNull(_screen.GetComponent<DrivingTipsPanel>(), "tips already seen shouldn't show again");
         }
     }
 }

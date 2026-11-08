@@ -170,11 +170,14 @@ namespace CarRacer.Tests
             settings.Track = 1;
             session.ChangeSettings(settings);
             session.Command(LobbyCommand.Start);
+            yield return null;
+            yield return null;
 
             var race = session.Race;
             Assert.AreEqual(RacePhase.Countdown, race.Phase);
             Assert.AreEqual(2, race.LapCount);
             Assert.AreEqual(1, race.TrackIndex);
+            Assert.AreEqual(1, _screen.TrackIndex, "the screen moves to the event's track");
         }
 
         [UnityTest]
