@@ -67,14 +67,13 @@ namespace CarRacer.Core.Items
 
         private readonly List<Projectile> _flying = new List<Projectile>();
         private readonly List<ProjectileSnapshot> _snapshots = new List<ProjectileSnapshot>();
-        private RacePhase _lastPhase = RacePhase.Lobby;
         private ushort _lastEffectId;
         private long _lastTickMs = long.MinValue;
         private long _nextProjectileBroadcastMs;
 
         /// <param name="random01">Uniform random numbers in [0, 1) for item rolls.</param>
         /// <param name="carPositions">Where the host sees each player's car, for deciding hits.</param>
-        public HostItems(HostSession session, IRaceView race, IReadOnlyList<Vec3> boxPositions, Func<long> clockMs, Func<double> random01, CarPositionLookup carPositions)
+        public HostItems(HostSession session, HostRace race, IReadOnlyList<Vec3> boxPositions, Func<long> clockMs, Func<double> random01, CarPositionLookup carPositions)
         {
             _session = session;
             _race = race;
@@ -84,6 +83,7 @@ namespace CarRacer.Core.Items
             Boxes = new ItemBoxField(boxPositions);
             _session.ItemMessageReceived += OnMessage;
             _session.PlayerLeft += (playerId, name) => Slots.Remove(playerId);
+            race.CountdownStarted += OnCountdownStarted;
         }
 
         public ItemBoxField Boxes { get; }
@@ -99,14 +99,6 @@ namespace CarRacer.Core.Items
         public void Tick()
         {
             var phase = _race.Phase;
-            if (phase == RacePhase.Countdown && _lastPhase != RacePhase.Countdown)
-            {
-                Boxes.Reset();
-                Slots.Clear();
-                Hazards.Clear();
-            }
-
-            _lastPhase = phase;
             long now = _clockMs();
             float dt = _lastTickMs == long.MinValue ? 0f : Math.Min(0.1f, (now - _lastTickMs) / 1000f);
             _lastTickMs = now;
@@ -166,6 +158,18 @@ namespace CarRacer.Core.Items
                     Accept(used);
                     break;
             }
+        }
+
+        /// <summary>
+        /// Empties every slot and restores every box as an event counts down. This resets on the countdown itself
+        /// rather than on a phase change seen in <see cref="Tick"/>, because a host that stalls (in the background, or
+        /// on a long hitch) through the whole countdown goes straight to Racing.
+        /// </summary>
+        private void OnCountdownStarted()
+        {
+            Boxes.Reset();
+            Slots.Clear();
+            Hazards.Clear();
         }
 
         private bool Grant(byte playerId, int box)
