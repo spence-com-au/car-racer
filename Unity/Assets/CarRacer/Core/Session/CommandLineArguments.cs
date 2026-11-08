@@ -11,16 +11,31 @@ namespace CarRacer.Core.Session
     /// </summary>
     public static class CommandLineArguments
     {
-        /// <summary>The <c>valueArguments</c> for <c>BuildScript</c>: every flag it reads a value from.</summary>
+        /// <summary>
+        /// Every flag <c>BuildScript</c> reads a value from. Each one belongs in <see cref="BuildValueArguments"/>,
+        /// which a test checks.
+        /// </summary>
+        public static class BuildFlag
+        {
+            public const string CustomBuildPath = "customBuildPath";
+            public const string BuildVersion = "buildVersion";
+            public const string AndroidVersionCode = "androidVersionCode";
+            public const string AndroidKeystoreName = "androidKeystoreName";
+            public const string AndroidKeystorePass = "androidKeystorePass";
+            public const string AndroidKeyaliasName = "androidKeyaliasName";
+            public const string AndroidKeyaliasPass = "androidKeyaliasPass";
+        }
+
+        /// <summary>The <c>valueArguments</c> for <c>BuildScript</c>: every <see cref="BuildFlag"/>.</summary>
         public static readonly HashSet<string> BuildValueArguments = new HashSet<string>(StringComparer.Ordinal)
         {
-            "customBuildPath",
-            "buildVersion",
-            "androidVersionCode",
-            "androidKeystoreName",
-            "androidKeystorePass",
-            "androidKeyaliasName",
-            "androidKeyaliasPass",
+            BuildFlag.CustomBuildPath,
+            BuildFlag.BuildVersion,
+            BuildFlag.AndroidVersionCode,
+            BuildFlag.AndroidKeystoreName,
+            BuildFlag.AndroidKeystorePass,
+            BuildFlag.AndroidKeyaliasName,
+            BuildFlag.AndroidKeyaliasPass,
         };
 
         /// <summary>Maps each flag, without its dashes, to its value; an empty string for a flag with none.</summary>
@@ -108,14 +123,15 @@ namespace CarRacer.Core.Session
         /// </summary>
         public static AndroidSigning FromArguments(IReadOnlyDictionary<string, string> args, bool development)
         {
-            if (args.TryGetValue("androidKeystoreName", out string keystore) && !string.IsNullOrEmpty(keystore))
+            if (args.TryGetValue(CommandLineArguments.BuildFlag.AndroidKeystoreName, out string keystore)
+                && !string.IsNullOrEmpty(keystore))
             {
                 return new AndroidSigning(
                     true,
                     keystore,
-                    ValueOrEmpty(args, "androidKeystorePass"),
-                    ValueOrEmpty(args, "androidKeyaliasName"),
-                    ValueOrEmpty(args, "androidKeyaliasPass"));
+                    ValueOrEmpty(args, CommandLineArguments.BuildFlag.AndroidKeystorePass),
+                    ValueOrEmpty(args, CommandLineArguments.BuildFlag.AndroidKeyaliasName),
+                    ValueOrEmpty(args, CommandLineArguments.BuildFlag.AndroidKeyaliasPass));
             }
 
             return development ? SharedDebug : UnityDebug;

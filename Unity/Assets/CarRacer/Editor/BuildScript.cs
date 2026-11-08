@@ -8,6 +8,7 @@ using UnityEditor;
 using UnityEditor.Build.Reporting;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using BuildFlag = CarRacer.Core.Session.CommandLineArguments.BuildFlag;
 
 namespace CarRacer.Editor
 {
@@ -94,12 +95,12 @@ namespace CarRacer.Editor
                 return;
             }
 
-            if (args.TryGetValue("buildVersion", out string version) && !string.IsNullOrEmpty(version))
+            if (args.TryGetValue(BuildFlag.BuildVersion, out string version) && !string.IsNullOrEmpty(version))
             {
                 PlayerSettings.bundleVersion = version;
             }
 
-            string output = args.TryGetValue("customBuildPath", out string path) && !string.IsNullOrEmpty(path) ? path : DefaultLinuxServerPath;
+            string output = args.TryGetValue(BuildFlag.CustomBuildPath, out string path) && !string.IsNullOrEmpty(path) ? path : DefaultLinuxServerPath;
             bool succeeded = Build(output, BuildTarget.StandaloneLinux64, development: false) && CopyServerMusic(output);
             EditorApplication.Exit(succeeded ? 0 : 1);
         }
@@ -149,12 +150,12 @@ namespace CarRacer.Editor
                 return;
             }
 
-            if (args.TryGetValue("buildVersion", out string version) && !string.IsNullOrEmpty(version))
+            if (args.TryGetValue(BuildFlag.BuildVersion, out string version) && !string.IsNullOrEmpty(version))
             {
                 PlayerSettings.bundleVersion = version;
             }
 
-            if (args.TryGetValue("androidVersionCode", out string code) && int.TryParse(code, out int versionCode) && versionCode > 0)
+            if (args.TryGetValue(BuildFlag.AndroidVersionCode, out string code) && int.TryParse(code, out int versionCode) && versionCode > 0)
             {
                 PlayerSettings.Android.bundleVersionCode = versionCode;
             }
@@ -162,7 +163,7 @@ namespace CarRacer.Editor
             bool development = args.ContainsKey("carRacerDevelopment");
             Apply(AndroidSigning.FromArguments(args, development));
 
-            string output = args.TryGetValue("customBuildPath", out string path) && !string.IsNullOrEmpty(path)
+            string output = args.TryGetValue(BuildFlag.CustomBuildPath, out string path) && !string.IsNullOrEmpty(path)
                 ? path
                 : "build/Android/CarRacer.apk";
 

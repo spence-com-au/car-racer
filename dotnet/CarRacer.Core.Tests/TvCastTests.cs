@@ -97,6 +97,15 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void ATvNameAsLongAsACastMessageIsCutQuickly()
+        {
+            string name = new string('x', CastMessage.MaxBytes);
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            Assert.Equal(NetWriter.MaxStringBytes, TvStatusMessage.Fit(name).Length);
+            Assert.True(clock.ElapsedMilliseconds < 100, $"Fit took {clock.ElapsedMilliseconds} ms");
+        }
+
+        [Fact]
         public void OnlyTheLeadersCastCommandsReachTheGame()
         {
             Join(1, "Alice");

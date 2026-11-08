@@ -664,6 +664,25 @@ namespace CarRacer.Core.Session
         /// <summary>The app is back from the background: time spent there doesn't count as the host going quiet.</summary>
         public void ForgiveSilence() => _lastHeardMs = _clockMs();
 
+        /// <summary>
+        /// One-way delay of <paramref name="playerId"/>'s car state reaching this guest (see
+        /// <see cref="ClockSync.CarLatencyMs"/>): one hop for a car the host drives, its own player's or a bot's,
+        /// including an away or departed guest's (design doc §12), and two for any other, which the host relays from
+        /// the guest driving it. An id missing from the roster counts as the latter.
+        /// </summary>
+        public float CarLatencyMs(byte playerId, float noEstimateMs)
+        {
+            foreach (var p in Roster.Players)
+            {
+                if (p.PlayerId == playerId)
+                {
+                    return Clock.CarLatencyMs(p.IsHost || p.IsBot, noEstimateMs);
+                }
+            }
+
+            return Clock.CarLatencyMs(drivenByHost: false, noEstimateMs);
+        }
+
         public void OnMessage(IGameMessage message)
         {
             _lastHeardMs = _clockMs();
@@ -685,6 +704,16 @@ namespace CarRacer.Core.Session
                     break;
                 case RosterMessage roster:
                     Roster = roster;
+
+                    // The host's roster has the last word on this phone's Ready: it clears it when the lobby reopens.
+                    foreach (var p in roster.Players)
+                    {
+                        if (State == GuestState.Joined && p.PlayerId == PlayerId)
+                        {
+                            Ready = p.Ready;
+                        }
+                    }
+
                     RosterChanged?.Invoke();
                     break;
                 case LobbySettingsMessage lobby:
