@@ -79,7 +79,8 @@ namespace CarRacer.Core.Viewer
 
         /// <summary>
         /// Starts ffmpeg (<paramref name="ffmpegPath"/>, "ffmpeg" to look on the PATH) writing into a
-        /// fresh <paramref name="folder"/>. Returns null with <paramref name="error"/> set if it can't run.
+        /// fresh <paramref name="folder"/>, which it creates and the caller removes. Returns null with
+        /// <paramref name="error"/> set if it can't run.
         /// </summary>
         public static ViewerStream Start(string ffmpegPath, string folder, out string error)
         {
@@ -87,11 +88,6 @@ namespace CarRacer.Core.Viewer
             TcpListener listener = null;
             try
             {
-                if (Directory.Exists(folder))
-                {
-                    Directory.Delete(folder, recursive: true);
-                }
-
                 Directory.CreateDirectory(folder);
                 listener = new TcpListener(IPAddress.Loopback, 0);
                 listener.Start();
