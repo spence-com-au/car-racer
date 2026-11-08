@@ -958,6 +958,8 @@ namespace CarRacer.Core.Session
                 }
                 catch (FormatException)
                 {
+                    // Text that isn't base64 is as unreadable as a save `CupRun.Resume` rejects: there is no cup to
+                    // resume, so none is offered, and Core has no logger to say so.
                 }
             }
 
