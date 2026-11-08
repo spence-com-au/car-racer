@@ -103,14 +103,6 @@ namespace CarRacer.Game.Screens
             _layer.Full.Add(_layer.Safe);
 
             _buttonLabels.Clear();
-            for (int i = 0; i < 5; i++)
-            {
-                var label = UiKit.Centred(UiKit.Text(string.Empty, 20, Color.white, bold: true));
-                label.style.position = Position.Absolute;
-                label.style.display = DisplayStyle.None;
-                _buttonLabels.Add(label);
-                _layer.Full.Add(label);
-            }
 
             _driftLabel = UiKit.Centred(UiKit.Text(string.Empty, 20, Color.white, bold: true));
             _driftLabel.style.position = Position.Absolute;
@@ -263,10 +255,7 @@ namespace CarRacer.Game.Screens
                 speed = $"{Mathf.Abs(car.ForwardSpeed) * 3.6f:0} km/h  {hurt}  {drift}  {boost}";
             }
 
-            if (_speed.text != speed)
-            {
-                _speed.text = speed;
-            }
+            Set(_speed, speed);
 
             var input = _screen.PlayerInput;
             if (input != null && _auto != null)
@@ -317,20 +306,37 @@ namespace CarRacer.Game.Screens
             float radius = layout.ButtonRadius / scale;
             _buttonShapes.Add((at, radius, held));
 
+            if (used == _buttonLabels.Count)
+            {
+                var added = UiKit.Centred(UiKit.Text(string.Empty, 20, Color.white, bold: true));
+                added.style.position = Position.Absolute;
+                _buttonLabels.Add(added);
+                _layer.Full.Add(added);
+            }
+
             var label = _buttonLabels[used++];
             label.style.display = DisplayStyle.Flex;
             label.style.left = at.x - radius;
             label.style.top = at.y - radius;
             label.style.width = label.style.height = 2f * radius;
             label.style.fontSize = Mathf.RoundToInt(radius * 0.32f);
-            if (label.text != text)
-            {
-                label.text = text;
-            }
+            Set(label, text);
         }
 
         /// <summary>A coloured arrow at the screen's edge for each nearby car the camera can't show, growing as it closes in.</summary>
         private void CollectRivalArrows(float width)
+        {
+            CollectRivals();
+            var car = _screen.Car;
+            HudIndicators.Rivals(car.BodyPosition.ToCore(), ViewHeading(), _rivalPositions, _arrows);
+            foreach (var arrow in _arrows)
+            {
+                AddArrow(arrow.Bearing, Mathf.Lerp(ArrowMin, ArrowMax, arrow.Closeness), _rivalColours[arrow.Index], width);
+            }
+        }
+
+        /// <summary>Fills <see cref="_rivalPositions"/> and <see cref="_rivalColours"/> with every other car, remote or bot.</summary>
+        private void CollectRivals()
         {
             _rivalPositions.Clear();
             _rivalColours.Clear();
@@ -355,13 +361,6 @@ namespace CarRacer.Game.Screens
                     _rivalPositions.Add(position.ToCore());
                     _rivalColours.Add(colour);
                 }
-            }
-
-            var car = _screen.Car;
-            HudIndicators.Rivals(car.BodyPosition.ToCore(), ViewHeading(), _rivalPositions, _arrows);
-            foreach (var arrow in _arrows)
-            {
-                AddArrow(arrow.Bearing, Mathf.Lerp(ArrowMin, ArrowMax, arrow.Closeness), _rivalColours[arrow.Index], width);
             }
         }
 
@@ -413,11 +412,7 @@ namespace CarRacer.Game.Screens
             _driftLabel.style.top = UiMetrics.ReferenceHeight - 64f - 40f;
             _driftLabel.style.width = MeterWidth;
             _driftLabel.style.height = 34f;
-            string text = tier > 0 ? $"BOOST {tier}" : "DRIFT";
-            if (_driftLabel.text != text)
-            {
-                _driftLabel.text = text;
-            }
+            Set(_driftLabel, tier > 0 ? $"BOOST {tier}" : "DRIFT");
         }
 
         /// <summary>Draws this frame's shapes: touch buttons, the mini-map, the drift meter and the edge arrows.</summary>
@@ -488,25 +483,10 @@ namespace CarRacer.Game.Screens
                 Dot(paint, area, point, 3f, outline);
             }
 
-            _cars = _cars != null ? _cars : GetComponent<NetworkedCars>();
-            if (_cars != null)
+            // The rivals were gathered this frame by CollectRivalArrows, which runs whenever the map does.
+            for (int i = 0; i < _rivalPositions.Count; i++)
             {
-                foreach (var remote in _cars.RemoteCars)
-                {
-                    if (remote.HasState)
-                    {
-                        Dot(paint, area, _map.ToMap(remote.transform.position.ToCore()), 10f, remote.Colour);
-                    }
-                }
-            }
-
-            _bots = _bots != null ? _bots : GetComponent<BotCars>();
-            if (_bots != null)
-            {
-                foreach (var (position, colour) in _bots.Dots)
-                {
-                    Dot(paint, area, _map.ToMap(position.ToCore()), 10f, colour);
-                }
+                Dot(paint, area, _map.ToMap(_rivalPositions[i]), 10f, _rivalColours[i]);
             }
 
             // This phone's car on top, with a white ring so it stands out.
