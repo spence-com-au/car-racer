@@ -101,6 +101,22 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void TheCarsTheHostDrivesReachUsInOneHop()
+        {
+            var roster = new LobbyRoster();
+            byte host = roster.Add("Host", isHost: true).PlayerId;
+            byte bot = roster.AddBot().PlayerId;
+            byte guest = roster.Add("Guest").PlayerId;
+            var session = new GuestSession(new RecordingTransport(), "Me", 1, () => 0);
+            session.OnMessage(roster.ToMessage());
+
+            Assert.Equal(15f, session.CarLatencyMs(host, noEstimateMs: 15f));
+            Assert.Equal(15f, session.CarLatencyMs(bot, noEstimateMs: 15f));
+            Assert.Equal(30f, session.CarLatencyMs(guest, noEstimateMs: 15f));
+            Assert.Equal(30f, session.CarLatencyMs(playerId: 9, noEstimateMs: 15f));
+        }
+
+        [Fact]
         public void TheFastestRecentSampleWins()
         {
             var sync = new ClockSync();

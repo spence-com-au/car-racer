@@ -159,7 +159,7 @@ namespace CarRacer.Game.Net
                 return HostLatencyGuessMs;
             }
 
-            return GuestSide.Clock.CarLatencyMs(DrivenByHost(playerId), HostLatencyGuessMs);
+            return GuestSide.CarLatencyMs(playerId, HostLatencyGuessMs);
         }
 
         /// <summary>
@@ -489,24 +489,6 @@ namespace CarRacer.Game.Net
             Status = reason;
             _announcer?.Dispose();
             _announcer = null;
-        }
-
-        /// <summary>
-        /// Whether the host simulates <paramref name="playerId"/>'s car and sends its state straight to the guests: its
-        /// own player's, or one a bot drives, including an away or departed guest's (design doc §12). Every other car
-        /// is relayed through the host.
-        /// </summary>
-        private bool DrivenByHost(byte playerId)
-        {
-            foreach (var p in GuestSide.Roster.Players)
-            {
-                if (p.PlayerId == playerId)
-                {
-                    return p.IsHost || p.IsBot;
-                }
-            }
-
-            return false;
         }
 
         private static string RefusalText(JoinResult result)
