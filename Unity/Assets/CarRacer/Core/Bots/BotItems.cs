@@ -1,4 +1,8 @@
+using System;
+using System.Collections.Generic;
 using CarRacer.Core.Items;
+using CarRacer.Core.Net;
+using CarRacer.Core.Numerics;
 
 namespace CarRacer.Core.Bots
 {
@@ -32,8 +36,51 @@ namespace CarRacer.Core.Bots
         public const float BombRange = 25f;
         public const float MissileRange = 60f;
 
+        /// <summary>Curvature (see <see cref="BotDriver.CurvatureAhead"/>) below which the track counts as a straight.</summary>
+        public const float StraightCurvature = 0.01f;
+
         /// <summary>A bot that has held an item this long uses it whatever the situation.</summary>
         public const float GiveUpSeconds = 10f;
+
+        /// <summary>
+        /// What a bot at <paramref name="position"/> facing <paramref name="forward"/> can see: the nearest of
+        /// <paramref name="rivals"/> in front (on or ahead of the line through the bot at right angles to its heading)
+        /// and behind, flattened to the ground plane, whether the bend ahead is straight (a driver with no track, such
+        /// as an arena driver, passes 0) and whether anyone leads it in <paramref name="standings"/>.
+        /// </summary>
+        public static BotItemSituation Observe(
+            Vec3 position,
+            Vec3 forward,
+            IReadOnlyList<Vec3> rivals,
+            float curvatureAhead,
+            StandingsMessage standings,
+            byte playerId)
+        {
+            var situation = new BotItemSituation
+            {
+                NearestAhead = float.PositiveInfinity,
+                NearestBehind = float.PositiveInfinity,
+                OnStraight = curvatureAhead < StraightCurvature,
+                HasCarAhead = standings != null && standings.Order.Count > 0 && standings.Order[0].PlayerId != playerId,
+            };
+
+            // Indexed rather than `foreach`, which would box the list's enumerator on every call.
+            for (int i = 0; i < rivals.Count; i++)
+            {
+                var offset = (rivals[i] - position).Flattened;
+                float distance = offset.Length;
+                if (Vec3.Dot(offset, forward) >= 0f)
+                {
+                    situation.NearestAhead = Math.Min(situation.NearestAhead, distance);
+                }
+                else
+                {
+                    situation.NearestBehind = Math.Min(situation.NearestBehind, distance);
+                }
+            }
+
+            return situation;
+        }
 
         public static bool ShouldUse(ItemKind held, float heldSeconds, BotSkill skill, BotItemSituation situation)
         {

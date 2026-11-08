@@ -223,36 +223,13 @@ namespace CarRacer.Game.Bots
         /// <summary>What the bot can see for its item decision: the nearest rivals in front and behind, the bend ahead, and whether anyone leads it.</summary>
         private BotItemSituation Situation(Bot bot, HostRace race)
         {
-            var situation = new BotItemSituation
-            {
-                NearestAhead = float.PositiveInfinity,
-                NearestBehind = float.PositiveInfinity,
-                OnStraight = bot.ArenaDriver != null || bot.Driver.CurvatureAhead < 0.01f,
-            };
-
-            var position = bot.Car.BodyPosition.ToCore();
-            var forward = bot.Car.State.Forward;
-            foreach (var rival in RivalsOf(bot.PlayerId))
-            {
-                var offset = (rival - position).Flattened;
-                float distance = offset.Length;
-                if (Vec3.Dot(offset, forward) >= 0f)
-                {
-                    situation.NearestAhead = Mathf.Min(situation.NearestAhead, distance);
-                }
-                else
-                {
-                    situation.NearestBehind = Mathf.Min(situation.NearestBehind, distance);
-                }
-            }
-
-            var standings = race.Standings;
-            if (standings != null)
-            {
-                situation.HasCarAhead = standings.Order.Count > 0 && standings.Order[0].PlayerId != bot.PlayerId;
-            }
-
-            return situation;
+            return BotItems.Observe(
+                bot.Car.BodyPosition.ToCore(),
+                bot.Car.State.Forward,
+                RivalsOf(bot.PlayerId),
+                bot.ArenaDriver != null ? 0f : bot.Driver.CurvatureAhead,
+                race.Standings,
+                bot.PlayerId);
         }
 
         /// <summary>Every other car still in the event: this phone's own car, the other bots and the other phones' cars.</summary>
