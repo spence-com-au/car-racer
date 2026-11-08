@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using CarRacer.Core.Art;
 using CarRacer.Core.Track;
 using CarRacer.Game;
@@ -99,6 +100,32 @@ namespace CarRacer.Tests
             {
                 Object.DestroyImmediate(a.gameObject);
                 Object.DestroyImmediate(b.gameObject);
+            }
+        }
+
+        [Test]
+        public void BodiesWithTheSamePaintShareItsMaterial()
+        {
+            var race = CarModels.Race;
+            var twin = CarModels.Bodies.First(m => m != race && m.Paint.Equals(race.Paint));
+            var other = CarModels.Bodies.First(m => !m.Paint.Equals(race.Paint));
+            var a = new GameObject(race.Name).transform;
+            var b = new GameObject(twin.Name).transform;
+            var c = new GameObject(other.Name).transform;
+            try
+            {
+                Assert.IsTrue(CarBodies.TryBuild(a, Color.red, race));
+                Assert.IsTrue(CarBodies.TryBuild(b, Color.red, twin));
+                Assert.IsTrue(CarBodies.TryBuild(c, Color.red, other));
+                var material = a.GetChild(0).GetComponent<MeshRenderer>().sharedMaterial;
+                Assert.AreSame(material, b.GetChild(0).GetComponent<MeshRenderer>().sharedMaterial, twin.Name);
+                Assert.AreNotSame(material, c.GetChild(0).GetComponent<MeshRenderer>().sharedMaterial, other.Name);
+            }
+            finally
+            {
+                Object.DestroyImmediate(a.gameObject);
+                Object.DestroyImmediate(b.gameObject);
+                Object.DestroyImmediate(c.gameObject);
             }
         }
 
