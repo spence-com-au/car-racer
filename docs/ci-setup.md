@@ -125,7 +125,7 @@ is mostly automatic:
    editor is on another platform, it switches to Android instead and stops; run it again once
    the scripts recompile.
 
-Leave what Unity generates uncommitted: the rest of `ProjectSettings/`,
+`.gitignore` keeps what Unity generates uncommitted: the rest of `ProjectSettings/`,
 `Packages/packages-lock.json` and `Assets/Scenes/`. Every build applies the player settings
 (**Car Racer → Apply Project Settings**) and creates the bootstrap scene (**Car Racer → Create
 Bootstrap Scene**) from code, so CI and other machines get the same configuration without them.
