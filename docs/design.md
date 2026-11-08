@@ -392,8 +392,10 @@ takes touches, and it sits under the performance readout.
   - **Who scores:** each phone times its own truck's jumps and spots its own crushes, as it
     reports its own checkpoints, and sends them (`StuntMessage`); the host keeps the score
     (`StuntTracker`) and only believes what fits: no more air than time has passed since that
-    player's last landing, a crush only on a truck the host sees within 6 m, and not the same
-    truck by the same attacker again within 1.5 s. Bots' stunts come from the host directly.
+    player's last landing, give or take 0.5 s for reports crossing the network unevenly (air taken
+    from that slack comes out of the next jump's time, so it never adds up), a crush only on a
+    truck the host sees within 6 m, and not the same truck by the same attacker again within
+    1.5 s. Bots' stunts come from the host directly.
   - **Standings and results** carry each player's points (`Points`, protocol 25).
   - **Bots** (`MonsterBotDriver`) work round the ramps in turn, lining up behind each and
     launching off it flat out, ram any rival right in front of them, and turn back from the wall.
