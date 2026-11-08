@@ -115,13 +115,14 @@ is mostly automatic:
 
 1. Install **Unity 6000.3.26f1** with **Android Build Support** (including OpenJDK and the
    Android SDK & NDK) through Unity Hub.
-2. Open the `Unity/` folder as a project. Unity generates `ProjectSettings/*` and
-   `Packages/packages-lock.json`. If it adjusts any built-in package version in
+2. Open the `Unity/` folder as a project. If Unity adjusts any built-in package version in
    `Packages/manifest.json`, accept the change.
-3. Run **Car Racer → Apply Project Settings**, then **Car Racer → Create Bootstrap Scene**.
-4. Commit the generated `ProjectSettings/`, `Packages/packages-lock.json` and
-   `Assets/Scenes/` files so CI and other machines use the same configuration.
-5. **Car Racer → Build → Development APK** writes `build/Android/CarRacer-dev.apk`.
+3. **Car Racer → Build → Development APK** writes `build/Android/CarRacer-dev.apk`.
+
+Leave what Unity generates uncommitted: the rest of `ProjectSettings/`,
+`Packages/packages-lock.json` and `Assets/Scenes/`. Every build applies the player settings
+(**Car Racer → Apply Project Settings**) and creates the bootstrap scene (**Car Racer → Create
+Bootstrap Scene**) from code, so CI and other machines get the same configuration without them.
 
 ## 6. Running the core tests locally
 
