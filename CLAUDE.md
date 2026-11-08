@@ -18,9 +18,10 @@ and the milestone plan. Update it in the same PR when a decision changes.
   squash-merged, rebase the rest onto `master` so each diff shows only its own change.
 - **A PR is not done when it is opened.** Watch it: fix failing checks, and address each review
   finding or reply with why not, then resolve the thread.
-- **Enable squash auto-merge on every PR** right after opening it (`gh pr merge --auto --squash`).
-  The `master` ruleset requires green CI, an approval (Claude's counts) and resolved
-  conversations, so auto-merge only fires once all of those are met — don't merge by hand.
+- **Ask before enabling squash auto-merge** (`gh pr merge --auto --squash`), as
+  [`.claude/rules/org/pull-request.md`](.claude/rules/org/pull-request.md) says. The `master`
+  ruleset requires green CI, an approval (Claude's counts) and resolved conversations, so
+  auto-merge only fires once all of those are met — don't merge by hand.
 
 ## Code layout
 
