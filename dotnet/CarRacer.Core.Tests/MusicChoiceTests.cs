@@ -33,6 +33,7 @@ namespace CarRacer.Core.Tests
         {
             Assert.Equal(MusicChoice.Arena, MusicChoice.For(true, GameMode.Sumo, 2));
             Assert.Equal(MusicChoice.Arena, MusicChoice.For(true, GameMode.Battle, 0));
+            Assert.Equal(MusicChoice.Arena, MusicChoice.For(true, GameMode.Monster, 1));
         }
 
         [Fact]
