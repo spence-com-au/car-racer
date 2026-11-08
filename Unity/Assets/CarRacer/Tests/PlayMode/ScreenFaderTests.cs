@@ -3,6 +3,7 @@ using CarRacer.Game.Ui;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine.UIElements;
 
 namespace CarRacer.Tests
 {
@@ -10,11 +11,15 @@ namespace CarRacer.Tests
     public class ScreenFaderTests
     {
         [UnityTest]
-        public IEnumerator TheCoverLiftsWithinASecond()
+        public IEnumerator TheCoverShowsThenLifts()
         {
             ScreenFader.Install();
+            var document = GameObject.Find(nameof(ScreenFader)).GetComponentInChildren<UIDocument>();
+            var cover = document.rootVisualElement.Q("cover");
             ScreenFader.Cover();
             Assert.IsTrue(ScreenFader.Fading);
+            Assert.AreEqual(DisplayStyle.Flex, cover.style.display.value, "the cover is shown");
+            Assert.AreEqual(1f, cover.style.opacity.value, "the cover starts opaque");
 
             // The fade runs on real time (each frame moving it on by at most a 30 fps step), and the
             // test runner's frames can be far shorter than a phone's, so wait on the clock, not a frame count.
@@ -25,6 +30,7 @@ namespace CarRacer.Tests
             }
 
             Assert.IsFalse(ScreenFader.Fading, "the fade should finish");
+            Assert.AreEqual(DisplayStyle.None, cover.style.display.value, "the cover is hidden once the fade ends");
         }
     }
 }
