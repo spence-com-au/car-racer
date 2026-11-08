@@ -66,14 +66,14 @@ namespace CarRacer.Game.Net
         private static LobbySettings Load()
         {
             var settings = LobbySettings.Default;
-            settings.Mode = (GameMode)PlayerPrefs.GetInt(ModeKey, (int)GameMode.Race);
+            settings.Mode = (GameMode)PlayerPrefs.GetInt(ModeKey, (int)settings.Mode);
             settings.Laps = PlayerPrefs.GetInt(LapsKey, settings.Laps);
-            settings.Track = PlayerPrefs.GetInt(TrackKey, 0);
-            settings.Rules = EventRules.FromByte((byte)PlayerPrefs.GetInt(RulesKey, 0));
-            settings.BotFill = PlayerPrefs.GetInt(BotFillKey, 0);
-            settings.BotDifficulty = (BotDifficulty)PlayerPrefs.GetInt(BotDifficultyKey, (int)BotDifficulty.Normal);
-            settings.Cup = PlayerPrefs.GetInt(CupKey, 0);
-            settings.ReverseGrid = PlayerPrefs.GetInt(ReverseGridKey, 1) == 1;
+            settings.Track = PlayerPrefs.GetInt(TrackKey, settings.Track);
+            settings.Rules = EventRules.FromByte((byte)PlayerPrefs.GetInt(RulesKey, settings.Rules.ToByte()));
+            settings.BotFill = PlayerPrefs.GetInt(BotFillKey, settings.BotFill);
+            settings.BotDifficulty = (BotDifficulty)PlayerPrefs.GetInt(BotDifficultyKey, (int)settings.BotDifficulty);
+            settings.Cup = PlayerPrefs.GetInt(CupKey, settings.Cup);
+            settings.ReverseGrid = PlayerPrefs.GetInt(ReverseGridKey, settings.ReverseGrid ? 1 : 0) == 1;
             return settings.Clean();
         }
 
