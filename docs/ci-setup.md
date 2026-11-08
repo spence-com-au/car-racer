@@ -118,7 +118,9 @@ is mostly automatic:
    Android SDK & NDK) through Unity Hub.
 2. Open the `Unity/` folder as a project. If Unity adjusts any built-in package version in
    `Packages/manifest.json`, accept the change.
-3. **Car Racer → Build → Development APK** writes `build/Android/CarRacer-dev.apk`.
+3. **Car Racer → Build → Development APK** writes `build/Android/CarRacer-dev.apk`. If the
+   editor is on another platform, it switches to Android instead and stops; run it again once
+   the scripts recompile.
 
 Leave what Unity generates uncommitted: the rest of `ProjectSettings/`,
 `Packages/packages-lock.json` and `Assets/Scenes/`. Every build applies the player settings
