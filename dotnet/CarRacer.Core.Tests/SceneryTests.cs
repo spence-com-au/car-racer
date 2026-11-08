@@ -125,7 +125,7 @@ namespace CarRacer.Core.Tests
         {
             var spline = TrackCatalog.Layouts[0].Spline;
             var stands = TrackScenery.Place(spline, Width).Where(p => p.Model == TrackScenery.StandModel).ToList();
-            Assert.NotEmpty(stands);
+            Assert.Equal(3, stands.Count);
             foreach (var stand in stands)
             {
                 // Seats face the stand's -z; that should point at the road.
