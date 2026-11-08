@@ -335,14 +335,25 @@ namespace CarRacer.Core.Net
             error = null;
             try
             {
-                var reader = new NetReader(frame);
-                int length = reader.ReadInt();
+                if (frame.Length < FrameHeaderBytes)
+                {
+                    throw new NetFormatException(
+                        $"Packet truncated: needed {FrameHeaderBytes} more bytes, {frame.Length} remaining.");
+                }
+
+                int length = frame[0] | (frame[1] << 8) | (frame[2] << 16) | (frame[3] << 24);
                 if (length <= 0 || length > MaxMessageBytes)
                 {
                     throw new NetFormatException($"Message length {length} is outside 1 to {MaxMessageBytes}.");
                 }
 
-                message = Decode(reader.ReadBytes(length));
+                int remaining = frame.Length - FrameHeaderBytes;
+                if (length > remaining)
+                {
+                    throw new NetFormatException($"Packet truncated: needed {length} more bytes, {remaining} remaining.");
+                }
+
+                message = Decode(frame, FrameHeaderBytes, length);
                 return true;
             }
             catch (Exception e) when (e is NetFormatException || e is OverflowException || e is IndexOutOfRangeException)

@@ -138,6 +138,16 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void ALengthLongerThanTheFrameIsDroppedRatherThanThrown()
+        {
+            byte[] frame = Frame(MessageCodec.MaxMessageBytes, MessageCodec.Encode(new SetReadyMessage { Ready = true }));
+
+            Assert.False(MessageCodec.TryDecodeFrame(frame, out var message, out string error));
+            Assert.Null(message);
+            Assert.Contains("truncated", error);
+        }
+
+        [Fact]
         public void AnUnknownMessageTypeIsDropped()
         {
             Assert.False(MessageCodec.TryDecodeFrame(Frame(1, 200), out var message, out string error));
