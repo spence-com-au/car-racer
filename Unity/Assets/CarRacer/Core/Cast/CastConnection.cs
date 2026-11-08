@@ -139,7 +139,7 @@ namespace CarRacer.Core.Cast
                     }
                 }
             }
-            catch (Exception e) when (e is IOException || e is SocketException || e is AuthenticationException || e is AggregateException || e is ObjectDisposedException || e is FormatException)
+            catch (Exception e) when (IsConnectionLoss(e))
             {
                 Publish(CastState.Failed, "Lost the TV: " + e.GetBaseException().Message);
             }
@@ -168,9 +168,9 @@ namespace CarRacer.Core.Cast
                     }
                 }
             }
-            catch (Exception e) when (e is IOException || e is ObjectDisposedException || e is FormatException || e is InvalidOperationException)
+            catch (Exception e) when (IsConnectionLoss(e))
             {
-                // The main thread notices through _readerDone.
+                // Including the end of every cast, when Run disposes the stream this is blocked reading; the main thread notices through _readerDone.
             }
             finally
             {
@@ -181,6 +181,13 @@ namespace CarRacer.Core.Cast
                 }
             }
         }
+
+        /// <summary>
+        /// Whether <paramref name="e"/> means the connection to the TV is gone. Mono's <see cref="SslStream"/>
+        /// wraps a failed read or write, even of a disposed stream, in an <see cref="AggregateException"/>.
+        /// </summary>
+        private static bool IsConnectionLoss(Exception e) =>
+            e is IOException || e is SocketException || e is AuthenticationException || e is AggregateException || e is ObjectDisposedException || e is FormatException || e is InvalidOperationException;
 
         private List<CastMessage> Take()
         {
