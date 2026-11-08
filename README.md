@@ -10,15 +10,17 @@ the empty slots. Built with Unity 6.3 LTS and Netcode for GameObjects.
 
 ## Status
 
-**M1: core loop.** LAN multiplayer races on the sample oval for 2–6 phones:
-- The main menu asks for your name on first launch, then offers **Host game**, **Join game**
-  (games found on the Wi-Fi, or join by IP) and **Practice** (a free drive).
-- In a session everyone drives around in the lobby and taps **Ready**. The host then starts a
-  race with a synced countdown, laps, positions, car-to-car bumping and results, with a rematch.
-- Arcade drift-and-boost handling with touch, gamepad and keyboard controls, a chase camera, a
-  HUD with drift meter, mini-map and "Wrong way!" warning, and haptics.
-- The engine-independent core (protocol, race rules, physics, tracks, scoring) is unit tested
-  with `dotnet test`. Graphics are placeholders.
+**M19: TV viewer** is the latest milestone; [the milestone plan](docs/design.md#16-milestones)
+lists each one. LAN multiplayer for 2–6 phones, with bots filling empty slots:
+- **Host game**, **Join game** (games found on the Wi-Fi, by IP or by QR code) and **Practice**
+  (an offline free drive). Everyone drives around the lobby, picks a car and votes for the track.
+- **Events:** races on 8 tracks, Sumo and Battle arenas, Monster Jam, and Grand Prix and Mixed
+  cups with points, standings and resume.
+- Arcade drift-and-boost handling, car-to-car bumping, nine items, damage, and twelve Kenney
+  Car Kit bodies with their own handling. The host turns damage, items and car stats on or off.
+- A dedicated host on a Linux server (Docker or a tarball) can cast the race to a Chromecast.
+- The engine-independent core (protocol, rules, physics, tracks, bots, scoring) is unit tested
+  with `dotnet test`.
 
 ## Layout
 
