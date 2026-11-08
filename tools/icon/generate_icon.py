@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 SOURCES = Path(__file__).resolve().parent
 TEXTURES = ROOT / "Unity" / "Assets" / "CarRacer" / "Icon"
 
-# Six of the player colours: the Okabe-Ito hues in CarColours.
+# Six of the player colours: the Okabe-Ito hues in `CarPalette`.
 YELLOW, BLUE, VERMILION, GREEN, PURPLE, SKY = "#F2BF1A", "#0073B3", "#D65E00", "#009E73", "#CC78A6", "#57B5E8"
 NAVY, NAVY_DARK, INK = "#16264A", "#0B1428", "#1A1A20"
 
