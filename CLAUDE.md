@@ -38,7 +38,7 @@ and the milestone plan. Update it in the same PR when a decision changes.
 ## Before pushing
 
 ```sh
-dotnet test dotnet/CarRacer.sln          # core unit tests
+dotnet test dotnet/CarRacer.sln          # core unit tests; need ffmpeg and ffprobe on PATH
 python3 tools/generate_unity_meta.py     # create .meta files for any new Unity assets
 python3 tools/generate_unity_meta.py --check
 
