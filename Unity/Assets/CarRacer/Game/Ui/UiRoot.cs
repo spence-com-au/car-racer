@@ -30,8 +30,16 @@ namespace CarRacer.Game.Ui
         /// <summary>The safe area, for anything that must be readable or tappable.</summary>
         public VisualElement Safe { get; private set; }
 
+        /// <summary>
+        /// Stands in for <c>Screen.safeArea</c> (device pixels from the bottom-left) when set. Tests use it to fake a
+        /// cutout, which the headless test runner's screen never has.
+        /// </summary>
+        public Rect? SafeAreaOverride { get; set; }
+
         /// <summary>Raised when large text is switched; rebuild the elements so they pick up the new sizes.</summary>
         public event Action Restyle;
+
+        private Rect CurrentSafeArea => SafeAreaOverride ?? Screen.safeArea;
 
         /// <summary>Makes a layer under <paramref name="parent"/>; layers with a higher <paramref name="order"/> draw on top.</summary>
         public static UiRoot Create(Transform parent, string name, int order = 0)
@@ -88,7 +96,7 @@ namespace CarRacer.Game.Ui
 
         private void Update()
         {
-            if (Screen.safeArea != _safeArea || _screenSize.x != Screen.width || _screenSize.y != Screen.height)
+            if (CurrentSafeArea != _safeArea || _screenSize.x != Screen.width || _screenSize.y != Screen.height)
             {
                 ApplySafeArea();
             }
@@ -102,7 +110,7 @@ namespace CarRacer.Game.Ui
 
         private void ApplySafeArea()
         {
-            _safeArea = Screen.safeArea;
+            _safeArea = CurrentSafeArea;
             _screenSize = new Vector2(Screen.width, Screen.height);
             var insets = UiMetrics.SafeInsets(Screen.width, Screen.height, _safeArea.x, _safeArea.y, _safeArea.width, _safeArea.height);
             Safe.style.left = insets.Left;
