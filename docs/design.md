@@ -716,7 +716,8 @@ leader).
   `adb install` worked.
 - **Baseline device: Pixel 2 XL** (Snapdragon 835 / Adreno 540, 1440×2880). Low/Medium presets
   aim for **60 fps** and never drop below 30, rendering at **0.65–0.75 of native resolution**.
-- Vulkan by default, **GLES3 on Adreno 5xx** (Vulkan device filter list).
+- Vulkan by default, GLES3 as the fallback. **Not built yet:** steering Adreno 5xx to GLES3 with a
+  Vulkan device filter list, so for now the Pixel 2 XL runs Vulkan.
 - Frame rate capped at 60. Quality preset is picked automatically on first launch, with a
   manual override. Built (`QualityPresets`, `GraphicsQuality`): the level is the lower of what
   the GPU and the memory allow. Adreno 5xx, Mali before G72 or under 4.5 GB is **Low** (0.65 of
