@@ -145,7 +145,7 @@ jobs:
           restore-keys: 'Library-linux-'
 
       # The tag without its `v`. GameCI's `Tag` versioning reads every tag on the commit, so a second tag (one left by a
-      # release published by hand) would make an unparseable version and an APK with version code 1.
+      # release published by hand) would make an unparseable version.
       - name: 'Version'
         id: 'version'
         run: 'echo "version=${TAG#v}" >> "${GITHUB_OUTPUT}"'
