@@ -13,7 +13,9 @@ published, a release can't take assets and its version can't be reused.
 
 ## 1. Pick the version
 
-- Find the latest release and tag (`list_releases` / `list_tags`). Versions are `vMAJOR.MINOR.PATCH`.
+- Find the latest release and tag: `gh release list --limit 5` shows each release as draft or
+  published, and `git ls-remote --tags origin 'v*'` lists the tags. Versions are
+  `vMAJOR.MINOR.PATCH`.
 - Default to the next minor version (`v0.12.0` → `v0.13.0`) for new features or a milestone, and
   to the next patch version for fixes only. Use the version the user names if they give one.
 - Never reuse a version that has a **published** release, even one with no assets. A **draft**
@@ -33,6 +35,7 @@ published, a release can't take assets and its version can't be reused.
 Run the workflow with the `gh` CLI:
 
 ```sh
+started=$(date -u +%FT%TZ)
 gh workflow run release.yaml --ref master -f version=v0.13.0
 ```
 
@@ -40,11 +43,16 @@ Without `gh`, a person can use **Actions → Release → Run workflow** in the b
 tag (`git tag v0.13.0 && git push origin v0.13.0`). Don't create the release on the Releases page:
 the published release would be immutable before the workflow could attach anything.
 
-Then find the run and give the user its link:
+`gh workflow run` doesn't return the run's ID, and the new run can take a few seconds to show up,
+so the newest run straight afterwards may be the previous release. Wait until the newest
+`workflow_dispatch` run was created after `$started`, then give the user its link:
 
 ```sh
-gh run list --workflow release.yaml --event workflow_dispatch --limit 1 --json databaseId,url
+gh run list --workflow release.yaml --event workflow_dispatch --limit 1 \
+  --json databaseId,url,createdAt --jq "map(select(.createdAt >= \"$started\"))"
 ```
+
+An empty list (`[]`) means it isn't there yet: run it again in a few seconds.
 
 ## 4. Follow it through
 
