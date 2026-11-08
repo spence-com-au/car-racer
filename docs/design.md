@@ -705,7 +705,7 @@ leader).
 
 ## 14. Devices and performance
 
-- **Minimum Android 8.0 (API 26)**; target API follows Google Play's requirement. ARM64, IL2CPP.
+- **Minimum Android 8.0 (API 26)**; target API is Unity's automatic choice (the highest installed SDK). ARM64, IL2CPP.
 - **Installs to internal storage only** (`internalOnly`, not Unity's default `preferExternal`), to
   match what install sessions ask for. With `preferExternal`, installing the APK from the Files app
   logged the manifest attribute as dropped and the install was abandoned ("Cancelling"), while
@@ -777,6 +777,7 @@ leader).
 | **M17: More tracks and cars** | Six more Car Kit bodies (sedan, SUV, taxi, pickup, delivery truck and a kart), each with its own handling (protocol 23); three more tracks, Dune Jumps, Carousel Ring and Ridge Run, each with its own tune and in both cups (protocol 24). |
 | **M18: Monster Jam** | A fourth event type: monster trucks in a stunt stadium with ramps, scoring air time and crushes. Rules, scoring, messages (protocol 25), the truck model and bots; the stadium, truck handling and looks, stunt reporting, HUD and lobby. |
 | **M19: TV viewer** | Cast the room to a Chromecast from a Linux server: a 2D broadcast view drawn on the server and streamed with ffmpeg to the Default Media Receiver, a Cast to TV button for the room leader, and optional TV music. |
-| Later | Google Play internal testing track; a custom Cast receiver drawing the viewer on the TV. |
+| Later | A custom Cast receiver drawing the viewer on the TV. |
 
-Not planned: internet play, accounts, analytics, host migration.
+Not planned: internet play, accounts, analytics, host migration, publishing to Google Play (releases go to
+GitHub Releases and phones update through Obtainium).
