@@ -130,7 +130,8 @@ Bootstrap Scene**) from code, so CI and other machines get the same configuratio
 dotnet test dotnet/CarRacer.sln
 ```
 
-Requires the .NET 8 SDK. No Unity needed.
+Requires the .NET 8 SDK, and `ffmpeg` and `ffprobe` on `PATH` (`sudo apt install ffmpeg`): the
+viewer stream tests run them, and fail without them. No Unity needed.
 
 ## 7. Adding files outside the Unity editor
 
