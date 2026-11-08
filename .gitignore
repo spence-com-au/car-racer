@@ -37,6 +37,7 @@ sysinfo.txt
 # Secrets: never commit these
 *.keystore
 *.jks
+*.b64
 # The shared debug key is deliberately public (see BuildScript.UseSharedDebugKeystore).
 !/Unity/Keystores/debug.keystore
 *.ulf
