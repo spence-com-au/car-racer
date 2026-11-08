@@ -43,6 +43,12 @@ namespace CarRacer.Core.Physics
         /// <summary>All cars have the same mass: car stats change handling, not mass (design doc §4).</summary>
         public const float CarMass = 1f;
 
+        /// <summary>
+        /// Reduced mass of two cars in a bump, which <see cref="BumpResolver"/> clamps per unit of: half a car's, since
+        /// all weigh the same.
+        /// </summary>
+        public const float ReducedMass = CarMass / 2f;
+
         private readonly BumpSettings _settings;
         private readonly HitDeduplicator _dedupe = new HitDeduplicator();
 

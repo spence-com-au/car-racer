@@ -43,7 +43,7 @@ namespace CarRacer.Core.Tests
             var other = new CarBody(new Vec3(1f, 0f, 0f), new Vec3(-30f, 0f, 0f), BumpMonitor.CarMass);
             Vec3 impulse = BumpResolver.ComputeSelfImpulse(self, other, Bumps);
 
-            var crunch = SoundRules.Crunch(impulse.Flattened.Length, BumpMonitor.CarMass / 2f, Bumps);
+            var crunch = SoundRules.Crunch(impulse.Flattened.Length, BumpMonitor.ReducedMass, Bumps);
             Assert.Equal(CrunchSize.Heavy, crunch.Size);
             Assert.Equal(1f, crunch.Volume, 4);
         }
