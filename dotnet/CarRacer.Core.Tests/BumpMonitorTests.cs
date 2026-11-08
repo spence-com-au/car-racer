@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using CarRacer.Core.Driving;
 using CarRacer.Core.Net;
 using CarRacer.Core.Numerics;
 using CarRacer.Core.Physics;
@@ -15,6 +17,10 @@ namespace CarRacer.Core.Tests
 
         private void Step(Vec3 selfPos, Vec3 selfVel, long now, params OtherCar[] others) =>
             _monitor.Step(1, selfPos, selfVel, others, now, _bumps);
+
+        /// <summary>A physics step that sees car 2 close by but not touching, so it misses the contact.</summary>
+        private void StepJustMissing(long now) =>
+            Step(Vec3.Zero, Vec3.Zero, now, new OtherCar(2, new Vec3(0f, 0f, 2.5f), Vec3.Zero));
 
         [Fact]
         public void TouchingAndApproachingBumps()
@@ -83,6 +89,8 @@ namespace CarRacer.Core.Tests
         [Fact]
         public void AFallbackHitAppliesWhenThisPhoneMissedTheContact()
         {
+            StepJustMissing(1020);
+            Assert.Empty(_bumps);
             var fromOther = new HitMessage { AttackerId = 2, TargetId = 1, Impulse = new Vec3(0f, 1f, -5f) };
             Assert.True(_monitor.OnHit(fromOther, 1, 1040, out var impulse));
             Assert.Equal(fromOther.Impulse, impulse);
@@ -96,9 +104,10 @@ namespace CarRacer.Core.Tests
         public void AFallbackHitIsClampedToWhatABumpCouldProduce()
         {
             var settings = new BumpSettings();
-            float maxHorizontal = settings.MaxImpulsePerMass * BumpMonitor.CarMass / 2f;
+            float maxHorizontal = settings.MaxImpulsePerMass * BumpMonitor.ReducedMass;
             var forged = new HitMessage { AttackerId = 2, TargetId = 1, Impulse = new Vec3(3e4f, 1e4f, -4e4f) };
 
+            StepJustMissing(1020);
             Assert.True(_monitor.OnHit(forged, 1, 1040, out var impulse));
             Assert.Equal(maxHorizontal, impulse.Flattened.Length, 3);
             Assert.True(impulse.Flattened.Normalized.ApproximatelyEquals(forged.Impulse.Flattened.Normalized));
@@ -112,6 +121,7 @@ namespace CarRacer.Core.Tests
             var other = new CarBody(new Vec3(0f, 0f, 1.8f), new Vec3(0f, 0f, -40f));
             var honest = new HitMessage { AttackerId = 2, TargetId = 1, Impulse = BumpResolver.ComputeSelfImpulse(self, other, new BumpSettings()) };
 
+            StepJustMissing(1020);
             Assert.True(_monitor.OnHit(honest, 1, 1040, out var impulse));
             Assert.True(impulse.ApproximatelyEquals(honest.Impulse));
         }
@@ -119,11 +129,88 @@ namespace CarRacer.Core.Tests
         [Fact]
         public void ANonFiniteHitIsDroppedWithoutUsingUpTheBump()
         {
+            StepJustMissing(1020);
             var bad = new HitMessage { AttackerId = 2, TargetId = 1, Impulse = new Vec3(float.NaN, 0f, float.PositiveInfinity) };
             Assert.False(_monitor.OnHit(bad, 1, 1040, out _));
 
             var good = new HitMessage { AttackerId = 2, TargetId = 1, Impulse = new Vec3(0f, 1f, -5f) };
             Assert.True(_monitor.OnHit(good, 1, 1050, out _));
+        }
+
+        [Fact]
+        public void AFallbackHitFromACarThisPhoneDoesNotSeeNearbyIsDropped()
+        {
+            var far = new OtherCar(2, new Vec3(0f, 0f, BumpMonitor.FallbackReach + 0.5f), Vec3.Zero);
+            var forged = new HitMessage { AttackerId = 2, TargetId = 1, Impulse = new Vec3(0f, 1e4f, -4e4f) };
+
+            var unseen = new HitMessage { AttackerId = 3, TargetId = 1, Impulse = forged.Impulse };
+
+            Step(Vec3.Zero, Vec3.Zero, 1000, far);
+            Assert.False(_monitor.OnHit(forged, 1, 1000, out _));
+            Assert.False(_monitor.OnHit(unseen, 1, 1000, out _));
+
+            // Once car 2 is close, its next hit applies: the dropped one didn't use up the bump...
+            StepJustMissing(1020);
+            Assert.True(_monitor.OnHit(forged, 1, 1020, out _));
+
+            // ...and once it has driven off again, it can't bump from there.
+            Step(Vec3.Zero, Vec3.Zero, 1020 + BumpMonitor.FallbackCooldownMs, far);
+            Assert.False(_monitor.OnHit(forged, 1, 1020 + BumpMonitor.FallbackCooldownMs, out _));
+        }
+
+        [Fact]
+        public void ACarTakesOneFallbackHitFromAnotherPerCooldown()
+        {
+            var fromTwo = new HitMessage { AttackerId = 2, TargetId = 1, Impulse = new Vec3(0f, 1f, -5f) };
+            var fromThree = new HitMessage { AttackerId = 3, TargetId = 1, Impulse = new Vec3(0f, 1f, 5f) };
+            var three = new OtherCar(3, new Vec3(0f, 0f, -2.5f), Vec3.Zero);
+
+            // A hit this phone had already seen for itself doesn't start the cooldown.
+            Step(Vec3.Zero, new Vec3(0f, 0f, 10f), 1000, new OtherCar(2, new Vec3(0f, 0f, 1.8f), Vec3.Zero));
+            Assert.False(_monitor.OnHit(fromTwo, 1, 1040, out _));
+            Step(Vec3.Zero, Vec3.Zero, 1200, new OtherCar(2, new Vec3(0f, 0f, 2.5f), Vec3.Zero), three);
+            Assert.True(_monitor.OnHit(fromTwo, 1, 1200, out _));
+
+            // Past the dedupe window but within the cooldown, car 2's next is dropped; car 3 has a cooldown of its own.
+            Assert.False(_monitor.OnHit(fromTwo, 1, 1300, out _));
+            Assert.True(_monitor.OnHit(fromThree, 1, 1300, out _));
+
+            // The dropped one didn't open a dedupe window, so this phone's own view of that contact still applies.
+            Step(Vec3.Zero, new Vec3(0f, 0f, 10f), 1320, new OtherCar(2, new Vec3(0f, 0f, 1.8f), Vec3.Zero));
+            Assert.Equal(2, _bumps.Count);
+
+            StepJustMissing(1200 + BumpMonitor.FallbackCooldownMs - 1);
+            Assert.False(_monitor.OnHit(fromTwo, 1, 1200 + BumpMonitor.FallbackCooldownMs - 1, out _));
+            Assert.True(_monitor.OnHit(fromTwo, 1, 1200 + BumpMonitor.FallbackCooldownMs, out _));
+        }
+
+        [Fact]
+        public void AModifiedPhoneSendingItsHardestBumpOverAndOverCannotBuildUpSpeed()
+        {
+            // Car 2 keeps close and sends a bump straight ahead every dedupe window, at a car already at top speed with
+            // the gas held (auto-accelerate), on the ground, where its handling can wear each push off.
+            var tuning = new CarTuning();
+            var state = new CarState { Velocity = new Vec3(0f, 0f, tuning.MaxSpeed) };
+            var forged = new HitMessage { AttackerId = 2, TargetId = 1, Impulse = new Vec3(0f, 0f, 1e4f) };
+            float hardest = new BumpSettings().MaxImpulsePerMass * BumpMonitor.ReducedMass / BumpMonitor.CarMass;
+            const long stepMs = 20;
+            float fastest = 0f;
+            int taken = 0;
+            for (long now = 1000; now < 21_000; now += stepMs)
+            {
+                StepJustMissing(now);
+                if (now % HitDeduplicator.DefaultWindowMs == 0 && _monitor.OnHit(forged, 1, now, out var impulse))
+                {
+                    state.Velocity += impulse.Flattened / BumpMonitor.CarMass;
+                    taken++;
+                }
+
+                state = CarModel.Step(state, new CarInput(0f, 1f), grounded: true, stepMs / 1000f, tuning);
+                fastest = Math.Max(fastest, state.Velocity.Length);
+            }
+
+            Assert.True(taken > 1);
+            Assert.True(fastest <= tuning.MaxSpeed + hardest + 1e-3f, $"reached {fastest} m/s");
         }
 
         [Fact]

@@ -97,15 +97,12 @@ namespace CarRacer.Game.Net
             return _host != null ? _host.Run?.Standings : (race as GuestRace)?.CupStandings;
         }
 
-        /// <summary>A cup between events with no countdown running is paused (the countdown starts as each event is scored).</summary>
-        private static bool Paused(CupStandingsMessage table) => !table.IsComplete && table.NextEventAtHostMs == 0;
-
         /// <summary>What the standings show (not the countdown, which <see cref="UpdateCountdown"/> keeps current), so the results rebuild only when it changes.</summary>
         public string StandingsSignature(CupStandingsMessage table)
         {
             var text = new StringBuilder();
             text.Append(table.CupName).Append(table.EventsCompleted).Append('/').Append(table.TotalEvents).Append(table.IsComplete);
-            text.Append(Paused(table)).Append(_session.LeadsRoom);
+            text.Append(table.IsPaused).Append(_session.LeadsRoom);
             foreach (var entry in table.Standings)
             {
                 text.Append('|').Append(entry.Name).Append(entry.Points);
@@ -154,7 +151,7 @@ namespace CarRacer.Game.Net
             UpdateCountdown(table, countdown);
             if (_session.LeadsRoom)
             {
-                bool paused = Paused(table);
+                bool paused = table.IsPaused;
                 panel.Add(UiKit.EvenRow(
                     UiKit.Button(paused ? "Resume" : "Pause", () => _session.Command(paused ? LobbyCommand.UnpauseCup : LobbyCommand.PauseCup)),
                     UiKit.Button("Next event", () => _session.Command(LobbyCommand.NextEvent)),

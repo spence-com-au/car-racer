@@ -155,8 +155,8 @@ namespace CarRacer.Core.Tests
             var reply = Reply("Chromecast-abc123", "Living Room TV", "Chromecast", "abc123", new byte[] { 192, 168, 1, 50 }, 8009, includeAddress: true);
             for (int length = 0; length < reply.Length; length++)
             {
-                // Never throws, whatever is cut off.
-                Mdns.ParseReply(reply, length, IPAddress.Loopback);
+                // Nothing is half-parsed, and nothing throws, whatever is cut off.
+                Assert.Empty(Mdns.ParseReply(reply, length, IPAddress.Loopback));
             }
 
             // A pointer that loops on itself.
@@ -193,7 +193,7 @@ namespace CarRacer.Core.Tests
             Thread.Sleep(50);
             discovery.Poll(2);
             Assert.Single(found);
-            Assert.Same(discovery.Devices[0], discovery.Find("Living Room TV"));
+            Assert.Equal("Living Room TV", Assert.Single(discovery.Devices).Name);
             discovery.Poll(CastDiscovery.ForgetMs + 10);
             Assert.Empty(discovery.Devices);
         }

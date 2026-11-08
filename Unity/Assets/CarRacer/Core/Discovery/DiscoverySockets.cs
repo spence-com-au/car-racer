@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
-using System.Net.NetworkInformation;
 using System.Net.Sockets;
 
 namespace CarRacer.Core.Discovery
@@ -95,33 +94,18 @@ namespace CarRacer.Core.Discovery
         public static IEnumerable<IPAddress> LocalSubnetBroadcastAddresses()
         {
             var result = new List<IPAddress>();
-            try
+            foreach (var unicast in HostAddress.LocalUnicastAddresses())
             {
-                foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
+                if (unicast.Address.AddressFamily != AddressFamily.InterNetwork || unicast.IPv4Mask == null)
                 {
-                    if (nic.OperationalStatus != OperationalStatus.Up || nic.NetworkInterfaceType == NetworkInterfaceType.Loopback)
-                    {
-                        continue;
-                    }
-
-                    foreach (var unicast in nic.GetIPProperties().UnicastAddresses)
-                    {
-                        if (unicast.Address.AddressFamily != AddressFamily.InterNetwork || unicast.IPv4Mask == null)
-                        {
-                            continue;
-                        }
-
-                        var broadcast = BroadcastAddress.ForSubnet(unicast.Address, unicast.IPv4Mask);
-                        if (broadcast != null && !result.Contains(broadcast))
-                        {
-                            result.Add(broadcast);
-                        }
-                    }
+                    continue;
                 }
-            }
-            catch (Exception)
-            {
-                // NetworkInformationException, NotImplementedException, etc. on restricted platforms.
+
+                var broadcast = BroadcastAddress.ForSubnet(unicast.Address, unicast.IPv4Mask);
+                if (broadcast != null && !result.Contains(broadcast))
+                {
+                    result.Add(broadcast);
+                }
             }
 
             return result;

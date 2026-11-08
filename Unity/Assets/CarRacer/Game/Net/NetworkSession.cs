@@ -27,9 +27,6 @@ namespace CarRacer.Game.Net
     {
         public const string MessageName = "car-racer";
 
-        /// <summary>Messages are a few dozen bytes; anything bigger than this is malformed.</summary>
-        public const int MaxMessageBytes = 2048;
-
         /// <summary>A refused guest is disconnected after this long, so the reply explaining why reaches it first.</summary>
         public const float RefusalDisconnectDelaySeconds = 0.5f;
 
@@ -159,9 +156,7 @@ namespace CarRacer.Game.Net
                 return HostLatencyGuessMs;
             }
 
-            float toHost = GuestSide.Clock.HasEstimate ? GuestSide.Clock.OneWayLatencyMs : HostLatencyGuessMs;
-            bool fromHost = playerId == HostPlayerIdFromRoster();
-            return fromHost ? toHost : 2f * toHost;
+            return GuestSide.CarLatencyMs(playerId, HostLatencyGuessMs);
         }
 
         /// <summary>
@@ -176,8 +171,9 @@ namespace CarRacer.Game.Net
             if (IsHost)
             {
                 var random = new System.Random();
-                Race = new HostRace(HostSide, checkpointCounts, () => NowMs, fractionToNextCheckpoint, carPositions);
-                Items = new HostItems(HostSide, Race, itemBoxes, () => NowMs, random.NextDouble, carPositions);
+                var race = new HostRace(HostSide, checkpointCounts, () => NowMs, fractionToNextCheckpoint, carPositions);
+                Race = race;
+                Items = new HostItems(HostSide, race, itemBoxes, () => NowMs, random.NextDouble, carPositions);
             }
             else
             {
@@ -335,7 +331,11 @@ namespace CarRacer.Game.Net
             {
                 writer.WriteValueSafe(bytes.Length);
                 writer.WriteBytesSafe(bytes);
-                var delivery = reliable ? NetworkDelivery.ReliableSequenced : NetworkDelivery.Unreliable;
+
+                // Fragmented, because NGO throws on an unfragmented message over its `NonFragmentedMessageMaxSize`
+                // (about 1.3 KB) and a TV status can be twice that. Unity Transport sends both kinds down the same
+                // reliable pipeline.
+                var delivery = reliable ? NetworkDelivery.ReliableFragmentedSequenced : NetworkDelivery.Unreliable;
                 _network.CustomMessagingManager.SendNamedMessage(MessageName, connection, writer, delivery);
             }
 
@@ -358,8 +358,12 @@ namespace CarRacer.Game.Net
             try
             {
                 reader.ReadValueSafe(out int length);
-                if (length <= 0 || length > MaxMessageBytes)
+
+                // Checked before `new byte[length]`, so a bad length can't allocate more than the message carries.
+                int received = reader.Length - reader.Position;
+                if (length <= 0 || length > received)
                 {
+                    Debug.LogWarning($"Dropped a message from connection {sender} claiming {length} bytes when {received} arrived.");
                     return;
                 }
 
@@ -491,20 +495,6 @@ namespace CarRacer.Game.Net
             Status = reason;
             _announcer?.Dispose();
             _announcer = null;
-        }
-
-        private byte HostPlayerIdFromRoster()
-        {
-            foreach (var p in GuestSide.Roster.Players)
-            {
-                if (p.IsHost)
-                {
-                    return p.PlayerId;
-                }
-            }
-
-            // A dedicated host has no car: every other car comes through it.
-            return HostSession.NoPlayer;
         }
 
         private static string RefusalText(JoinResult result)

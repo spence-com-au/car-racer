@@ -34,7 +34,7 @@ namespace CarRacer.Core.Driving
             var focus = Vec3.Lerp(target, arenaCentre, settings.CentrePull);
             focus = new Vec3(focus.X, target.Y, focus.Z);
             var desired = focus + new Vec3(0f, settings.Height, -settings.Back);
-            float blend = state.Initialised ? 1f - MathF.Exp(-settings.Sharpness * deltaSeconds) : 1f;
+            float blend = state.Initialised ? Interpolation.Blend(settings.Sharpness, deltaSeconds) : 1f;
             state.Position = Vec3.Lerp(state.Position, desired, blend);
             state.LookAt = Vec3.Lerp(state.LookAt, focus, blend);
             state.FieldOfView = settings.FieldOfView;

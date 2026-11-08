@@ -5,6 +5,7 @@ using CarRacer.Core.Net;
 using CarRacer.Core.Race;
 using CarRacer.Core.Session;
 using CarRacer.Core.Track;
+using CarRacer.Core.Viewer;
 using Xunit;
 
 namespace CarRacer.Core.Tests
@@ -73,6 +74,89 @@ namespace CarRacer.Core.Tests
             Assert.Equal("Race, 3 laps, Pebble Oval", EventText.SettingsSummary(settings));
             settings.Laps = 1;
             Assert.Equal("Race, 1 lap, Pebble Oval", EventText.SettingsSummary(settings));
+        }
+
+        [Fact]
+        public void LobbyStateReadsHostBotLeaderThenReadiness()
+        {
+            var player = new RosterEntry { PlayerId = 5 };
+            Assert.Equal("not ready", EventText.LobbyState(player, leaderId: 9));
+            player.Ready = true;
+            Assert.Equal("ready", EventText.LobbyState(player, leaderId: 9));
+            Assert.Equal("runs the room", EventText.LobbyState(player, leaderId: 5));
+            player.IsBot = true;
+            Assert.Equal("bot", EventText.LobbyState(player, leaderId: 5));
+            player.IsHost = true;
+            Assert.Equal("host", EventText.LobbyState(player, leaderId: 5));
+        }
+
+        private static StandingsMessage Order(params StandingsEntry[] entries) => new StandingsMessage { Order = entries.ToList() };
+
+        [Fact]
+        public void ARaceHudShowsPlaceLapAndRules()
+        {
+            var race = new FakeRaceView
+            {
+                Rules = new EventRules(true, false, true),
+                Standings = Order(
+                    new StandingsEntry { PlayerId = 4, FinishPosition = 1 },
+                    new StandingsEntry { PlayerId = 7 },
+                    new StandingsEntry { PlayerId = 2 }),
+            };
+
+            // Racing: the place in the host's order and the lap from this car's own count.
+            Assert.Equal(("2nd / 3", "Lap 2 / 3", "Rules: no items"), EventText.PhoneStatus(race, 7, lapsCompleted: 1, sinceStartMs: 5_000));
+
+            // Home: the finishing place, and the last lap whatever this car had counted.
+            Assert.Equal(("Finished 1st", "Lap 3 / 3", "Rules: no items"), EventText.PhoneStatus(race, 4, lapsCompleted: 0, sinceStartMs: 5_000));
+
+            // The lap never runs past the last one, and a car the standings don't list has no place.
+            Assert.Equal((string.Empty, "Lap 3 / 3", "Rules: no items"), EventText.PhoneStatus(race, 9, lapsCompleted: 5, sinceStartMs: 5_000));
+
+            // Before the first standings.
+            race.Standings = null;
+            Assert.Equal((string.Empty, "Lap 1 / 3", "Rules: no items"), EventText.PhoneStatus(race, 7, lapsCompleted: 0, sinceStartMs: -2_000));
+        }
+
+        [Fact]
+        public void AMonsterJamHudShowsPlacePointsAndTimeLeft()
+        {
+            var race = new FakeRaceView
+            {
+                Mode = GameMode.Monster,
+                Standings = Order(new StandingsEntry { PlayerId = 2, Points = 37 }, new StandingsEntry { PlayerId = 1, Points = 12 }),
+            };
+            Assert.Equal(("2nd / 2", "12 pts", "1:30.00"), EventText.PhoneStatus(race, 1, lapsCompleted: 0, sinceStartMs: 30_000));
+            Assert.Equal(("1st / 2", "37 pts", "2:00.00"), EventText.PhoneStatus(race, 2, lapsCompleted: 0, sinceStartMs: -500));
+
+            // The TV words the points the same way.
+            Assert.Equal(EventText.PhoneStatus(race, 2, 0, 0).Corner2, ViewerScene.Build(ViewerSceneTests.Racing(race, 0)).Rows[0].Detail);
+
+            // The clock only runs once the race has started, and nobody is listed before the first standings.
+            race.Phase = RacePhase.Countdown;
+            race.Standings = null;
+            Assert.Equal((string.Empty, string.Empty, string.Empty), EventText.PhoneStatus(race, 1, lapsCompleted: 0, sinceStartMs: -2_000));
+        }
+
+        [Fact]
+        public void AnArenaHudShowsLivesOrPlaceOutAndHowManyAreLeft()
+        {
+            var standings = Order(
+                new StandingsEntry { PlayerId = 1, LapsCompleted = 2 },
+                new StandingsEntry { PlayerId = 3, LapsCompleted = 1 },
+                new StandingsEntry { PlayerId = 2, FinishPosition = 3 });
+
+            // Battle counts lives (which travel in LapsCompleted) and has a clock.
+            var battle = new FakeRaceView { Mode = GameMode.Battle, Standings = standings };
+            Assert.Equal(("Lives 2", "2 / 3 left", "2:00.00"), EventText.PhoneStatus(battle, 1, lapsCompleted: 0, sinceStartMs: 60_000));
+            Assert.Equal(("Out: 3rd", "2 / 3 left", "2:00.00"), EventText.PhoneStatus(battle, 2, lapsCompleted: 0, sinceStartMs: 60_000));
+
+            // Sumo has neither lives nor a clock, and nothing is listed before the first standings.
+            var sumo = new FakeRaceView { Mode = GameMode.Sumo, Standings = standings };
+            Assert.Equal(("Still on", "2 / 3 left", string.Empty), EventText.PhoneStatus(sumo, 1, lapsCompleted: 0, sinceStartMs: 60_000));
+            Assert.Equal(("Out: 3rd", "2 / 3 left", string.Empty), EventText.PhoneStatus(sumo, 2, lapsCompleted: 0, sinceStartMs: 60_000));
+            sumo.Standings = null;
+            Assert.Equal((string.Empty, string.Empty, string.Empty), EventText.PhoneStatus(sumo, 1, lapsCompleted: 0, sinceStartMs: 60_000));
         }
     }
 

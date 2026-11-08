@@ -91,6 +91,12 @@ namespace CarRacer.Core.Arena
         /// <summary>No single jump scores more than this long in the air (a truck that fell off something).</summary>
         public const long MaxAirMs = 6000;
 
+        /// <summary>
+        /// The host believes a jump up to this much longer than it saw pass since that truck's last landing,
+        /// as the reports cross the network unevenly. Air taken from it comes out of the next jump's time.
+        /// </summary>
+        public const long AirSlackMs = 500;
+
         /// <summary>Points for crushing another truck: hitting it hard, or landing on it.</summary>
         public const int CrushPoints = 25;
 

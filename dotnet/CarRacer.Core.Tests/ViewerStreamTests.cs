@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
+using CarRacer.Core.Audio;
 using CarRacer.Core.Cast;
 using CarRacer.Core.Viewer;
 using Xunit;
@@ -263,6 +264,28 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void OnlyALiveConnectionFromTheSameUserIsTakenForFfmpegs()
+        {
+            var us = new IPEndPoint(IPAddress.Loopback, 40000);
+            var them = new IPEndPoint(IPAddress.Loopback, 50000);
+            static string Row(string local, string remote, string state, int uid, int inode) =>
+                $"   1: {local} {remote} {state} 00000000:00000000 00:00000000 00000000 {uid,5} 0 {inode} 1 0000000000000000 20 4 30 10 -1";
+            static string Ours(string state, int uid) => Row("0100007F:9C40", "0100007F:C350", state, uid, 101694263);
+            static string Theirs(string state, int uid, int inode) => Row("0100007F:C350", "0100007F:9C40", state, uid, inode);
+            const string header = "  sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode";
+
+            Assert.True(ViewerStream.ConnectedBySameUser(new[] { header, Ours("01", 1000), Theirs("01", 1000, 101864147) }, us, them));
+            Assert.False(ViewerStream.ConnectedBySameUser(new[] { header, Ours("01", 1000), Theirs("01", 1001, 101864147) }, us, them));
+
+            // Closed before it was taken, the far end lingers in FIN_WAIT2, which the kernel lists as root's: a server
+            // run as root would otherwise take it for ffmpeg's.
+            Assert.False(ViewerStream.ConnectedBySameUser(new[] { header, Ours("08", 0), Theirs("05", 0, 0) }, us, them));
+
+            // A connection from an IPv6 socket is listed in /proc/net/tcp6 instead.
+            Assert.False(ViewerStream.ConnectedBySameUser(new[] { header, Ours("01", 1000) }, us, them));
+        }
+
+        [Fact]
         public void AnFfmpegThatHangsIsGivenUpOn()
         {
             WithShellScript("sleep 30", script =>
@@ -417,12 +440,150 @@ namespace CarRacer.Core.Tests
             return output;
         }
 
-        private static string Run(string file, string arguments)
+        internal static string Run(string file, string arguments)
         {
             using var process = Process.Start(new ProcessStartInfo(file, arguments) { RedirectStandardOutput = true, UseShellExecute = false });
             string output = process.StandardOutput.ReadToEnd();
             process.WaitForExit();
             return output;
+        }
+    }
+
+    /// <summary>
+    /// Drives <see cref="MusicFeed.Fill"/> through its crossfades with the real ffmpeg. Each tune is one constant
+    /// sample value, so a mixed sample says how much of each tune is in it: a fade between two tunes is a ramp
+    /// between their levels, and a fade through silence would dip to zero on the way.
+    /// </summary>
+    public class MusicFeedTests : IDisposable
+    {
+        private const int Frames = 960;
+        private const int Quiet = 20;
+        private const int Loud = 70;
+
+        /// <summary>Enough calls for a fade begun by the first to finish, and then some.</summary>
+        private static readonly int FadeCalls = (int)(SoundRules.MusicFadeSeconds * MusicFeed.SampleRate) / Frames + 2;
+
+        private readonly string _folder =
+            Path.Combine(Path.GetTempPath(), "viewer-music-feed-" + Guid.NewGuid().ToString("N"));
+        private readonly MusicFeed _feed = new MusicFeed("ffmpeg");
+
+        public MusicFeedTests()
+        {
+            Directory.CreateDirectory(_folder);
+        }
+
+        [Fact]
+        public void ANewTuneFadesInWhileTheOldOneFadesOut()
+        {
+            _feed.Play(Tune(Quiet));
+            Fill(FadeCalls);
+
+            _feed.Play(Tune(Loud));
+            var levels = Fill(FadeCalls);
+
+            // Overlapping, the level climbs from one tune to the other; one tune fading out before the other fades in
+            // would pass through silence.
+            Assert.Equal(levels.OrderBy(l => l), levels);
+            Assert.All(levels, l => Assert.InRange(l, Level(Quiet) - 2, Level(Loud) + 2));
+            Assert.Contains(levels, l => l > Level(Quiet) + 1000 && l < Level(Loud) - 1000);
+            AssertLevel(Loud, levels.Last());
+
+            // The new tune is now the current one, and fades out in its turn.
+            _feed.Play(Tune(Quiet));
+            levels = Fill(FadeCalls);
+            Assert.Equal(levels.OrderByDescending(l => l), levels);
+            Assert.All(levels, l => Assert.InRange(l, Level(Quiet) - 2, Level(Loud) + 2));
+            AssertLevel(Quiet, levels.Last());
+            Assert.Null(_feed.Error);
+        }
+
+        [Fact]
+        public void AskingForNothingFadesTheTuneOut()
+        {
+            _feed.Play(Tune(Loud));
+            Fill(FadeCalls);
+
+            _feed.Play(null);
+            var levels = Fill(FadeCalls);
+
+            Assert.Equal(levels.OrderByDescending(l => l), levels);
+            Assert.InRange(levels.First(), Level(Loud) / 2, Level(Loud) + 2);
+            Assert.Contains(levels, l => l > 1000 && l < Level(Loud) - 1000);
+            Assert.Equal(0, levels.Last());
+            Assert.All(Fill(FadeCalls), l => Assert.Equal(0, l));
+            Assert.Null(_feed.Error);
+        }
+
+        [Fact]
+        public void ARequestDuringAFadeWaitsForItToFinish()
+        {
+            _feed.Play(Tune(Quiet));
+            var levels = Fill(FadeCalls / 2);
+
+            // Half way into the fade in, so the new tune has to wait for the first to be heard in full.
+            _feed.Play(Tune(Loud));
+            levels.AddRange(Fill(FadeCalls * 2));
+
+            Assert.Equal(levels.OrderBy(l => l), levels);
+            Assert.Contains(levels, l => Math.Abs(l - Level(Quiet)) <= 2);
+            AssertLevel(Loud, levels.Last());
+            Assert.Null(_feed.Error);
+        }
+
+        [Fact]
+        public void ADecoderThatStopsLeavesSilenceAndAnError()
+        {
+            string notMusic = Path.Combine(_folder, "not-music.ogg");
+            File.WriteAllText(notMusic, "not music");
+
+            _feed.Play(notMusic);
+
+            Assert.All(Fill(FadeCalls), l => Assert.Equal(0, l));
+            Assert.Contains("The music decoder stopped", _feed.Error);
+        }
+
+        public void Dispose()
+        {
+            _feed.Dispose();
+            Directory.Delete(_folder, recursive: true);
+        }
+
+        /// <summary>A one-second tune of <paramref name="percent"/> of full scale, every sample the same.</summary>
+        private string Tune(int percent)
+        {
+            string file = Path.Combine(_folder, percent + ".wav");
+            if (File.Exists(file))
+            {
+                return file;
+            }
+
+            string source = $"aevalsrc={percent}/100|{percent}/100:s={MusicFeed.SampleRate}:d=1";
+            string arguments = $"-hide_banner -loglevel error -y -f lavfi -i \"{source}\" -c:a pcm_s16le \"{file}\"";
+            ViewerStreamTests.Run("ffmpeg", arguments);
+            Assert.True(File.Exists(file));
+            return file;
+        }
+
+        /// <summary>The sample a tune of <paramref name="percent"/> of full scale plays as, gain included.</summary>
+        private static int Level(int percent) => (int)Math.Round(percent / 100.0 * 32768 * MusicFeed.Gain);
+
+        private static void AssertLevel(int percent, int actual) =>
+            Assert.InRange(actual, Level(percent) - 2, Level(percent) + 2);
+
+        /// <summary>
+        /// Fills <paramref name="calls"/> buffers and returns each one's last sample, furthest into a fade.
+        /// </summary>
+        private List<int> Fill(int calls)
+        {
+            var pcm = new short[Frames * MusicFeed.Channels];
+            var levels = new List<int>();
+            for (int i = 0; i < calls; i++)
+            {
+                _feed.Fill(pcm, Frames);
+                levels.Add(pcm[pcm.Length - MusicFeed.Channels]);
+            }
+
+            return levels;
         }
     }
 }

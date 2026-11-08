@@ -11,7 +11,7 @@ namespace CarRacer.Core.Discovery
         /// new track index an older build doesn't have); mismatched hosts show as "Update this app
         /// to join" or "Host needs updating", depending on which side is older.
         /// </summary>
-        public const ushort ProtocolVersion = 27;
+        public const ushort ProtocolVersion = 28;
 
         /// <summary>Administratively-scoped (site-local) multicast group used for lobby announcements.</summary>
         public static readonly IPAddress MulticastGroup = IPAddress.Parse("239.255.42.99");

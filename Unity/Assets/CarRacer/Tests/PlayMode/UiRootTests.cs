@@ -39,17 +39,27 @@ namespace CarRacer.Tests
         }
 
         [UnityTest]
-        public IEnumerator TheSafeAreaIsInsideTheScreen()
+        public IEnumerator TheSafeContainerIsInsetFromEachEdgeByTheSafeArea()
         {
             var layer = UiRoot.Create(_host.transform, "Safe layer");
+
+            // A different inset on every edge, so an edge applied to the wrong side shows. `Screen.safeArea` runs from
+            // the bottom-left: 10% off the left, 5% off the bottom, 5% off the right and 15% off the top.
+            var width = Screen.width;
+            var height = Screen.height;
+            layer.SafeAreaOverride = new Rect(0.10f * width, 0.05f * height, 0.85f * width, 0.80f * height);
+
+            // The override is picked up in the next `Update` and laid out on the panel's update after that.
             yield return null;
             yield return null;
 
             var full = layer.Full.worldBound;
             var safe = layer.Safe.worldBound;
             Assert.That(full.width, Is.GreaterThan(0f));
-            Assert.That(safe.xMin, Is.GreaterThanOrEqualTo(full.xMin - 0.5f));
-            Assert.That(safe.xMax, Is.LessThanOrEqualTo(full.xMax + 0.5f));
+            Assert.That(safe.xMin, Is.EqualTo(full.xMin + 0.10f * full.width).Within(0.5f), "left edge");
+            Assert.That(safe.yMin, Is.EqualTo(full.yMin + 0.15f * full.height).Within(0.5f), "top edge");
+            Assert.That(safe.xMax, Is.EqualTo(full.xMax - 0.05f * full.width).Within(0.5f), "right edge");
+            Assert.That(safe.yMax, Is.EqualTo(full.yMax - 0.05f * full.height).Within(0.5f), "bottom edge");
         }
 
         [UnityTest]
