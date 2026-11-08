@@ -37,6 +37,7 @@ namespace CarRacer.Core.Session
         private byte _savedCupDone;
         private RosterMessage _rosterMessage;
         private readonly HashSet<byte> _away = new HashSet<byte>();
+        private readonly HashSet<byte> _handingBack = new HashSet<byte>();
         private readonly ISessionTransport _transport;
         private readonly Func<long> _clockMs;
         private readonly ushort _protocolVersion;
@@ -60,6 +61,9 @@ namespace CarRacer.Core.Session
         public byte HostPlayerId { get; }
 
         public bool IsDedicated => HostPlayerId == NoPlayer;
+
+        /// <summary>Whether any guest is still connected, counting one away with a bot at the wheel.</summary>
+        public bool HasGuests => _playerByConnection.Count > 0;
 
         /// <summary>
         /// Who runs the room (design doc §2.3): the host's own player, or on a dedicated host the
@@ -189,6 +193,9 @@ namespace CarRacer.Core.Session
         /// <summary>An item hit aimed at a bot, which the host drives (see <see cref="SendHit"/>).</summary>
         public event Action<HitMessage> BotHitReceived;
 
+        /// <summary>Raised after anyone joins, leaves or changes Ready.</summary>
+        public event Action RosterChanged;
+
         /// <summary>A guest's car state arrived (already relayed to the other guests).</summary>
         public event Action<CarStateMessage> CarStateReceived;
 
@@ -290,13 +297,17 @@ namespace CarRacer.Core.Session
             }
         }
 
-        /// <summary>Tells a returning guest where their car got to under the bot, so they carry on from there.</summary>
+        /// <summary>
+        /// Tells a returning guest where their car got to under the bot, so they carry on from there. Their car states
+        /// are dropped until they echo it back: until then they come from where the car stood when the app went away.
+        /// </summary>
         public void SendControlReturned(ControlReturnedMessage message)
         {
             foreach (var pair in _playerByConnection)
             {
                 if (pair.Value == message.PlayerId)
                 {
+                    _handingBack.Add(message.PlayerId);
                     _transport.Send(pair.Key, message, reliable: true);
                     return;
                 }
@@ -310,6 +321,7 @@ namespace CarRacer.Core.Session
                 _playerByConnection.Remove(connection);
                 _lastHeardMs.Remove(playerId);
                 _joinOrder.Remove(playerId);
+                _handingBack.Remove(playerId);
 
                 // Gone for good: an away player's bot keeps the car for the rest of the event.
                 _away.Remove(playerId);
@@ -371,8 +383,8 @@ namespace CarRacer.Core.Session
                     }
 
                     break;
-                case CarStateMessage state when joined && state.PlayerId == playerId:
-                    // A guest may only speak for its own car.
+                case CarStateMessage state when joined && state.PlayerId == playerId && !_handingBack.Contains(playerId):
+                    // A guest may only speak for its own car, and only once it has the car back from a bot.
                     foreach (ulong other in _playerByConnection.Keys)
                     {
                         if (other != connection)
@@ -388,6 +400,9 @@ namespace CarRacer.Core.Session
                     break;
                 case StuntMessage stunt when joined && stunt.PlayerId == playerId:
                     StuntReceived?.Invoke(stunt);
+                    break;
+                case ControlReturnedMessage echo when joined && echo.PlayerId == playerId:
+                    _handingBack.Remove(playerId);
                     break;
                 case HitMessage hit when joined && hit.AttackerId == playerId && !hit.IsItemHit:
                     // Item hits come only from the host; a guest may only report bumps by its own car.
@@ -472,6 +487,7 @@ namespace CarRacer.Core.Session
         {
             _rosterMessage = null;
             Broadcast(RosterMessage(), reliable: true);
+            RosterChanged?.Invoke();
         }
 
         /// <summary>
@@ -600,6 +616,7 @@ namespace CarRacer.Core.Session
         /// <summary>True when this phone runs the room (design doc §2.3): a dedicated host made it the leader.</summary>
         public bool IsLeader => State == GuestState.Joined && Roster.LeaderId == PlayerId;
 
+        public event Action RosterChanged;
         public event Action<CarStateMessage> CarStateReceived;
 
         /// <summary>Race messages from the host (countdown, standings, finishes, results, back to lobby); see <c>GuestRace</c>.</summary>
@@ -611,7 +628,10 @@ namespace CarRacer.Core.Session
         /// <summary>Item boxes taken and items used, from the host (see <c>GuestItems</c>).</summary>
         public event Action<IGameMessage> ItemMessageReceived;
 
-        /// <summary>The host has handed this phone's car back after a bot drove it while the app was away (design doc §12).</summary>
+        /// <summary>
+        /// The host has handed this phone's car back after a bot drove it while the app was away (design doc §12). Put
+        /// the car where it says before returning: the host takes this phone's car states again once handlers have run.
+        /// </summary>
         public event Action<ControlReturnedMessage> ControlReturned;
 
         /// <summary>Call once the transport has connected to the host.</summary>
@@ -629,6 +649,25 @@ namespace CarRacer.Core.Session
 
         /// <summary>The app is back from the background: time spent there doesn't count as the host going quiet.</summary>
         public void ForgiveSilence() => _lastHeardMs = _clockMs();
+
+        /// <summary>
+        /// One-way delay of <paramref name="playerId"/>'s car state reaching this guest (see
+        /// <see cref="ClockSync.CarLatencyMs"/>): one hop for a car the host drives, its own player's or a bot's,
+        /// including an away or departed guest's (design doc §12), and two for any other, which the host relays from
+        /// the guest driving it. An id missing from the roster counts as the latter.
+        /// </summary>
+        public float CarLatencyMs(byte playerId, float noEstimateMs)
+        {
+            foreach (var p in Roster.Players)
+            {
+                if (p.PlayerId == playerId)
+                {
+                    return Clock.CarLatencyMs(p.IsHost || p.IsBot, noEstimateMs);
+                }
+            }
+
+            return Clock.CarLatencyMs(drivenByHost: false, noEstimateMs);
+        }
 
         public void OnMessage(IGameMessage message)
         {
@@ -651,6 +690,17 @@ namespace CarRacer.Core.Session
                     break;
                 case RosterMessage roster:
                     Roster = roster;
+
+                    // The host's roster has the last word on this phone's Ready: it clears it when the lobby reopens.
+                    foreach (var p in roster.Players)
+                    {
+                        if (State == GuestState.Joined && p.PlayerId == PlayerId)
+                        {
+                            Ready = p.Ready;
+                        }
+                    }
+
+                    RosterChanged?.Invoke();
                     break;
                 case LobbySettingsMessage lobby:
                     Lobby = lobby;
@@ -669,6 +719,9 @@ namespace CarRacer.Core.Session
                     break;
                 case ControlReturnedMessage returned when State == GuestState.Joined && returned.PlayerId == PlayerId:
                     ControlReturned?.Invoke(returned);
+
+                    // The echo tells the host this phone's car states come from where the bot left the car.
+                    _transport.Send(HostConnection, returned, reliable: true);
                     break;
                 case RaceCountdownMessage _:
                 case StandingsMessage _:
@@ -792,8 +845,9 @@ namespace CarRacer.Core.Session
 
             // A server whose players have all left (their cars now bots) has nobody to press Back to
             // lobby, and would refuse every new guest as mid-event; once the event's results are in,
-            // it goes back by itself. A cup in progress is left, keeping its save to resume.
-            if (_session.IsDedicated && _session.LeaderId == HostSession.NoPlayer && _race.Phase == RacePhase.Results)
+            // it goes back by itself. A cup in progress is left, keeping its save to resume. Players
+            // who are only away haven't left: the results and the cup stay for them to come back to.
+            if (_session.IsDedicated && !_session.HasGuests && _race.Phase == RacePhase.Results)
             {
                 Run = null;
                 _race.ReturnToLobby();
@@ -917,6 +971,8 @@ namespace CarRacer.Core.Session
                 }
                 catch (FormatException)
                 {
+                    // Text that isn't base64 is as unreadable as a save `CupRun.Resume` rejects: there is no cup to
+                    // resume, so none is offered, and Core has no logger to say so.
                 }
             }
 

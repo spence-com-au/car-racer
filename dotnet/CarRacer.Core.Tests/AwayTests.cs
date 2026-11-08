@@ -97,13 +97,14 @@ namespace CarRacer.Core.Tests
             Wait(HostSession.AwayAfterMs);
 
             _host.EventInProgress = false;
-            int rosters = RostersSent;
+            int changes = 0;
+            _host.RosterChanged += () => changes++;
             _host.RemoveBots();
             var player = _host.Roster.Find(GuestId);
             Assert.NotNull(player);
             Assert.False(player.IsBot);
             Assert.False(player.Ready);
-            Assert.Equal(rosters + 1, RostersSent);
+            Assert.Equal(1, changes);
 
             // No longer away, so hearing from them hands nothing back.
             GuestSpeaks();
@@ -124,6 +125,29 @@ namespace CarRacer.Core.Tests
             _host.EventInProgress = false;
             _host.RemoveBots();
             Assert.Null(_host.Roster.Find(GuestId));
+        }
+
+        [Fact]
+        public void TheHostDropsTheReturningGuestsCarStatesUntilItHasTheCarBack()
+        {
+            var states = new List<CarStateMessage>();
+            _host.CarStateReceived += states.Add;
+            var handBack = new ControlReturnedMessage { PlayerId = GuestId, Position = new Vec3(5f, 0f, 5f) };
+            _host.PlayerReturned += _ => _host.SendControlReturned(handBack);
+            _host.EventInProgress = true;
+            Wait(HostSession.AwayAfterMs);
+
+            // Until the hand-back reaches the guest, its car is still where it was when the app went away.
+            _hostLink.Guest = null;
+            GuestSpeaks();
+            GuestSpeaks();
+            Assert.Equal(new[] { GuestId }, _returned);
+            Assert.Empty(states);
+
+            _hostLink.Guest = _guest;
+            _guest.OnMessage(handBack);
+            GuestSpeaks();
+            Assert.Single(states);
         }
 
         [Fact]

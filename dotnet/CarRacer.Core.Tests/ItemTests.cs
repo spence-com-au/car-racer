@@ -9,6 +9,11 @@ namespace CarRacer.Core.Tests
 {
     public class ItemRollTests
     {
+        /// <summary>Every item the game defines, so a new <see cref="ItemKind"/> is checked without editing a table.</summary>
+        private static readonly ItemKind[] AllItems = Array.FindAll(
+            (ItemKind[])Enum.GetValues(typeof(ItemKind)),
+            kind => kind != ItemKind.None);
+
         private static float OddsOf(ItemKind kind, float backness) =>
             ItemRoll.Odds(backness)[System.Array.IndexOf(ItemRoll.Kinds, kind)];
 
@@ -65,10 +70,21 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void EveryItemKindIsRolledOnceWithAWeightInEachTable()
+        {
+            var rolled = (ItemKind[])ItemRoll.Kinds.Clone();
+            Array.Sort(rolled);
+
+            Assert.Equal(AllItems, rolled);
+            Assert.Equal(ItemRoll.Kinds.Length, ItemRoll.FrontWeights.Length);
+            Assert.Equal(ItemRoll.Kinds.Length, ItemRoll.BackWeights.Length);
+        }
+
+        [Fact]
         public void EveryItemHasItsOwnLabel()
         {
             var labels = new HashSet<string>();
-            foreach (var kind in ItemRoll.Kinds)
+            foreach (var kind in AllItems)
             {
                 string label = ItemNames.Label(kind);
                 Assert.NotEqual("ITEM", label);

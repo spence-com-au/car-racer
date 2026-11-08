@@ -34,7 +34,7 @@ namespace CarRacer.Core.Discovery
             if (colon >= 0)
             {
                 host = trimmed.Substring(0, colon);
-                if (!ushort.TryParse(trimmed.Substring(colon + 1), NumberStyles.None, CultureInfo.InvariantCulture, out port) || port == 0)
+                if (!TryParsePort(trimmed.Substring(colon + 1), out port))
                 {
                     return false;
                 }
@@ -61,6 +61,14 @@ namespace CarRacer.Core.Discovery
         }
 
         /// <summary>
+        /// Reads a port from 1 to 65535: digits only, so no sign, space or thousands separator, whatever the culture.
+        /// </summary>
+        public static bool TryParsePort(string text, out ushort port)
+        {
+            return ushort.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out port) && port != 0;
+        }
+
+        /// <summary>
         /// This device's IPv4 addresses on its networks (not loopback), for the host to show. Interface
         /// enumeration is restricted on some Android versions, so it falls back to asking which address
         /// the default route would use; that sends no packets.
@@ -68,24 +76,9 @@ namespace CarRacer.Core.Discovery
         public static IReadOnlyList<string> LocalIPv4Addresses()
         {
             var candidates = new List<IPAddress>();
-            try
+            foreach (var unicast in LocalUnicastAddresses())
             {
-                foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
-                {
-                    if (nic.OperationalStatus != OperationalStatus.Up || nic.NetworkInterfaceType == NetworkInterfaceType.Loopback)
-                    {
-                        continue;
-                    }
-
-                    foreach (var unicast in nic.GetIPProperties().UnicastAddresses)
-                    {
-                        candidates.Add(unicast.Address);
-                    }
-                }
-            }
-            catch (Exception)
-            {
-                // NetworkInformationException, NotImplementedException, etc. on restricted platforms.
+                candidates.Add(unicast.Address);
             }
 
             if (!candidates.Exists(IsUsable))
@@ -106,6 +99,34 @@ namespace CarRacer.Core.Discovery
             }
 
             return Usable(candidates);
+        }
+
+        /// <summary>
+        /// The unicast addresses of every interface that is up and not loopback. Best effort: interface
+        /// enumeration is restricted on some Android versions, in which case this returns what it had
+        /// gathered by then, possibly nothing.
+        /// </summary>
+        internal static IReadOnlyList<UnicastIPAddressInformation> LocalUnicastAddresses()
+        {
+            var result = new List<UnicastIPAddressInformation>();
+            try
+            {
+                foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
+                {
+                    if (nic.OperationalStatus != OperationalStatus.Up || nic.NetworkInterfaceType == NetworkInterfaceType.Loopback)
+                    {
+                        continue;
+                    }
+
+                    result.AddRange(nic.GetIPProperties().UnicastAddresses);
+                }
+            }
+            catch (Exception)
+            {
+                // NetworkInformationException, NotImplementedException, etc. on restricted platforms.
+            }
+
+            return result;
         }
 
         /// <summary>

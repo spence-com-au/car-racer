@@ -155,13 +155,20 @@ namespace CarRacer.Core.Tests
             run.StartNextEvent();
             PlayBattle(run, GuestId);
 
+            Assert.False(_guestRace.CupStandings.IsPaused);
             run.SetPaused(true);
             Assert.Equal(0, _guestRace.CupStandings.NextEventAtHostMs);
+
+            // A guest tells a pause from the countdown only by this table, so it must agree with the host's own state.
+            Assert.True(run.Paused);
+            Assert.True(_guestRace.CupStandings.IsPaused);
             _now += CupRun.AdvanceMs * 3;
             Tick(run);
             Assert.Equal(RacePhase.Results, _race.Phase);
 
             run.SetPaused(false);
+            Assert.False(run.Paused);
+            Assert.False(_guestRace.CupStandings.IsPaused);
             Assert.Equal(_now + CupRun.AdvanceMs, run.NextEventAtMs);
             Assert.True(run.AdvanceNow());
             Assert.Equal(RacePhase.Countdown, _race.Phase);
@@ -218,6 +225,9 @@ namespace CarRacer.Core.Tests
             Assert.Null(run.NextEvent);
             Assert.Equal(0, run.NextEventAtMs);
             Assert.True(_guestRace.CupStandings.IsComplete);
+
+            // A finished cup has no next event to wait for, which is not a pause.
+            Assert.False(_guestRace.CupStandings.IsPaused);
             Assert.True(_race.ReturnToLobby());
             Assert.Null(_guestRace.CupStandings);
             Assert.Equal(10 + 8 + 10, Points(run, "Host"));

@@ -163,7 +163,7 @@ namespace CarRacer.Core.Viewer
                     {
                         Place = place++,
                         Name = player.Name ?? "?",
-                        Colour = CarPalette.ForIndex(player.ColourIndex),
+                        Colour = ColourOf(names, entry.PlayerId),
                         Detail = StandingDetail(race.Mode, race.LapCount, entry),
                         Dim = entry.IsOut(race.Mode),
                     });

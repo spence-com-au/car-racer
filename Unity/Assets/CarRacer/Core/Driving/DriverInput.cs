@@ -37,12 +37,10 @@ namespace CarRacer.Core.Driving
         public static CarInput Combine(DriverControls a, DriverControls b, bool autoAccelerate)
         {
             float steer = Math.Abs(a.Steer) >= Math.Abs(b.Steer) ? a.Steer : b.Steer;
-            float brake = Clamp01(Math.Max(a.Brake, b.Brake));
-            float accelerate = autoAccelerate ? 1f : Clamp01(Math.Max(a.Accelerate, b.Accelerate));
+            float brake = Math.Clamp(Math.Max(a.Brake, b.Brake), 0f, 1f);
+            float accelerate = autoAccelerate ? 1f : Math.Clamp(Math.Max(a.Accelerate, b.Accelerate), 0f, 1f);
             float throttle = brake > BrakeThreshold ? -brake : accelerate;
             return new CarInput(Math.Max(-1f, Math.Min(1f, steer)), throttle, a.Drift || b.Drift);
         }
-
-        private static float Clamp01(float value) => Math.Max(0f, Math.Min(1f, value));
     }
 }

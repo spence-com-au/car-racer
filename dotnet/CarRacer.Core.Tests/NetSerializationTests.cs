@@ -1,4 +1,7 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using CarRacer.Core.Arena;
 using CarRacer.Core.Net;
 using CarRacer.Core.Numerics;
 using Xunit;
@@ -85,7 +88,7 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
-        public void AllMessageTypesRoundTrip()
+        public void RaceEventMessagesRoundTrip()
         {
             var hit = Assert.IsType<HitMessage>(MessageCodec.Decode(MessageCodec.Encode(new HitMessage
             {
@@ -105,16 +108,41 @@ namespace CarRacer.Core.Tests
 
             var countdown = Assert.IsType<RaceCountdownMessage>(MessageCodec.Decode(MessageCodec.Encode(new RaceCountdownMessage
             {
-                StartAtHostMs = 5000, LapCount = 3,
+                StartAtHostMs = 5000,
+                LapCount = 3,
+                Mode = GameMode.Battle,
+                TrackIndex = 2,
+                GridOrder = new List<byte> { 3, 1, 2 },
+                Rules = 6,
             })));
             Assert.Equal(5000, countdown.StartAtHostMs);
             Assert.Equal(3, countdown.LapCount);
+            Assert.Equal(GameMode.Battle, countdown.Mode);
+            Assert.Equal(2, countdown.TrackIndex);
+            Assert.Equal(new byte[] { 3, 1, 2 }, countdown.GridOrder);
+            Assert.Equal(6, countdown.Rules);
 
             var finished = Assert.IsType<PlayerFinishedMessage>(MessageCodec.Decode(MessageCodec.Encode(new PlayerFinishedMessage
             {
                 PlayerId = 5, FinishPosition = 2, RaceTimeMs = 90000,
             })));
             Assert.Equal(2, finished.FinishPosition);
+        }
+
+        [Fact]
+        public void EveryMessageTypeHasOneMessageClassThatTheCodecDecodes()
+        {
+            var messages = typeof(IGameMessage).Assembly.GetTypes()
+                .Where(t => t.IsClass && !t.IsAbstract && typeof(IGameMessage).IsAssignableFrom(t))
+                .Select(t => (IGameMessage)Activator.CreateInstance(t))
+                .ToList();
+
+            var expectedTypes = Enum.GetValues(typeof(MessageType)).Cast<MessageType>();
+            Assert.Equal(expectedTypes, messages.Select(m => m.Type).OrderBy(t => t));
+            foreach (IGameMessage message in messages)
+            {
+                Assert.IsType(message.GetType(), MessageCodec.Decode(MessageCodec.Encode(message)));
+            }
         }
 
         [Fact]

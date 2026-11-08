@@ -1,6 +1,8 @@
 ---
 name: 'Build'
 
+# Needs the Unity licence secrets (see `docs/ci-setup.md`). Without them the jobs fail rather than skip: they are
+# required checks, and a skipped job passes one.
 on:
   pull_request: {}
   push:
@@ -18,8 +20,6 @@ concurrency:
 jobs:
   android:
     name: 'Android Development APK'
-    needs: 'licence'
-    if: "needs.licence.outputs.available == 'true'"
     runs-on: 'ubuntu-latest'
 
     # A healthy build takes 15-20 minutes; a hung Unity editor would otherwise sit for 6 hours.
@@ -64,27 +64,8 @@ jobs:
           path: 'build/Android/*.apk'
           if-no-files-found: 'error'
 
-  licence:
-    name: 'Check Unity Licence'
-    runs-on: 'ubuntu-latest'
-    outputs:
-      available: '${{ steps.check.outputs.available }}'
-    steps:
-      - id: 'check'
-        env:
-          UNITY_LICENSE: '${{ secrets.UNITY_LICENSE }}'
-        run: |
-          if [ -n "${UNITY_LICENSE}" ]; then
-            echo "available=true" >> "${GITHUB_OUTPUT}"
-          else
-            echo "available=false" >> "${GITHUB_OUTPUT}"
-            echo "::notice::UNITY_LICENSE is not set, so Unity tests and builds are skipped. See docs/ci-setup.md."
-          fi
-
   server:
     name: 'Server Build'
-    needs: 'licence'
-    if: "needs.licence.outputs.available == 'true'"
     runs-on: 'ubuntu-latest'
 
     # A healthy build takes 15-20 minutes; a hung Unity editor would otherwise sit for 6 hours.
@@ -113,12 +94,16 @@ jobs:
           buildMethod: 'CarRacer.Editor.BuildScript.BuildLinuxServerFromCommandLine'
           versioning: 'Semantic'
 
+      # The release's own packaging, which also puts `run-server.sh` beside the player for the smoke test.
+      - name: 'Package the server'
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" build
+          server/package.sh server.tar.gz
+
       # Start the host for a few seconds: it should begin hosting, say so and still be running when `timeout` stops it,
       # which exits 124 (design doc §2.3). A crash or a stop after the start line exits with anything else.
       - name: 'Smoke-test the server'
         run: |
-          sudo chown -R "$(id -u):$(id -g)" build
-          cp server/run-server.sh server/Dockerfile build/StandaloneLinux64/
           ls -la build/StandaloneLinux64
           status=0
           timeout 30 build/StandaloneLinux64/run-server.sh -port 47901 -name "CI" > server.log 2>&1 || status=$?
@@ -139,10 +124,9 @@ jobs:
           fi
 
       # The release packages and containerises the same files, but only after the tag exists, so a mistake in
-      # either would otherwise surface mid-release. Keep the packaging command in step with release.yaml.
+      # either would otherwise surface mid-release.
       - name: 'Check the release packaging'
         run: |
-          tar -czf server.tar.gz --transform "s,^build/StandaloneLinux64,car-racer-server," build/StandaloneLinux64
           tar -tzf server.tar.gz | grep -qx 'car-racer-server/run-server.sh'
           docker build --tag car-racer-server-ci build/StandaloneLinux64
           docker run --rm --entrypoint ffmpeg car-racer-server-ci -version
@@ -161,8 +145,6 @@ jobs:
 
   test:
     name: 'Unity Tests'
-    needs: 'licence'
-    if: "needs.licence.outputs.available == 'true'"
     runs-on: 'ubuntu-latest'
 
     # A healthy build takes 15-20 minutes; a hung Unity editor would otherwise sit for 6 hours.

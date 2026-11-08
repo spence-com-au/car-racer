@@ -17,7 +17,9 @@ RUN apt-get update \
     && mkdir -p /home/carracer/.config \
     && chown carracer:carracer /home/carracer/.config
 
-COPY --chown=carracer:carracer . /opt/car-racer/
+# The program stays root's, so a flaw in the network-facing server can't rewrite it: only ~/.config
+# needs to be writable.
+COPY . /opt/car-racer/
 RUN chmod +x /opt/car-racer/CarRacer /opt/car-racer/run-server.sh
 
 USER carracer

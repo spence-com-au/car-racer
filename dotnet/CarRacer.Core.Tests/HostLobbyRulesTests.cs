@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using CarRacer.Core.Arena;
 using CarRacer.Core.Net;
@@ -60,24 +61,65 @@ namespace CarRacer.Core.Tests
             _rules.Tick();
         }
 
-        /// <summary>The host, alone, drives the event under way to the finish.</summary>
-        private void FinishRace()
+        private void StartRacing()
         {
             _now += HostRace.StartLeadMs + HostRace.CountdownMs;
             Tick();
             Assert.Equal(RacePhase.Racing, _race.Phase);
+        }
+
+        /// <summary>
+        /// Takes every checkpoint of the race under way with <paramref name="report"/>, the last as the finish.
+        /// </summary>
+        private void ReportEveryCheckpoint(Action<int> report)
+        {
             for (int lap = 0; lap < _race.LapCount; lap++)
             {
                 for (int gate = 0; gate < Gates; gate++)
                 {
-                    _race.ReportOwnCheckpoint(gate);
+                    report(gate);
                 }
             }
 
-            _race.ReportOwnCheckpoint(0);
+            report(0);
+        }
+
+        /// <summary>The host, alone, drives the event under way to the finish.</summary>
+        private void FinishRace()
+        {
+            StartRacing();
+            ReportEveryCheckpoint(_race.ReportOwnCheckpoint);
             _now += 100;
             Tick();
             Assert.Equal(RacePhase.Results, _race.Phase);
+        }
+
+        /// <summary>
+        /// Leaves a cup after its first event, then starts a new session on the same phone, which finds the save.
+        /// </summary>
+        private void LeaveACupAndRestart()
+        {
+            Choose(cup: 1);
+            _rules.RunCommand(LobbyCommand.Start);
+            FinishRace();
+            _rules.RunCommand(LobbyCommand.LeaveCup);
+            Create(new HostSession(new RecordingTransport(), "Host", Version, () => _now));
+            Assert.Equal(1, _host.SavedCup);
+        }
+
+        /// <summary>A server running a cup for one player, who leaves mid-race and hands their car to a bot.</summary>
+        private byte LeaveAServerCupMidRace()
+        {
+            Create(HostSession.Dedicated(new RecordingTransport(), Version, () => _now));
+            byte alice = Join(1, "Alice");
+            Choose(cup: 1);
+            _rules.RunCommand(LobbyCommand.Start);
+            StartRacing();
+
+            _host.OnDisconnected(1);
+            Assert.Equal(HostSession.NoPlayer, _host.LeaderId);
+            Tick();
+            return alice;
         }
 
         private byte Join(ulong connection, string name)
@@ -113,6 +155,32 @@ namespace CarRacer.Core.Tests
             _host.OnMessage(1, new SetReadyMessage { Ready = true });
             _rules.RunCommand(LobbyCommand.Start);
             Assert.Equal(RacePhase.Countdown, _race.Phase);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(1)]
+        public void AStartWhileAnEventIsUnderWayIsIgnored(int cup)
+        {
+            Choose(cup: cup);
+            _rules.RunCommand(LobbyCommand.Start);
+            var run = _rules.Run;
+            long startAt = _race.StartAtLocalMs;
+
+            void StartIsIgnored(RacePhase phase)
+            {
+                _now += 1_000;
+                _rules.RunCommand(LobbyCommand.Start);
+                Assert.Equal(phase, _race.Phase);
+                Assert.Same(run, _rules.Run);
+                Assert.Equal(startAt, _race.StartAtLocalMs);
+            }
+
+            StartIsIgnored(RacePhase.Countdown);
+            StartRacing();
+            StartIsIgnored(RacePhase.Racing);
+            FinishRace();
+            StartIsIgnored(RacePhase.Results);
         }
 
         [Fact]
@@ -178,6 +246,33 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void ResumeSavedCupWaitsForEveryoneToBeReady()
+        {
+            LeaveACupAndRestart();
+            Join(1, "Guest");
+            _rules.RunCommand(LobbyCommand.ResumeSavedCup);
+            Assert.Null(_rules.Run);
+            Assert.Equal(RacePhase.Lobby, _race.Phase);
+
+            _host.OnMessage(1, new SetReadyMessage { Ready = true });
+            _rules.RunCommand(LobbyCommand.ResumeSavedCup);
+            Assert.Same(Cups.GrandPrix, _rules.Run.Cup);
+            Assert.Equal(RacePhase.Countdown, _race.Phase);
+        }
+
+        [Fact]
+        public void ResumeSavedCupIsIgnoredWhileAnEventIsUnderWay()
+        {
+            LeaveACupAndRestart();
+            Choose(track: 2);
+            _rules.RunCommand(LobbyCommand.Start);
+
+            _rules.RunCommand(LobbyCommand.ResumeSavedCup);
+            Assert.Null(_rules.Run);
+            Assert.Equal(2, _race.TrackIndex);
+        }
+
+        [Fact]
         public void BackToLobbyWaitsForTheCupToEndThenDropsItsSave()
         {
             Choose(cup: 1);
@@ -218,7 +313,7 @@ namespace CarRacer.Core.Tests
         public void AServerWithNobodyLeftGoesBackToTheLobbyOnceTheResultsAreIn()
         {
             Create(HostSession.Dedicated(new RecordingTransport(), Version, () => _now));
-            Join(1, "Alice");
+            byte alice = Join(1, "Alice");
             byte bob = Join(2, "Bob");
             _host.OnMessage(2, new SetReadyMessage { Ready = true });
             Choose(mode: GameMode.Battle);
@@ -239,10 +334,41 @@ namespace CarRacer.Core.Tests
             Tick();
             Assert.Equal(RacePhase.Results, _race.Phase);
 
-            _host.OnDisconnected(1);
+            // One away, a bot at the wheel, leads nobody but hasn't left, so the results wait for her too.
+            _now += HostSession.AwayAfterMs;
+            _host.Tick();
+            Assert.True(_host.IsBot(alice));
             Assert.Equal(HostSession.NoPlayer, _host.LeaderId);
             Tick();
+            Assert.Equal(RacePhase.Results, _race.Phase);
+
+            _host.OnDisconnected(1);
+            Tick();
             Assert.Equal(RacePhase.Lobby, _race.Phase);
+        }
+
+        [Fact]
+        public void AServerKeepsItsCupRunningWhenEveryoneLeavesBeforeTheEventEnds()
+        {
+            LeaveAServerCupMidRace();
+
+            Assert.NotNull(_rules.Run);
+            Assert.Equal(RacePhase.Racing, _race.Phase);
+        }
+
+        [Fact]
+        public void AServerWithNobodyLeftLeavesItsCupKeepingTheSaveOnceTheEventIsIn()
+        {
+            byte alice = LeaveAServerCupMidRace();
+
+            ReportEveryCheckpoint(gate => _race.ReportBotCheckpoint(alice, gate));
+            _now += 100;
+            Tick();
+            Assert.Equal(RacePhase.Lobby, _race.Phase);
+            Assert.Null(_rules.Run);
+            Assert.NotEqual(string.Empty, _store.Text);
+            Assert.Equal(1, _host.SavedCup);
+            Assert.Equal(1, _host.SavedCupDone);
         }
     }
 }
