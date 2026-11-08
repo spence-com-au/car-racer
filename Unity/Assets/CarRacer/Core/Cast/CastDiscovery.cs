@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -57,6 +58,9 @@ namespace CarRacer.Core.Cast
         private const ushort TypeTxt = 16;
         private const ushort TypeSrv = 33;
 
+        /// <summary>The bit of the TXT record's <c>ca</c> capability mask that says a device has video out.</summary>
+        private const int VideoOut = 1;
+
         /// <summary>A PTR query for the Cast service.</summary>
         public static byte[] Query()
         {
@@ -74,6 +78,8 @@ namespace CarRacer.Core.Cast
         /// <summary>
         /// The Cast devices a reply describes. A device whose A record wasn't included is taken to
         /// be at <paramref name="source"/>, the address the reply came from. Malformed replies give none.
+        /// Devices without video out (speakers and speaker groups, which advertise the same service)
+        /// are left out, since they can't show the stream.
         /// </summary>
         public static List<CastDevice> ParseReply(byte[] data, int length, IPAddress source)
         {
@@ -150,6 +156,13 @@ namespace CarRacer.Core.Cast
 
                     if (txt.TryGetValue(instance, out var values))
                     {
+                        if (values.TryGetValue("ca", out string capabilities)
+                            && int.TryParse(capabilities, NumberStyles.None, CultureInfo.InvariantCulture, out int mask)
+                            && (mask & VideoOut) == 0)
+                        {
+                            continue;
+                        }
+
                         if (values.TryGetValue("id", out string id) && id.Length > 0)
                         {
                             device.Id = id;
