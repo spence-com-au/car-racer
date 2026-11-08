@@ -92,12 +92,28 @@ namespace CarRacer.Core.Tests
         public void AnotherGuestsCarReachesUsViaTheHostAtTwiceTheLatency()
         {
             var sync = new ClockSync();
-            Assert.Equal(15f, sync.CarLatencyMs(carIsHosts: true, noEstimateMs: 15f));
-            Assert.Equal(30f, sync.CarLatencyMs(carIsHosts: false, noEstimateMs: 15f));
+            Assert.Equal(15f, sync.CarLatencyMs(drivenByHost: true, noEstimateMs: 15f));
+            Assert.Equal(30f, sync.CarLatencyMs(drivenByHost: false, noEstimateMs: 15f));
 
             sync.AddSample(localSentMs: 1000, hostMs: 1000 + 40 + 5000, localReceivedMs: 1080);
-            Assert.Equal(40f, sync.CarLatencyMs(carIsHosts: true, noEstimateMs: 15f));
-            Assert.Equal(80f, sync.CarLatencyMs(carIsHosts: false, noEstimateMs: 15f));
+            Assert.Equal(40f, sync.CarLatencyMs(drivenByHost: true, noEstimateMs: 15f));
+            Assert.Equal(80f, sync.CarLatencyMs(drivenByHost: false, noEstimateMs: 15f));
+        }
+
+        [Fact]
+        public void TheCarsTheHostDrivesReachUsInOneHop()
+        {
+            var roster = new LobbyRoster();
+            byte host = roster.Add("Host", isHost: true).PlayerId;
+            byte bot = roster.AddBot().PlayerId;
+            byte guest = roster.Add("Guest").PlayerId;
+            var session = new GuestSession(new RecordingTransport(), "Me", 1, () => 0);
+            session.OnMessage(roster.ToMessage());
+
+            Assert.Equal(15f, session.CarLatencyMs(host, noEstimateMs: 15f));
+            Assert.Equal(15f, session.CarLatencyMs(bot, noEstimateMs: 15f));
+            Assert.Equal(30f, session.CarLatencyMs(guest, noEstimateMs: 15f));
+            Assert.Equal(30f, session.CarLatencyMs(playerId: 9, noEstimateMs: 15f));
         }
 
         [Fact]

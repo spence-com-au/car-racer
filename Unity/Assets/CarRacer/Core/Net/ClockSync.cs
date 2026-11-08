@@ -38,14 +38,14 @@ namespace CarRacer.Core.Net
         public float OneWayLatencyMs => RoundTripMs / 2f;
 
         /// <summary>
-        /// One-way delay of a car's state reaching this guest: <see cref="OneWayLatencyMs"/> from the host's own car,
-        /// twice that from another guest's, which the host relays. <paramref name="noEstimateMs"/> stands in for the
-        /// estimate before the first sample.
+        /// One-way delay of a car's state reaching this guest: <see cref="OneWayLatencyMs"/> from a car the host
+        /// drives, its own or a bot's, and twice that from another guest's, which the host relays.
+        /// <paramref name="noEstimateMs"/> stands in for the estimate before the first sample.
         /// </summary>
-        public float CarLatencyMs(bool carIsHosts, float noEstimateMs)
+        public float CarLatencyMs(bool drivenByHost, float noEstimateMs)
         {
             float toHost = HasEstimate ? OneWayLatencyMs : noEstimateMs;
-            return carIsHosts ? toHost : 2f * toHost;
+            return drivenByHost ? toHost : 2f * toHost;
         }
 
         /// <summary>Records a pong. Returns false (and ignores it) if the times are impossible.</summary>

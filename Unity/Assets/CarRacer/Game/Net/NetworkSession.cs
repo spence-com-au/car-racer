@@ -156,7 +156,7 @@ namespace CarRacer.Game.Net
                 return HostLatencyGuessMs;
             }
 
-            return GuestSide.Clock.CarLatencyMs(playerId == HostPlayerIdFromRoster(), HostLatencyGuessMs);
+            return GuestSide.CarLatencyMs(playerId, HostLatencyGuessMs);
         }
 
         /// <summary>
@@ -495,20 +495,6 @@ namespace CarRacer.Game.Net
             Status = reason;
             _announcer?.Dispose();
             _announcer = null;
-        }
-
-        private byte HostPlayerIdFromRoster()
-        {
-            foreach (var p in GuestSide.Roster.Players)
-            {
-                if (p.IsHost)
-                {
-                    return p.PlayerId;
-                }
-            }
-
-            // A dedicated host has no car: every other car comes through it.
-            return HostSession.NoPlayer;
         }
 
         private static string RefusalText(JoinResult result)
