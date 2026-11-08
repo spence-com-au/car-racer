@@ -1,17 +1,33 @@
 using System.Collections.Generic;
+using CarRacer.Core.Arena;
 
 namespace CarRacer.Core.Net
 {
+    /// <summary>
+    /// One car's standing. The fields mean different things in different modes (design doc §7.0), so read them through
+    /// <see cref="IsOut"/> and <see cref="Lives"/> rather than decoding them at each use.
+    /// </summary>
     public struct StandingsEntry
     {
         public byte PlayerId;
+
+        /// <summary>Laps done in a race; lives left in Battle.</summary>
         public byte LapsCompleted;
 
-        /// <summary>1-based finishing position, or 0 while still racing.</summary>
+        /// <summary>
+        /// In a race, the 1-based finishing position; in Sumo and Battle, the place a car went out in. 0 while still
+        /// racing or still in.
+        /// </summary>
         public byte FinishPosition;
 
         /// <summary>Monster Jam points so far (design doc §7.0); 0 in other modes.</summary>
         public ushort Points;
+
+        /// <summary>Battle lives left, which travel in <see cref="LapsCompleted"/>.</summary>
+        public int Lives => LapsCompleted;
+
+        /// <summary>Whether this car is out of a Sumo or Battle event; nobody is ever out of a race or Monster Jam.</summary>
+        public bool IsOut(GameMode mode) => (mode == GameMode.Sumo || mode == GameMode.Battle) && FinishPosition > 0;
     }
 
     /// <summary>Host → all, a couple of times a second during a race: everyone in race order, with laps done.</summary>

@@ -165,7 +165,7 @@ namespace CarRacer.Core.Viewer
                         Name = player.Name ?? "?",
                         Colour = CarPalette.ForIndex(player.ColourIndex),
                         Detail = StandingDetail(race.Mode, race.LapCount, entry),
-                        Dim = race.Mode != GameMode.Race && race.Mode != GameMode.Monster && entry.FinishPosition > 0,
+                        Dim = entry.IsOut(race.Mode),
                     });
                 }
             }
@@ -228,9 +228,7 @@ namespace CarRacer.Core.Viewer
         /// <summary>The time since the start, or in Battle and Monster Jam the time left.</summary>
         public static string ClockText(GameMode mode, long sinceStartMs)
         {
-            long elapsed = Math.Max(0, sinceStartMs);
-            long limit = mode == GameMode.Battle ? BattleRules.TimeLimitMs : mode == GameMode.Monster ? MonsterRules.TimeLimitMs : 0;
-            return RaceFormat.Clock(limit > 0 ? Math.Max(0, limit - elapsed) : elapsed);
+            return RaceFormat.Clock(EventClock.TimeLimitMs(mode) > 0 ? EventClock.TimeLeftMs(mode, sinceStartMs) : Math.Max(0, sinceStartMs));
         }
 
         private static string StandingDetail(GameMode mode, int lapCount, StandingsEntry entry)
@@ -240,9 +238,9 @@ namespace CarRacer.Core.Viewer
                 case GameMode.Monster:
                     return entry.Points + " pts";
                 case GameMode.Sumo:
-                    return entry.FinishPosition > 0 ? "Out" : string.Empty;
+                    return entry.IsOut(mode) ? "Out" : string.Empty;
                 case GameMode.Battle:
-                    return entry.FinishPosition > 0 ? "Out" : entry.LapsCompleted == 1 ? "1 life" : entry.LapsCompleted + " lives";
+                    return entry.IsOut(mode) ? "Out" : entry.Lives == 1 ? "1 life" : entry.Lives + " lives";
                 default:
                     return entry.FinishPosition > 0 ? "Finished" : $"Lap {Math.Min(entry.LapsCompleted + 1, Math.Max(1, lapCount))}/{lapCount}";
             }

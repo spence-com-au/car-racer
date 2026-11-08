@@ -207,7 +207,7 @@ namespace CarRacer.Game.Net
         public static bool IsOut(IRaceView race, byte playerId)
         {
             var standings = race.Standings;
-            if (race.Mode == GameMode.Race || standings == null)
+            if (standings == null)
             {
                 return false;
             }
@@ -216,7 +216,7 @@ namespace CarRacer.Game.Net
             {
                 if (entry.PlayerId == playerId)
                 {
-                    return entry.FinishPosition > 0;
+                    return entry.IsOut(race.Mode);
                 }
             }
 

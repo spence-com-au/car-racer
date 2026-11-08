@@ -1,5 +1,6 @@
 using System.Linq;
 using CarRacer.Core.Arena;
+using CarRacer.Core.Net;
 using CarRacer.Core.Numerics;
 using CarRacer.Core.Session;
 using Xunit;
@@ -138,6 +139,36 @@ namespace CarRacer.Core.Tests
                     }
                 }
             }
+        }
+    }
+
+    public class ArenaStandingsTests
+    {
+        [Fact]
+        public void OnlySumoAndBattleCarsWithAPlaceAreOut()
+        {
+            var placed = new StandingsEntry { FinishPosition = 2 };
+            Assert.True(placed.IsOut(GameMode.Sumo));
+            Assert.True(placed.IsOut(GameMode.Battle));
+            Assert.False(placed.IsOut(GameMode.Race)); // finished, not out
+            Assert.False(placed.IsOut(GameMode.Monster)); // a place there must never lock a truck's controls
+            Assert.False(new StandingsEntry().IsOut(GameMode.Battle));
+        }
+
+        [Fact]
+        public void BattleLivesTravelInLapsCompleted()
+        {
+            Assert.Equal(2, new StandingsEntry { LapsCompleted = 2 }.Lives);
+        }
+
+        [Fact]
+        public void TimedEventsCountDownToZero()
+        {
+            Assert.Equal(BattleRules.TimeLimitMs, EventClock.TimeLeftMs(GameMode.Battle, -5_000));
+            Assert.Equal(MonsterRules.TimeLimitMs - 30_000, EventClock.TimeLeftMs(GameMode.Monster, 30_000));
+            Assert.Equal(0, EventClock.TimeLeftMs(GameMode.Battle, BattleRules.TimeLimitMs + 1));
+            Assert.Equal(0, EventClock.TimeLimitMs(GameMode.Race));
+            Assert.Equal(0, EventClock.TimeLimitMs(GameMode.Sumo));
         }
     }
 }

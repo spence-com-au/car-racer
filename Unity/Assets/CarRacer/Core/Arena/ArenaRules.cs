@@ -59,6 +59,17 @@ namespace CarRacer.Core.Arena
         public const float BowlRadius = 35f;
     }
 
+    /// <summary>The clock of the timed events (Battle and Monster Jam).</summary>
+    public static class EventClock
+    {
+        /// <summary>The event's time limit, or 0 for one that has none.</summary>
+        public static long TimeLimitMs(GameMode mode) =>
+            mode == GameMode.Battle ? BattleRules.TimeLimitMs : mode == GameMode.Monster ? MonsterRules.TimeLimitMs : 0;
+
+        /// <summary>The time left <paramref name="sinceStartMs"/> after the start of a timed event, never below 0.</summary>
+        public static long TimeLeftMs(GameMode mode, long sinceStartMs) => Math.Max(0, TimeLimitMs(mode) - Math.Max(0, sinceStartMs));
+    }
+
     /// <summary>
     /// Monster Jam (design doc §7.0): every car is a monster truck in a walled dirt stadium with
     /// ramps, and scores for time in the air and for crushing other trucks. The most points when

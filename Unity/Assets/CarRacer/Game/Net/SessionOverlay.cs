@@ -803,7 +803,7 @@ namespace CarRacer.Game.Net
             Set(_corner1, place);
             Set(_corner2, points);
             bool clock = race.Phase == RacePhase.Racing;
-            Set(_corner3, clock ? RaceFormat.Time(System.Math.Max(0L, MonsterRules.TimeLimitMs + msToGo)) : string.Empty);
+            Set(_corner3, clock ? RaceFormat.Time(EventClock.TimeLeftMs(race.Mode, -msToGo)) : string.Empty);
         }
 
         /// <summary>The arena HUD (design doc §7.0): this phone's lives (Battle) or place once out, how many are left, and Battle's clock.</summary>
@@ -818,16 +818,16 @@ namespace CarRacer.Game.Net
                 foreach (var entry in standings.Order)
                 {
                     total++;
-                    if (entry.FinishPosition == 0)
+                    if (!entry.IsOut(race.Mode))
                     {
                         left++;
                     }
 
                     if (entry.PlayerId == me)
                     {
-                        status = entry.FinishPosition > 0
+                        status = entry.IsOut(race.Mode)
                             ? $"Out: {RaceFormat.Ordinal(entry.FinishPosition)}"
-                            : race.Mode == GameMode.Battle ? $"Lives {entry.LapsCompleted}" : "Still on";
+                            : race.Mode == GameMode.Battle ? $"Lives {entry.Lives}" : "Still on";
                     }
                 }
             }
@@ -835,7 +835,7 @@ namespace CarRacer.Game.Net
             Set(_corner1, status);
             Set(_corner2, total > 0 ? $"{left} / {total} left" : string.Empty);
             bool clock = race.Mode == GameMode.Battle && race.Phase == RacePhase.Racing;
-            Set(_corner3, clock ? RaceFormat.Time(System.Math.Max(0L, BattleRules.TimeLimitMs + msToGo)) : string.Empty);
+            Set(_corner3, clock ? RaceFormat.Time(EventClock.TimeLeftMs(race.Mode, -msToGo)) : string.Empty);
         }
 
         /// <summary>Everything the results show, so they rebuild only when one of these changes.</summary>
