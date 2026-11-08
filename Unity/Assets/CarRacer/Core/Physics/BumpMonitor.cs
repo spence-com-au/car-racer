@@ -89,7 +89,7 @@ namespace CarRacer.Core.Physics
             _withinReach.Clear();
             foreach (var otherCar in others)
             {
-                if ((otherCar.Position - selfPosition).Flattened.LengthSquared <= FallbackReach * FallbackReach)
+                if (Vec3.WithinFlat(otherCar.Position, selfPosition, FallbackReach))
                 {
                     _withinReach.Add(otherCar.PlayerId);
                 }
