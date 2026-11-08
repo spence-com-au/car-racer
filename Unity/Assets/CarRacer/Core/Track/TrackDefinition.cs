@@ -45,7 +45,6 @@ namespace CarRacer.Core.Track
         /// <summary>Evenly spaced checkpoints; index 0 is the start/finish line at the first control point.</summary>
         public int CheckpointCount = 8;
 
-        public int DefaultLaps = 3;
         public float WallHeight = 1.2f;
 
         /// <summary>Item box rows, as fractions (0..1) of the lap length.</summary>
@@ -95,11 +94,6 @@ namespace CarRacer.Core.Track
             if (CheckpointCount < 3)
             {
                 problems.Add("At least 3 checkpoints are required so laps can't be short-cut.");
-            }
-
-            if (DefaultLaps < 1)
-            {
-                problems.Add("DefaultLaps must be at least 1.");
             }
 
             if (ItemBoxRows != null)

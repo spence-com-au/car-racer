@@ -16,7 +16,6 @@ namespace CarRacer.Core.Track
             Id = "oval",
             DisplayName = "Pebble Oval",
             CheckpointCount = 8,
-            DefaultLaps = 3,
             WallHeight = 1.2f,
             ItemBoxRows = new[] { 0.3f, 0.75f },
             Points = new[]
@@ -43,7 +42,6 @@ namespace CarRacer.Core.Track
             Id = "canyon",
             DisplayName = "Canyon Hairpins",
             CheckpointCount = 10,
-            DefaultLaps = 3,
             WallHeight = 1.2f,
             ItemBoxRows = new[] { 0.35f, 0.7f },
             Points = new[]
@@ -79,7 +77,6 @@ namespace CarRacer.Core.Track
             Id = "figure-eight",
             DisplayName = "Crossover Eight",
             CheckpointCount = 10,
-            DefaultLaps = 3,
             WallHeight = 1.2f,
             ItemBoxRows = new[] { 0.2f, 0.7f },
             Points = new[]
@@ -109,7 +106,6 @@ namespace CarRacer.Core.Track
             Id = "sweepers",
             DisplayName = "Seaside Sweepers",
             CheckpointCount = 10,
-            DefaultLaps = 3,
             WallHeight = 1.2f,
             ItemBoxRows = new[] { 0.3f, 0.65f },
             Points = new[]
@@ -140,7 +136,6 @@ namespace CarRacer.Core.Track
             Id = "switchbacks",
             DisplayName = "Switchback Hill",
             CheckpointCount = 10,
-            DefaultLaps = 3,
             WallHeight = 1.4f,
             ItemBoxRows = new[] { 0.25f, 0.7f },
             Points = new[]
@@ -173,7 +168,6 @@ namespace CarRacer.Core.Track
             Id = "dunes",
             DisplayName = "Dune Jumps",
             CheckpointCount = 10,
-            DefaultLaps = 3,
             WallHeight = 1.2f,
             ItemBoxRows = new[] { 0.3f, 0.7f },
             Points = new[]
@@ -206,7 +200,6 @@ namespace CarRacer.Core.Track
             Id = "carousel",
             DisplayName = "Carousel Ring",
             CheckpointCount = 10,
-            DefaultLaps = 3,
             WallHeight = 1.2f,
             ItemBoxRows = new[] { 0.25f, 0.7f },
             Points = new[]
@@ -237,7 +230,6 @@ namespace CarRacer.Core.Track
             Id = "ridge",
             DisplayName = "Ridge Run",
             CheckpointCount = 12,
-            DefaultLaps = 3,
             WallHeight = 1.4f,
             ItemBoxRows = new[] { 0.3f, 0.75f },
             Points = new[]
