@@ -101,11 +101,7 @@ namespace CarRacer.Core.Physics
         }
 
         /// <summary>True if two cars' collision circles overlap on the ground plane.</summary>
-        public static bool AreTouching(CarBody a, CarBody b)
-        {
-            float reach = a.Radius + b.Radius;
-            return (a.Position - b.Position).Flattened.LengthSquared <= reach * reach;
-        }
+        public static bool AreTouching(CarBody a, CarBody b) => Vec3.WithinFlat(a.Position, b.Position, a.Radius + b.Radius);
 
         private static float Clamp(float v, float min, float max) => v < min ? min : (v > max ? max : v);
     }
