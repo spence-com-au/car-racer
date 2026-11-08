@@ -84,9 +84,14 @@ namespace CarRacer.Game.Net
             _carExaggeration = _bumpSettings.Exaggeration;
             _session.CarStateReceived += OnCarState;
             _session.HitReceived += OnHit;
-            if (!session.IsHost)
+            if (session.IsHost)
+            {
+                session.HostSide.RosterChanged += DropDepartedRemotes;
+            }
+            else
             {
                 session.GuestSide.ControlReturned += OnControlReturned;
+                session.GuestSide.RosterChanged += DropDepartedRemotes;
             }
 
             _detector = new CheckpointDetector(screen.Track.CheckpointGates());
@@ -131,9 +136,15 @@ namespace CarRacer.Game.Net
             {
                 _session.CarStateReceived -= OnCarState;
                 _session.HitReceived -= OnHit;
+                if (_session.HostSide != null)
+                {
+                    _session.HostSide.RosterChanged -= DropDepartedRemotes;
+                }
+
                 if (_session.GuestSide != null)
                 {
                     _session.GuestSide.ControlReturned -= OnControlReturned;
+                    _session.GuestSide.RosterChanged -= DropDepartedRemotes;
                 }
             }
         }
@@ -561,12 +572,10 @@ namespace CarRacer.Game.Net
         /// <summary>Spawns this phone's car once its roster entry (and colour) is known, and adds or removes remote cars to match the roster.</summary>
         private void SyncRoster()
         {
-            _inRoster.Clear();
             var race = _session.Race;
             bool truck = race != null && race.Mode == GameMode.Monster && race.Phase != RacePhase.Lobby;
             foreach (var player in _session.Players)
             {
-                _inRoster.Add(player.PlayerId);
                 var look = (player.BodyIndex, player.ColourIndex, truck);
                 var colour = CarColours.ForIndex(player.ColourIndex);
                 var body = CarModels.ForIndex(player.BodyIndex);
@@ -612,6 +621,22 @@ namespace CarRacer.Game.Net
                 }
 
                 _looks[player.PlayerId] = look;
+            }
+
+            DropDepartedRemotes();
+        }
+
+        /// <summary>
+        /// Removes the remote cars of players no longer in the roster. It runs on every roster change as well as each
+        /// frame, because a player id is reused: someone who leaves and rejoins between two frames would otherwise keep
+        /// their old <see cref="RemoteCar"/>, whose predictor rejects the restarted sequence numbers of the new driver.
+        /// </summary>
+        private void DropDepartedRemotes()
+        {
+            _inRoster.Clear();
+            foreach (var player in _session.Players)
+            {
+                _inRoster.Add(player.PlayerId);
             }
 
             _gone.Clear();
