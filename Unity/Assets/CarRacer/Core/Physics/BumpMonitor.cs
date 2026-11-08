@@ -50,20 +50,50 @@ namespace CarRacer.Core.Physics
         /// </summary>
         public const float ReducedMass = CarMass / 2f;
 
+        /// <summary>
+        /// How far from this car on the ground plane another car can be, as this phone last saw it, and still have its
+        /// fallback bump apply: well past the contact reach, since the two phones' views disagree a little and the cars
+        /// part while the hit is on its way, but nowhere near across the track (design doc §2.2).
+        /// </summary>
+        public const float FallbackReach = 8f;
+
+        /// <summary>
+        /// How long after this car takes a fallback bump from another it ignores the next from that one. By then the
+        /// hardest bump has worn off: the car has landed from its pop, grip has taken out a sideways push and
+        /// <see cref="Driving.CarTuning.OverSpeedDeceleration"/> a forward one, so a modified phone sending it over and
+        /// over can't build up speed to fling the car off the map (design doc §2.2).
+        /// </summary>
+        public const long FallbackCooldownMs = 1500;
+
         private readonly BumpSettings _settings;
         private readonly HitDeduplicator _dedupe = new HitDeduplicator();
+
+        /// <summary>The other cars within <see cref="FallbackReach"/> at the last <see cref="Step"/>.</summary>
+        private readonly HashSet<byte> _withinReach = new HashSet<byte>();
+
+        /// <summary>When this car last took a fallback bump from each other car.</summary>
+        private readonly Dictionary<byte, long> _lastFallbackMs = new Dictionary<byte, long>();
 
         public BumpMonitor(BumpSettings settings = null)
         {
             _settings = settings ?? new BumpSettings();
         }
 
-        /// <summary>Checks this car against the others; appends a <see cref="Bump"/> for each new contact.</summary>
+        /// <summary>
+        /// Checks this car against the others, noting which are near enough for <see cref="OnHit"/> to take their
+        /// fallback bumps; appends a <see cref="Bump"/> for each new contact.
+        /// </summary>
         public void Step(byte selfId, Vec3 selfPosition, Vec3 selfVelocity, IReadOnlyList<OtherCar> others, long nowMs, List<Bump> bumps)
         {
             var self = new CarBody(selfPosition, selfVelocity, CarMass, CarRadius);
+            _withinReach.Clear();
             foreach (var otherCar in others)
             {
+                if ((otherCar.Position - selfPosition).Flattened.LengthSquared <= FallbackReach * FallbackReach)
+                {
+                    _withinReach.Add(otherCar.PlayerId);
+                }
+
                 var other = new CarBody(otherCar.Position, otherCar.Velocity, CarMass, CarRadius);
                 if (!BumpResolver.AreTouching(self, other))
                 {
@@ -92,10 +122,12 @@ namespace CarRacer.Core.Physics
         }
 
         /// <summary>
-        /// A hit addressed to this car arrived. Returns true (with the impulse to apply) unless it
-        /// is a car-to-car bump this phone already applied from its own view, or its impulse is not
-        /// finite. Item hits always apply. A bump's impulse is clamped to what
-        /// <see cref="BumpResolver"/> could have produced, because it comes from another phone.
+        /// A hit addressed to this car arrived. Returns true (with the impulse to apply) unless its impulse is not
+        /// finite, or it is a car-to-car bump that this phone already applied from its own view, from a car that was
+        /// not within <see cref="FallbackReach"/> at the last <see cref="Step"/>, or within
+        /// <see cref="FallbackCooldownMs"/> of the last one this car took from it. Item hits always apply. A bump's
+        /// impulse is clamped to what <see cref="BumpResolver"/> could have produced, because it comes from another
+        /// phone.
         /// </summary>
         public bool OnHit(HitMessage hit, byte selfId, long nowMs, out Vec3 impulse)
         {
@@ -111,19 +143,23 @@ namespace CarRacer.Core.Physics
                 return true;
             }
 
-            if (!_dedupe.TryApplyRemoteHit(hit.AttackerId, nowMs))
+            // Both checks come before the dedupe window, so a dropped hit doesn't stop this phone's own view of the
+            // contact from applying it.
+            bool tooSoon = _lastFallbackMs.TryGetValue(hit.AttackerId, out long last)
+                && nowMs - last < FallbackCooldownMs;
+            if (tooSoon || !_withinReach.Contains(hit.AttackerId) || !_dedupe.TryApplyRemoteHit(hit.AttackerId, nowMs))
             {
                 return false;
             }
 
+            _lastFallbackMs[hit.AttackerId] = nowMs;
             impulse = LimitBump(hit.Impulse);
             return true;
         }
 
         private Vec3 LimitBump(Vec3 impulse)
         {
-            // All cars weigh CarMass, so the reduced mass BumpResolver clamps with is half of it.
-            float maxHorizontal = _settings.MaxImpulsePerMass * CarMass / 2f;
+            float maxHorizontal = _settings.MaxImpulsePerMass * ReducedMass;
             Vec3 horizontal = impulse.Flattened;
             if (horizontal.Length > maxHorizontal)
             {

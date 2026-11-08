@@ -159,9 +159,7 @@ namespace CarRacer.Game.Net
                 return HostLatencyGuessMs;
             }
 
-            float toHost = GuestSide.Clock.HasEstimate ? GuestSide.Clock.OneWayLatencyMs : HostLatencyGuessMs;
-            bool fromHost = playerId == HostPlayerIdFromRoster();
-            return fromHost ? toHost : 2f * toHost;
+            return GuestSide.Clock.CarLatencyMs(playerId == HostPlayerIdFromRoster(), HostLatencyGuessMs);
         }
 
         /// <summary>
@@ -176,8 +174,9 @@ namespace CarRacer.Game.Net
             if (IsHost)
             {
                 var random = new System.Random();
-                Race = new HostRace(HostSide, checkpointCounts, () => NowMs, fractionToNextCheckpoint, carPositions);
-                Items = new HostItems(HostSide, Race, itemBoxes, () => NowMs, random.NextDouble, carPositions);
+                var race = new HostRace(HostSide, checkpointCounts, () => NowMs, fractionToNextCheckpoint, carPositions);
+                Race = race;
+                Items = new HostItems(HostSide, race, itemBoxes, () => NowMs, random.NextDouble, carPositions);
             }
             else
             {

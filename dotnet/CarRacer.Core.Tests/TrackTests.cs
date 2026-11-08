@@ -166,13 +166,13 @@ namespace CarRacer.Core.Tests
             var slots = Oval.StartGrid(6);
             Assert.Equal(6, slots.Count);
 
-            float previousDistance = float.MaxValue;
+            float previousDistance = 0f;
             foreach (var slot in slots)
             {
                 float d = Oval.Spline.FindNearestDistance(slot.Position);
                 float behind = Oval.Spline.Length - d;
                 Assert.InRange(behind, 1f, 40f);
-                Assert.True(behind < previousDistance + 40f);
+                Assert.True(behind > previousDistance + 1f, $"slot {slot.Slot} is not behind slot {slot.Slot - 1}");
                 previousDistance = behind;
             }
 

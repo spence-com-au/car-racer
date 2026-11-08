@@ -4,7 +4,8 @@ namespace CarRacer.Core.Net
 {
     /// <summary>
     /// Host → one guest: you're back after your app was away, and a bot drove your car meanwhile
-    /// (design doc §12). Carry on from here, with this many checkpoints already crossed.
+    /// (design doc §12). Carry on from here, with this many checkpoints already crossed. The guest
+    /// echoes it back once it has done so, and the host drops its car states until then.
     /// </summary>
     public sealed class ControlReturnedMessage : IGameMessage
     {

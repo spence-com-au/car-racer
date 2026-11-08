@@ -34,6 +34,30 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void BumpStrengthIsSizedPerUnitOfReducedMass()
+        {
+            const float reducedMass = BumpMonitor.ReducedMass;
+            float middlePerMass = (Bumps.MinImpulsePerMass + Bumps.MaxImpulsePerMass) / 2f;
+
+            var heavy = HapticPatterns.ForBump(Bumps.MaxImpulsePerMass * reducedMass, reducedMass, Bumps);
+            Assert.Equal(HapticPatterns.MaxBumpMs, heavy.Milliseconds);
+            Assert.Equal(HapticPatterns.MaxBumpAmplitude, heavy.Amplitude);
+
+            var middle = HapticPatterns.ForBump(middlePerMass * reducedMass, reducedMass, Bumps);
+            var middleOfUnitMass = HapticPatterns.ForBump(middlePerMass, 1f, Bumps);
+            Assert.Equal(middleOfUnitMass.Milliseconds, middle.Milliseconds);
+            Assert.Equal(middleOfUnitMass.Amplitude, middle.Amplitude);
+        }
+
+        [Fact]
+        public void ABumpOfNoReducedMassIsTheLightestPulse()
+        {
+            var pulse = HapticPatterns.ForBump(1000f, reducedMass: 0f, Bumps);
+            Assert.Equal(HapticPatterns.MinBumpMs, pulse.Milliseconds);
+            Assert.Equal(HapticPatterns.MinBumpAmplitude, pulse.Amplitude);
+        }
+
+        [Fact]
         public void BigBoostsKickHarder()
         {
             var t1 = HapticPatterns.ForBoost(1);

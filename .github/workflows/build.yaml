@@ -1,6 +1,8 @@
 ---
 name: 'Build'
 
+# Needs the Unity licence secrets (see `docs/ci-setup.md`). Without them the jobs fail rather than skip: they are
+# required checks, and a skipped job passes one.
 on:
   pull_request: {}
   push:
@@ -18,8 +20,6 @@ concurrency:
 jobs:
   android:
     name: 'Android Development APK'
-    needs: 'licence'
-    if: "needs.licence.outputs.available == 'true'"
     runs-on: 'ubuntu-latest'
 
     # A healthy build takes 15-20 minutes; a hung Unity editor would otherwise sit for 6 hours.
@@ -64,27 +64,8 @@ jobs:
           path: 'build/Android/*.apk'
           if-no-files-found: 'error'
 
-  licence:
-    name: 'Check Unity Licence'
-    runs-on: 'ubuntu-latest'
-    outputs:
-      available: '${{ steps.check.outputs.available }}'
-    steps:
-      - id: 'check'
-        env:
-          UNITY_LICENSE: '${{ secrets.UNITY_LICENSE }}'
-        run: |
-          if [ -n "${UNITY_LICENSE}" ]; then
-            echo "available=true" >> "${GITHUB_OUTPUT}"
-          else
-            echo "available=false" >> "${GITHUB_OUTPUT}"
-            echo "::notice::UNITY_LICENSE is not set, so Unity tests and builds are skipped. See docs/ci-setup.md."
-          fi
-
   server:
     name: 'Server Build'
-    needs: 'licence'
-    if: "needs.licence.outputs.available == 'true'"
     runs-on: 'ubuntu-latest'
 
     # A healthy build takes 15-20 minutes; a hung Unity editor would otherwise sit for 6 hours.
@@ -161,8 +142,6 @@ jobs:
 
   test:
     name: 'Unity Tests'
-    needs: 'licence'
-    if: "needs.licence.outputs.available == 'true'"
     runs-on: 'ubuntu-latest'
 
     # A healthy build takes 15-20 minutes; a hung Unity editor would otherwise sit for 6 hours.

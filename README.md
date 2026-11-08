@@ -38,7 +38,7 @@ docs/                         design and setup docs
 ## Quick start
 
 ```sh
-# Core tests (needs the .NET 8 SDK; no Unity required)
+# Core tests (needs the .NET 8 SDK, and ffmpeg and ffprobe on PATH; no Unity required)
 dotnet test dotnet/CarRacer.sln
 ```
 

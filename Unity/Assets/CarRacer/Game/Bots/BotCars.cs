@@ -33,6 +33,8 @@ namespace CarRacer.Game.Bots
         private sealed class Bot : ICarInputSource
         {
             public byte PlayerId;
+            public byte BodyIndex;
+            public byte ColourIndex;
             public Color Colour;
             public CarController Car;
             public BotDriver Driver;
@@ -179,17 +181,12 @@ namespace CarRacer.Game.Bots
         /// <summary>Reports a bot's spin-outs (they cost a Battle life) and takes its controls away once it is out of an arena event.</summary>
         private static void FollowArenaState(Bot bot, HostRace race)
         {
-            bool spun = bot.Car.State.SpunOut;
-            if (spun && !bot.WasSpunOut)
+            if (EventCars.SpinOutStarted(bot.Car.State.SpunOut, ref bot.WasSpunOut))
             {
                 race.ReportSpinOut(bot.PlayerId);
             }
 
-            bot.WasSpunOut = spun;
-            if (race.Mode != GameMode.Race)
-            {
-                bot.Car.InputLocked = ArenaStandings.IsOut(race, bot.PlayerId);
-            }
+            bot.Car.InputLocked = ArenaStandings.IsOut(race, bot.PlayerId);
         }
 
         private void UseItem(Bot bot, HostItems items, HostRace race)
@@ -306,14 +303,13 @@ namespace CarRacer.Game.Bots
                 return;
             }
 
-            bool lineUp = phase == RacePhase.Countdown || (phase == RacePhase.Racing && _phase != RacePhase.Countdown);
+            bool lineUp = EventCars.LinesUp(_phase, phase);
             if (lineUp)
             {
                 _screen.FollowEventTrack(_session.Race);
             }
 
-            bool trucks = phase != RacePhase.Lobby && _session.Race.Mode == GameMode.Monster;
-            _bumpSettings.Exaggeration = trucks ? MonsterRules.BumpExaggeration : _carExaggeration;
+            _bumpSettings.Exaggeration = EventCars.BumpExaggeration(EventCars.AreTrucks(_session.Race.Mode, phase), _carExaggeration);
             foreach (var bot in _bots.Values)
             {
                 if (lineUp)
@@ -382,7 +378,7 @@ namespace CarRacer.Game.Bots
             var race = _session.Race;
 
             // Monster Jam's trucks for the event, back to cars for the lobby (this resets the handling, so it comes first).
-            DressAsTruck(bot, CurrentMode == GameMode.Monster);
+            DressAsTruck(bot, EventCars.AreTrucks(race.Mode, race.Phase));
             bot.Car.InputLocked = race.Phase != RacePhase.Racing;
             bot.Car.DamageEnabled = race.Rules.DamageIn(race.Mode, race.Phase);
             bot.Car.UseBodyStats(race.Rules.CarStatsIn(race.Phase));
@@ -400,6 +396,28 @@ namespace CarRacer.Game.Bots
             var player = FindPlayer(bot.PlayerId);
             CarFactory.ReplaceBody(bot.Car.gameObject, bot.Colour, CarModels.ForIndex(player.BodyIndex), truck);
             bot.Truck = truck;
+        }
+
+        /// <summary>
+        /// Repaints a bot's car if its roster entry has another body or colour. A cup moves on to its
+        /// next event within one frame, removing its bots and adding new ones, and
+        /// <c>LobbyRoster.AddBot</c> takes the lowest free id, so a new bot can arrive under the id of a
+        /// guest who left mid-event and whose car a bot was driving.
+        /// </summary>
+        private void Restyle(Bot bot, RosterEntry player)
+        {
+            if (player.BodyIndex == bot.BodyIndex && player.ColourIndex == bot.ColourIndex)
+            {
+                return;
+            }
+
+            bot.BodyIndex = player.BodyIndex;
+            bot.ColourIndex = player.ColourIndex;
+            bot.Colour = CarColours.ForIndex(player.ColourIndex);
+            CarFactory.ReplaceBody(bot.Car.gameObject, bot.Colour, CarModels.ForIndex(player.BodyIndex), bot.Truck);
+
+            // Replacing the body resets the handling to the body's own, so the event's rules go back on after it.
+            FollowEvent(bot);
         }
 
         private RosterEntry FindPlayer(byte playerId)
@@ -433,7 +451,7 @@ namespace CarRacer.Game.Bots
             bot.LastPosition = bot.Car.BodyPosition;
         }
 
-        /// <summary>Builds a car for each new bot in the roster and removes the cars of bots that have gone.</summary>
+        /// <summary>Builds a car for each new bot in the roster, repaints any whose car has changed and removes the cars of bots that have gone.</summary>
         private void SyncRoster()
         {
             _inRoster.Clear();
@@ -445,7 +463,11 @@ namespace CarRacer.Game.Bots
                 }
 
                 _inRoster.Add(player.PlayerId);
-                if (!_bots.ContainsKey(player.PlayerId))
+                if (_bots.TryGetValue(player.PlayerId, out var had))
+                {
+                    Restyle(had, player);
+                }
+                else
                 {
                     var colour = CarColours.ForIndex(player.ColourIndex);
                     var car = CarFactory.Build($"Bot {player.Name}", colour, _screen.transform, haptics: false, body: CarModels.ForIndex(player.BodyIndex));
@@ -453,6 +475,8 @@ namespace CarRacer.Game.Bots
                     var bot = new Bot
                     {
                         PlayerId = player.PlayerId,
+                        BodyIndex = player.BodyIndex,
+                        ColourIndex = player.ColourIndex,
                         Colour = colour,
                         Car = car,
                         Skill = skill,
