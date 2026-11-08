@@ -22,6 +22,12 @@ namespace CarRacer.Core.Cast
         Failed,
     }
 
+    public static class CastStates
+    {
+        /// <summary>Whether the cast is over and its connection can close.</summary>
+        public static bool IsFinished(this CastState state) => state == CastState.Busy || state == CastState.Stopped || state == CastState.Failed;
+    }
+
     /// <summary>
     /// One cast of the viewer stream to one Chromecast (design doc §2.4), as the Cast v2 protocol
     /// between this sender and the device: connect, look at what the TV is showing, launch
@@ -74,7 +80,7 @@ namespace CarRacer.Core.Cast
         public string Detail { get; private set; } = string.Empty;
 
         /// <summary>Whether the cast is over and its connection can close.</summary>
-        public bool Finished => State == CastState.Busy || State == CastState.Stopped || State == CastState.Failed;
+        public bool Finished => State.IsFinished();
 
         /// <summary>Starts talking to the device once connected; <paramref name="mediaUrl"/> is the stream as the TV can reach it.</summary>
         public List<CastMessage> Begin(string mediaUrl, long nowMs)
