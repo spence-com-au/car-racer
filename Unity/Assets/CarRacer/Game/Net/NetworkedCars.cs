@@ -358,7 +358,7 @@ namespace CarRacer.Game.Net
 
             if (_session.Items.ClaimTouchedBox(position.ToCore()))
             {
-                GameAudio.Play("item_box");
+                GameAudio.Play(Sfx.ItemBox);
             }
         }
 

@@ -64,35 +64,34 @@ namespace CarRacer.Game.Items
             // Lightning strikes everyone ahead wherever they are, so every phone hears it at full volume.
             if (used.Item == ItemKind.Lightning)
             {
-                GameAudio.Play("explosion");
+                GameAudio.Play(Sfx.Explosion);
                 return;
             }
 
-            string sound = UseSound(used.Item);
-            if (sound != null)
+            if (UseSound(used.Item) is Sfx sound)
             {
                 GameAudio.PlayAt(sound, used.Position.ToUnity());
             }
         }
 
-        private static string UseSound(ItemKind item)
+        private static Sfx? UseSound(ItemKind item)
         {
             switch (item)
             {
                 case ItemKind.Boost:
-                    return "boost";
+                    return Sfx.Boost;
                 case ItemKind.Shield:
-                    return "shield";
+                    return Sfx.Shield;
                 case ItemKind.Shockwave:
-                    return "shockwave";
+                    return Sfx.Shockwave;
                 case ItemKind.Missile:
                 case ItemKind.Seeker:
-                    return "missile";
+                    return Sfx.Missile;
                 case ItemKind.OilSlick:
                 case ItemKind.FakeBox:
-                    return "oil";
+                    return Sfx.Oil;
                 case ItemKind.Bomb:
-                    return "bomb_throw";
+                    return Sfx.BombThrow;
                 default:
                     return null;
             }
@@ -103,12 +102,12 @@ namespace CarRacer.Game.Items
         {
             if (kind != ItemKind.Bomb)
             {
-                GameAudio.PlayAt("explosion", position.ToUnity(), 0.8f);
+                GameAudio.PlayAt(Sfx.Explosion, position.ToUnity(), 0.8f);
                 return;
             }
 
             AddRing(position.ToUnity(), ProjectileRules.BombBlastRadius, BlastColour);
-            GameAudio.PlayAt("explosion", position.ToUnity());
+            GameAudio.PlayAt(Sfx.Explosion, position.ToUnity());
         }
 
         private void AddRing(Vector3 centre, float radius, Color colour)

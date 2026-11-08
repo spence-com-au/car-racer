@@ -10,14 +10,16 @@ namespace CarRacer.Tests
     /// <summary>The sound effects import as audio, and every clip the game asks for is there.</summary>
     public class AudioTests
     {
+        private static readonly Sfx[] AllClips = (Sfx[])System.Enum.GetValues(typeof(Sfx));
+
         [Test]
         public void EveryClipLoads()
         {
-            foreach (string name in GameAudio.ClipNames)
+            foreach (var sfx in AllClips)
             {
-                var clip = GameAudio.Clip(name);
-                Assert.IsNotNull(clip, name);
-                Assert.Greater(clip.length, 0f, name);
+                var clip = GameAudio.Clip(sfx);
+                Assert.IsNotNull(clip, sfx.ToString());
+                Assert.Greater(clip.length, 0f, sfx.ToString());
             }
         }
 
@@ -27,7 +29,7 @@ namespace CarRacer.Tests
             var files = Directory.GetFiles(Path.Combine(Application.dataPath, "CarRacer/Resources/Audio"), "*.ogg")
                 .Select(Path.GetFileNameWithoutExtension)
                 .OrderBy(n => n);
-            CollectionAssert.AreEqual(GameAudio.ClipNames.OrderBy(n => n), files);
+            CollectionAssert.AreEqual(AllClips.Select(GameAudio.FileName).OrderBy(n => n), files);
         }
 
         [Test]

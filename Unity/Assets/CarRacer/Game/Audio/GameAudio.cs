@@ -1,9 +1,26 @@
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using CarRacer.Core.Audio;
 using UnityEngine;
 
 namespace CarRacer.Game.Audio
 {
+    /// <summary>A clip in <c>Resources/Audio</c>, loaded from the file named for it in snake case: <c>BombThrow</c> from <c>bomb_throw.ogg</c>.</summary>
+    public enum Sfx
+    {
+        CrunchLight,
+        CrunchMedium,
+        CrunchHeavy,
+        Boost,
+        ItemBox,
+        Missile,
+        BombThrow,
+        Shockwave,
+        Shield,
+        Oil,
+        Explosion,
+    }
+
     /// <summary>
     /// Sound effects (design doc §13): CC0 clips from Kenney in <c>Resources/Audio</c>, played
     /// where they happen or, for this phone's own car, straight to the speaker; the engine's note
@@ -14,14 +31,7 @@ namespace CarRacer.Game.Audio
     {
         public const string VolumeKey = "effectsVolume";
 
-        /// <summary>Every clip in <c>Resources/Audio</c>, so a test can check they all load.</summary>
-        public static readonly string[] ClipNames =
-        {
-            "crunch_light", "crunch_medium", "crunch_heavy", "boost", "item_box",
-            "missile", "bomb_throw", "shockwave", "shield", "oil", "explosion",
-        };
-
-        private static readonly Dictionary<string, AudioClip> Clips = new Dictionary<string, AudioClip>();
+        private static readonly Dictionary<Sfx, AudioClip> Clips = new Dictionary<Sfx, AudioClip>();
         private static readonly Dictionary<UiSound, AudioClip> UiClips = new Dictionary<UiSound, AudioClip>();
         private static AudioClip _engine;
         private static AudioSource _speaker;
@@ -40,12 +50,15 @@ namespace CarRacer.Game.Audio
 
         public static void CycleVolume() => VolumeStep = SoundRules.NextVolumeStep(VolumeStep);
 
-        public static AudioClip Clip(string name)
+        /// <summary>The name of the file in <c>Resources/Audio</c>, without its extension, that <paramref name="sfx"/> is loaded from.</summary>
+        public static string FileName(Sfx sfx) => Regex.Replace(sfx.ToString(), "(?<=.)(?=[A-Z])", "_").ToLowerInvariant();
+
+        public static AudioClip Clip(Sfx sfx)
         {
-            if (!Clips.TryGetValue(name, out var clip))
+            if (!Clips.TryGetValue(sfx, out var clip))
             {
-                clip = Resources.Load<AudioClip>("Audio/" + name);
-                Clips[name] = clip;
+                clip = Resources.Load<AudioClip>("Audio/" + FileName(sfx));
+                Clips[sfx] = clip;
             }
 
             return clip;
@@ -65,9 +78,9 @@ namespace CarRacer.Game.Audio
         }
 
         /// <summary>Plays a clip in the world at <paramref name="position"/>, quieter the further it is from the camera.</summary>
-        public static void PlayAt(string name, Vector3 position, float volume = 1f)
+        public static void PlayAt(Sfx sfx, Vector3 position, float volume = 1f)
         {
-            var clip = Clip(name);
+            var clip = Clip(sfx);
             if (clip != null && Volume > 0f)
             {
                 AudioSource.PlayClipAtPoint(clip, position, volume * Volume);
@@ -75,9 +88,9 @@ namespace CarRacer.Game.Audio
         }
 
         /// <summary>Plays a clip straight to the speaker, for what happens to this phone's own car.</summary>
-        public static void Play(string name, float volume = 1f)
+        public static void Play(Sfx sfx, float volume = 1f)
         {
-            var clip = Clip(name);
+            var clip = Clip(sfx);
             if (clip != null && Volume > 0f)
             {
                 Speaker().PlayOneShot(clip, volume * Volume);

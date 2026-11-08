@@ -45,7 +45,7 @@ namespace CarRacer.Game.Driving
             car.BodyStats = (body ?? CarModels.Race).Stats;
             car.UseBodyStats(true);
             car.Smoke = CarSmoke.Build(root.transform);
-            car.WreckedNow += () => GameAudio.PlayAt("explosion", car.transform.position, 0.8f);
+            car.WreckedNow += () => GameAudio.PlayAt(Sfx.Explosion, car.transform.position, 0.8f);
             if (haptics)
             {
                 root.AddComponent<CarHaptics>();
