@@ -8,6 +8,7 @@ using UnityEditor;
 using UnityEditor.Build.Reporting;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using BuildFlag = CarRacer.Core.Session.CommandLineArguments.BuildFlag;
 
 namespace CarRacer.Editor
 {
@@ -21,21 +22,17 @@ namespace CarRacer.Editor
         public const string BootstrapScenePath = "Assets/Scenes/" + Bootstrap.SceneName + ".unity";
 
         /// <summary>
-        /// Committed debug key, relative to the Unity project. Unity otherwise signs development
-        /// builds with a per-machine debug key, and Android refuses to install a build over one
-        /// signed with a different key, so every CI run's APK would need an uninstall first.
-        /// It uses the standard Android debug credentials and must never sign a release.
-        /// </summary>
-        public const string SharedDebugKeystorePath = "Keystores/debug.keystore";
-
-        /// <summary>
         /// Restores the signing settings afterwards, so a later release build in the same session
         /// still uses the keystore configured in Player Settings rather than the public debug key.
         /// </summary>
         [MenuItem("Car Racer/Build/Development APK")]
         public static void BuildDevelopmentApk()
         {
-            PrepareProject();
+            if (!PrepareProject())
+            {
+                return;
+            }
+
             bool useCustomKeystore = PlayerSettings.Android.useCustomKeystore;
             string keystoreName = PlayerSettings.Android.keystoreName;
             string keystorePass = PlayerSettings.Android.keystorePass;
@@ -43,7 +40,7 @@ namespace CarRacer.Editor
             string keyaliasPass = PlayerSettings.Android.keyaliasPass;
             try
             {
-                UseSharedDebugKeystore();
+                Apply(AndroidSigning.SharedDebug);
                 Build("build/Android/CarRacer-dev.apk", development: true);
             }
             finally
@@ -63,19 +60,13 @@ namespace CarRacer.Editor
         [MenuItem("Car Racer/Build/Release APK")]
         public static void BuildReleaseApk()
         {
-            PrepareProject();
-            if (PlayerSettings.Android.useCustomKeystore && IsSharedDebugKeystore(PlayerSettings.Android.keystoreName))
+            if (!PrepareProject())
             {
-                Debug.LogError($"Refusing to sign a release with the shared debug keystore ({SharedDebugKeystorePath}); set a release keystore in Player Settings.");
                 return;
             }
 
             Build("build/Android/CarRacer.apk", development: false);
         }
-
-        private static bool IsSharedDebugKeystore(string keystoreName) =>
-            !string.IsNullOrEmpty(keystoreName)
-            && string.Equals(Path.GetFullPath(keystoreName), Path.GetFullPath(SharedDebugKeystorePath), StringComparison.Ordinal);
 
         /// <summary>
         /// A plain Linux player, which hosts with no player when run with
@@ -86,8 +77,7 @@ namespace CarRacer.Editor
         [MenuItem("Car Racer/Build/Linux Server")]
         public static void BuildLinuxServer()
         {
-            PrepareProject(BuildTarget.StandaloneLinux64);
-            if (Build(DefaultLinuxServerPath, BuildTarget.StandaloneLinux64, development: false))
+            if (PrepareProject(BuildTarget.StandaloneLinux64) && Build(DefaultLinuxServerPath, BuildTarget.StandaloneLinux64, development: false))
             {
                 CopyServerMusic(DefaultLinuxServerPath);
             }
@@ -99,13 +89,18 @@ namespace CarRacer.Editor
         public static void BuildLinuxServerFromCommandLine()
         {
             var args = ParseArguments(Environment.GetCommandLineArgs());
-            PrepareProject(BuildTarget.StandaloneLinux64);
-            if (args.TryGetValue("buildVersion", out string version) && !string.IsNullOrEmpty(version))
+            if (!PrepareProject(BuildTarget.StandaloneLinux64))
+            {
+                EditorApplication.Exit(1);
+                return;
+            }
+
+            if (args.TryGetValue(BuildFlag.BuildVersion, out string version) && !string.IsNullOrEmpty(version))
             {
                 PlayerSettings.bundleVersion = version;
             }
 
-            string output = args.TryGetValue("customBuildPath", out string path) && !string.IsNullOrEmpty(path) ? path : DefaultLinuxServerPath;
+            string output = args.TryGetValue(BuildFlag.CustomBuildPath, out string path) && !string.IsNullOrEmpty(path) ? path : DefaultLinuxServerPath;
             bool succeeded = Build(output, BuildTarget.StandaloneLinux64, development: false) && CopyServerMusic(output);
             EditorApplication.Exit(succeeded ? 0 : 1);
         }
@@ -149,39 +144,26 @@ namespace CarRacer.Editor
         public static void BuildFromCommandLine()
         {
             var args = ParseArguments(Environment.GetCommandLineArgs());
-            PrepareProject();
+            if (!PrepareProject())
+            {
+                EditorApplication.Exit(1);
+                return;
+            }
 
-            if (args.TryGetValue("buildVersion", out string version) && !string.IsNullOrEmpty(version))
+            if (args.TryGetValue(BuildFlag.BuildVersion, out string version) && !string.IsNullOrEmpty(version))
             {
                 PlayerSettings.bundleVersion = version;
             }
 
-            if (args.TryGetValue("androidVersionCode", out string code) && int.TryParse(code, out int versionCode) && versionCode > 0)
+            if (args.TryGetValue(BuildFlag.AndroidVersionCode, out string code) && int.TryParse(code, out int versionCode) && versionCode > 0)
             {
                 PlayerSettings.Android.bundleVersionCode = versionCode;
             }
 
             bool development = args.ContainsKey("carRacerDevelopment");
-            if (args.TryGetValue("androidKeystoreName", out string keystore) && !string.IsNullOrEmpty(keystore))
-            {
-                PlayerSettings.Android.useCustomKeystore = true;
-                PlayerSettings.Android.keystoreName = keystore;
-                PlayerSettings.Android.keystorePass = args.TryGetValue("androidKeystorePass", out string kp) ? kp : string.Empty;
-                PlayerSettings.Android.keyaliasName = args.TryGetValue("androidKeyaliasName", out string an) ? an : string.Empty;
-                PlayerSettings.Android.keyaliasPass = args.TryGetValue("androidKeyaliasPass", out string ap) ? ap : string.Empty;
-            }
-            else if (development)
-            {
-                UseSharedDebugKeystore();
-            }
-            else
-            {
-                // A non-development build without a release keystore falls back to Unity's per-machine
-                // debug key, never the public shared one.
-                PlayerSettings.Android.useCustomKeystore = false;
-            }
+            Apply(AndroidSigning.FromArguments(args, development));
 
-            string output = args.TryGetValue("customBuildPath", out string path) && !string.IsNullOrEmpty(path)
+            string output = args.TryGetValue(BuildFlag.CustomBuildPath, out string path) && !string.IsNullOrEmpty(path)
                 ? path
                 : "build/Android/CarRacer.apk";
 
@@ -189,27 +171,76 @@ namespace CarRacer.Editor
             EditorApplication.Exit(succeeded ? 0 : 1);
         }
 
-        private static void UseSharedDebugKeystore()
+        /// <summary>Leaves the keystore settings alone when <paramref name="signing"/> uses Unity's own debug key.</summary>
+        private static void Apply(AndroidSigning signing)
         {
-            PlayerSettings.Android.useCustomKeystore = true;
-            PlayerSettings.Android.keystoreName = SharedDebugKeystorePath;
-            PlayerSettings.Android.keystorePass = "android";
-            PlayerSettings.Android.keyaliasName = "androiddebugkey";
-            PlayerSettings.Android.keyaliasPass = "android";
+            PlayerSettings.Android.useCustomKeystore = signing.UseCustomKeystore;
+            if (signing.UseCustomKeystore)
+            {
+                PlayerSettings.Android.keystoreName = signing.KeystoreName;
+                PlayerSettings.Android.keystorePass = signing.KeystorePass;
+                PlayerSettings.Android.keyaliasName = signing.KeyaliasName;
+                PlayerSettings.Android.keyaliasPass = signing.KeyaliasPass;
+            }
         }
 
-        private static void PrepareProject(BuildTarget target = BuildTarget.Android)
+        /// <summary>
+        /// Applies the settings a build needs, or returns false if the editor isn't on
+        /// <paramref name="target"/>. A build can't follow a platform switch in the same call: the
+        /// switch recompiles scripts only on the next editor update, so editor code compiled for the
+        /// old platform would still run, and an APK would lose everything inside
+        /// <c>#if UNITY_ANDROID</c> (<see cref="ProjectConfigurator"/>'s icons, and the manifest's
+        /// permissions and deep link).
+        /// </summary>
+        private static bool PrepareProject(BuildTarget target = BuildTarget.Android)
         {
-            if (EditorUserBuildSettings.activeBuildTarget != target)
+            var active = EditorUserBuildSettings.activeBuildTarget;
+            if (active != target)
             {
-                EditorUserBuildSettings.SwitchActiveBuildTarget(BuildPipeline.GetBuildTargetGroup(target), target);
+                if (Application.isBatchMode)
+                {
+                    Debug.LogError($"The editor is on {active}, not {target}; start it with -buildTarget {target}.");
+                }
+                else if (EditorUserBuildSettings.SwitchActiveBuildTarget(BuildPipeline.GetBuildTargetGroup(target), target))
+                {
+                    Debug.LogError($"Switched the editor from {active} to {target}; build again once its scripts recompile.");
+                }
+                else
+                {
+                    Debug.LogError($"Couldn't switch the editor from {active} to {target}; check that its build support module is installed.");
+                }
+
+                return false;
             }
 
             ProjectConfigurator.Apply();
             EnsureBootstrapScene();
+            return true;
         }
 
-        private static bool Build(string outputPath, bool development) => Build(outputPath, BuildTarget.Android, development);
+        /// <summary>
+        /// Every `BuildScript` Android build comes through here, so the rule that a release is never signed with the
+        /// shared debug keystore holds for whichever entry point set the signing up. A build started outside
+        /// `BuildScript`, such as the File > Build window, does not.
+        /// </summary>
+        private static bool Build(string outputPath, bool development)
+        {
+            var signing = new AndroidSigning(
+                PlayerSettings.Android.useCustomKeystore,
+                PlayerSettings.Android.keystoreName,
+                PlayerSettings.Android.keystorePass,
+                PlayerSettings.Android.keyaliasName,
+                PlayerSettings.Android.keyaliasPass);
+            if (!signing.IsAllowedFor(development))
+            {
+                Debug.LogError(
+                    $"Refusing to sign a release with the shared debug keystore ({AndroidSigning.SharedDebugKeystorePath}); "
+                    + "use a release keystore.");
+                return false;
+            }
+
+            return Build(outputPath, BuildTarget.Android, development);
+        }
 
         private static bool Build(string outputPath, BuildTarget target, bool development)
         {

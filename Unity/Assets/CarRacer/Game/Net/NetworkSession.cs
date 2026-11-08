@@ -160,9 +160,7 @@ namespace CarRacer.Game.Net
                 return HostLatencyGuessMs;
             }
 
-            float toHost = GuestSide.Clock.HasEstimate ? GuestSide.Clock.OneWayLatencyMs : HostLatencyGuessMs;
-            bool fromHost = playerId == HostPlayerIdFromRoster();
-            return fromHost ? toHost : 2f * toHost;
+            return GuestSide.CarLatencyMs(playerId, HostLatencyGuessMs);
         }
 
         /// <summary>
@@ -177,8 +175,9 @@ namespace CarRacer.Game.Net
             if (IsHost)
             {
                 var random = new System.Random();
-                Race = new HostRace(HostSide, checkpointCounts, () => NowMs, fractionToNextCheckpoint, carPositions);
-                Items = new HostItems(HostSide, Race, itemBoxes, () => NowMs, random.NextDouble, carPositions);
+                var race = new HostRace(HostSide, checkpointCounts, () => NowMs, fractionToNextCheckpoint, carPositions);
+                Race = race;
+                Items = new HostItems(HostSide, race, itemBoxes, () => NowMs, random.NextDouble, carPositions);
             }
             else
             {
@@ -335,7 +334,11 @@ namespace CarRacer.Game.Net
             using (var writer = new FastBufferWriter(frame.Length, Allocator.Temp))
             {
                 writer.WriteBytesSafe(frame);
-                var delivery = reliable ? NetworkDelivery.ReliableSequenced : NetworkDelivery.Unreliable;
+
+                // Fragmented, because NGO throws on an unfragmented message over its `NonFragmentedMessageMaxSize`
+                // (about 1.3 KB) and a TV status can be twice that. Unity Transport sends both kinds down the same
+                // reliable pipeline.
+                var delivery = reliable ? NetworkDelivery.ReliableFragmentedSequenced : NetworkDelivery.Unreliable;
                 _network.CustomMessagingManager.SendNamedMessage(MessageName, connection, writer, delivery);
             }
 
@@ -354,10 +357,9 @@ namespace CarRacer.Game.Net
 
         private void OnNamedMessage(ulong sender, FastBufferReader reader)
         {
-            // The sender picks the size, so copy no more than a legal frame.
-            int size = Math.Min(
-                reader.Length - reader.Position,
-                MessageCodec.FrameHeaderBytes + MessageCodec.MaxMessageBytes);
+            // Exactly the bytes NGO delivered, so the length the frame claims is checked against what arrived rather
+            // than trusted.
+            int size = reader.Length - reader.Position;
             var frame = new byte[size];
             reader.ReadBytesSafe(ref frame, size);
             PerfOverlay.Traffic.Received(size, Time.realtimeSinceStartupAsDouble);
@@ -369,7 +371,7 @@ namespace CarRacer.Game.Net
         {
             if (!MessageCodec.TryDecodeFrame(frame, out var message, out string error))
             {
-                Debug.LogWarning($"Dropped a malformed message from client {sender}: {error}");
+                Debug.LogWarning($"Dropped a malformed message from connection {sender}: {error}");
                 return;
             }
 
@@ -485,20 +487,6 @@ namespace CarRacer.Game.Net
             Status = reason;
             _announcer?.Dispose();
             _announcer = null;
-        }
-
-        private byte HostPlayerIdFromRoster()
-        {
-            foreach (var p in GuestSide.Roster.Players)
-            {
-                if (p.IsHost)
-                {
-                    return p.PlayerId;
-                }
-            }
-
-            // A dedicated host has no car: every other car comes through it.
-            return HostSession.NoPlayer;
         }
     }
 }

@@ -88,31 +88,30 @@ namespace CarRacer.Core.Tests
         [InlineData(0)]
         [InlineData(-1)]
         [InlineData(int.MinValue)]
-        [InlineData(MessageCodec.MaxMessageBytes + 1)]
-        [InlineData(int.MaxValue)]
-        public void ALengthOutsideOneToTheCapIsDropped(int declaredLength)
+        public void ANonPositiveLengthIsDropped(int declaredLength)
         {
             byte[] frame = Frame(declaredLength, MessageCodec.Encode(new SetReadyMessage { Ready = true }));
 
             Assert.False(MessageCodec.TryDecodeFrame(frame, out var message, out string error));
             Assert.Null(message);
-            Assert.Contains("outside 1 to 2048", error);
+            Assert.Contains("not positive", error);
         }
 
         [Fact]
-        public void TheCapIsInclusive()
+        public void TheLargestTvStatusIsRead()
         {
-            // The join handshake is the one message that tolerates bytes it doesn't know, so it pads to any size.
-            byte[] join = MessageCodec.Encode(new JoinRequestMessage { ProtocolVersion = 2, PlayerName = "Zoë" });
-            byte[] atTheCap = join.Concat(new byte[MessageCodec.MaxMessageBytes - join.Length]).ToArray();
-            byte[] overTheCap = atTheCap.Concat(new byte[1]).ToArray();
+            // No size cap stands in its way: eight TV names and two reasons, all at the `Fit` limit, are over 2.5 KB.
+            string longest = new string('x', NetWriter.MaxStringBytes);
+            var status = new TvStatusMessage { CastingTo = longest, Detail = longest };
+            for (int i = 0; i < TvStatusMessage.MaxDevices; i++)
+            {
+                status.Devices.Add(longest);
+            }
 
-            byte[] full = Frame(atTheCap.Length, atTheCap);
-            byte[] over = Frame(overTheCap.Length, overTheCap);
+            byte[] frame = MessageCodec.EncodeFrame(status);
 
-            Assert.True(MessageCodec.TryDecodeFrame(full, out var message, out string error), error);
-            Assert.IsType<JoinRequestMessage>(message);
-            Assert.False(MessageCodec.TryDecodeFrame(over, out _, out _));
+            Assert.True(MessageCodec.TryDecodeFrame(frame, out var message, out string error), error);
+            Assert.Equal(status, Assert.IsType<TvStatusMessage>(message));
         }
 
         [Theory]
@@ -137,10 +136,12 @@ namespace CarRacer.Core.Tests
             Assert.Contains("truncated", error);
         }
 
-        [Fact]
-        public void ALengthLongerThanTheFrameIsDroppedRatherThanThrown()
+        [Theory]
+        [InlineData(4096)]
+        [InlineData(int.MaxValue)]
+        public void ALengthLongerThanTheFrameIsDroppedRatherThanThrown(int declaredLength)
         {
-            byte[] frame = Frame(MessageCodec.MaxMessageBytes, MessageCodec.Encode(new SetReadyMessage { Ready = true }));
+            byte[] frame = Frame(declaredLength, MessageCodec.Encode(new SetReadyMessage { Ready = true }));
 
             Assert.False(MessageCodec.TryDecodeFrame(frame, out var message, out string error));
             Assert.Null(message);

@@ -14,7 +14,6 @@ namespace CarRacer.Game.Net
     public sealed class RemoteCar : MonoBehaviour
     {
         private const float HeadingSharpness = 20f;
-        private const float DriftVisualYawDegrees = 22f;
 
         private readonly RemoteCarPredictor _predictor = new RemoteCarPredictor();
         private Transform _visual;
@@ -72,7 +71,7 @@ namespace CarRacer.Game.Net
             {
                 var forward = new Vector3(Mathf.Sin(latest.HeadingRadians), 0f, Mathf.Cos(latest.HeadingRadians));
                 var right = new Vector3(forward.z, 0f, -forward.x);
-                targetDrift = -Mathf.Sign(Vector3.Dot(latest.Velocity.ToUnity(), right)) * DriftVisualYawDegrees;
+                targetDrift = -Mathf.Sign(Vector3.Dot(latest.Velocity.ToUnity(), right)) * CarController.DriftVisualYawDegrees;
             }
 
             ShieldRing.Show(_shieldRing, (latest.Flags & CarStateFlags.Shielded) != 0);

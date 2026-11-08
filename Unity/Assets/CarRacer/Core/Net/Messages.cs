@@ -303,9 +303,6 @@ namespace CarRacer.Core.Net
         /// <summary>The length ahead of every message on the wire, a little-endian int.</summary>
         public const int FrameHeaderBytes = sizeof(int);
 
-        /// <summary>Messages are a few dozen bytes; anything bigger than this is malformed.</summary>
-        public const int MaxMessageBytes = 2048;
-
         public static byte[] Encode(IGameMessage message)
         {
             var writer = new NetWriter();
@@ -342,9 +339,9 @@ namespace CarRacer.Core.Net
                 }
 
                 int length = frame[0] | (frame[1] << 8) | (frame[2] << 16) | (frame[3] << 24);
-                if (length <= 0 || length > MaxMessageBytes)
+                if (length <= 0)
                 {
-                    throw new NetFormatException($"Message length {length} is outside 1 to {MaxMessageBytes}.");
+                    throw new NetFormatException($"Message length {length} is not positive.");
                 }
 
                 int remaining = frame.Length - FrameHeaderBytes;

@@ -160,8 +160,9 @@ namespace CarRacer.Core.Bots
                 return false;
             }
 
-            foreach (var rival in rivals)
+            for (int i = 0; i < rivals.Count; i++)
             {
+                var rival = rivals[i];
                 var offset = (rival - position).Flattened;
                 float distance = offset.LengthSquared;
                 if (distance < best && distance > 1e-4f && Math.Abs(Angles.WrapSigned(Angles.Heading(offset) - state.Heading)) <= RamCone)

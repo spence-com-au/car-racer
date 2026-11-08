@@ -95,9 +95,9 @@ namespace CarRacer.Game.Audio
         private void OnPushed(Vector3 impulse)
         {
             var (size, volume) = SoundRules.Crunch(new Vector2(impulse.x, impulse.z).magnitude, BumpMonitor.ReducedMass, _bumpSettings);
-            GameAudio.Play(size == CrunchSize.Heavy ? "crunch_heavy" : size == CrunchSize.Medium ? "crunch_medium" : "crunch_light", volume);
+            GameAudio.Play(size == CrunchSize.Heavy ? Sfx.CrunchHeavy : size == CrunchSize.Medium ? Sfx.CrunchMedium : Sfx.CrunchLight, volume);
         }
 
-        private void OnBoostReleased(int tier) => GameAudio.Play("boost", 0.5f + 0.15f * tier);
+        private void OnBoostReleased(int tier) => GameAudio.Play(Sfx.Boost, 0.5f + 0.15f * tier);
     }
 }
