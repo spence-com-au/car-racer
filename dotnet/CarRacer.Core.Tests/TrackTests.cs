@@ -154,6 +154,12 @@ namespace CarRacer.Core.Tests
             Assert.Equal(0.5f, Oval.FractionToNextCheckpoint(spacing * 2.5f, nextCheckpoint: 3), 3);
             // On the grid (behind the line) heading for checkpoint 0: nearly complete.
             Assert.Equal(1f - 5f / spacing, Oval.FractionToNextCheckpoint(Oval.Spline.Length - 5f, nextCheckpoint: 0), 3);
+
+            // Crossed checkpoint 3 then pushed back behind it: not yet started on the segment.
+            Assert.Equal(0f, Oval.FractionToNextCheckpoint(spacing * 3f - 1f, nextCheckpoint: 4));
+
+            // Just past checkpoint 4 without it registering: the segment is complete.
+            Assert.Equal(1f, Oval.FractionToNextCheckpoint(spacing * 4f + 1f, nextCheckpoint: 4));
         }
 
         [Fact]
