@@ -155,8 +155,8 @@ namespace CarRacer.Core.Tests
             var reply = Reply("Chromecast-abc123", "Living Room TV", "Chromecast", "abc123", new byte[] { 192, 168, 1, 50 }, 8009, includeAddress: true);
             for (int length = 0; length < reply.Length; length++)
             {
-                // Never throws, whatever is cut off.
-                Mdns.ParseReply(reply, length, IPAddress.Loopback);
+                // Nothing is half-parsed, and nothing throws, whatever is cut off.
+                Assert.Empty(Mdns.ParseReply(reply, length, IPAddress.Loopback));
             }
 
             // A pointer that loops on itself.
