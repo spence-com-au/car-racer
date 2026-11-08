@@ -63,11 +63,14 @@ namespace CarRacer.Core.Tests
             settings.Rules = new EventRules(false, true, true);
             Assert.Equal("Sumo. Rules: no damage", EventText.SettingsSummary(settings));
             settings.Cup = 1;
-            Assert.StartsWith(Scoring.Cups.All[0].Name, EventText.SettingsSummary(settings));
+            Assert.Equal(Scoring.Cups.All[0].Name + ". Rules: no damage", EventText.SettingsSummary(settings));
+
+            // An out-of-range cup and track fall back to the first track in a plain race.
             settings.Cup = 99;
             settings.Mode = GameMode.Race;
             settings.Track = -5;
-            Assert.StartsWith("Race, ", EventText.SettingsSummary(settings));
+            settings.Rules = EventRules.Default;
+            Assert.Equal("Race, 3 laps, Pebble Oval", EventText.SettingsSummary(settings));
         }
     }
 
