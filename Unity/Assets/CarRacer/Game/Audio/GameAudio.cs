@@ -1,26 +1,9 @@
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 using CarRacer.Core.Audio;
 using UnityEngine;
 
 namespace CarRacer.Game.Audio
 {
-    /// <summary>A clip in <c>Resources/Audio</c>, loaded from the file named for it in snake case: <c>BombThrow</c> from <c>bomb_throw.ogg</c>.</summary>
-    public enum Sfx
-    {
-        CrunchLight,
-        CrunchMedium,
-        CrunchHeavy,
-        Boost,
-        ItemBox,
-        Missile,
-        BombThrow,
-        Shockwave,
-        Shield,
-        Oil,
-        Explosion,
-    }
-
     /// <summary>
     /// Sound effects (design doc §13): CC0 clips from Kenney in <c>Resources/Audio</c>, played
     /// where they happen or, for this phone's own car, straight to the speaker; the engine's note
@@ -50,14 +33,11 @@ namespace CarRacer.Game.Audio
 
         public static void CycleVolume() => VolumeStep = SoundRules.NextVolumeStep(VolumeStep);
 
-        /// <summary>The name of the file in <c>Resources/Audio</c>, without its extension, that <paramref name="sfx"/> is loaded from.</summary>
-        public static string FileName(Sfx sfx) => Regex.Replace(sfx.ToString(), "(?<=.)(?=[A-Z])", "_").ToLowerInvariant();
-
         public static AudioClip Clip(Sfx sfx)
         {
             if (!Clips.TryGetValue(sfx, out var clip))
             {
-                clip = Resources.Load<AudioClip>("Audio/" + FileName(sfx));
+                clip = Resources.Load<AudioClip>("Audio/" + sfx.FileName());
                 Clips[sfx] = clip;
             }
 

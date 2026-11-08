@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using CarRacer.Core.Arena;
 using CarRacer.Core.Art;
+using CarRacer.Core.Audio;
 using CarRacer.Core.Items;
 using CarRacer.Core.Net;
 using CarRacer.Core.Physics;

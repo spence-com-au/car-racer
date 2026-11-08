@@ -29,7 +29,7 @@ namespace CarRacer.Tests
             var files = Directory.GetFiles(Path.Combine(Application.dataPath, "CarRacer/Resources/Audio"), "*.ogg")
                 .Select(Path.GetFileNameWithoutExtension)
                 .OrderBy(n => n);
-            CollectionAssert.AreEqual(AllClips.Select(GameAudio.FileName).OrderBy(n => n), files);
+            CollectionAssert.AreEqual(AllClips.Select(sfx => sfx.FileName()).OrderBy(n => n), files);
         }
 
         [Test]
