@@ -44,15 +44,26 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
-        public void LocalAddressesAreIPv4AndNeverLoopback()
+        public void UsableKeepsOnlyDistinctNonLoopbackIPv4InOrder()
         {
-            foreach (string address in HostAddress.LocalIPv4Addresses())
+            var usable = HostAddress.Usable(new[]
             {
-                var parsed = IPAddress.Parse(address);
-                Assert.Equal(System.Net.Sockets.AddressFamily.InterNetwork, parsed.AddressFamily);
-                Assert.False(IPAddress.IsLoopback(parsed), address);
-                Assert.True(HostAddress.TryParse(address, out _, out _), address);
-            }
+                IPAddress.Parse("127.0.0.1"),
+                IPAddress.Parse("fe80::1"),
+                IPAddress.Parse("::1"),
+                IPAddress.Any,
+                IPAddress.Parse("192.168.1.23"),
+                IPAddress.Parse("10.0.0.7"),
+                IPAddress.Parse("192.168.1.23"),
+            });
+
+            Assert.Equal(new[] { "192.168.1.23", "10.0.0.7" }, usable);
+        }
+
+        [Fact]
+        public void UsableIsEmptyWithNothingUsable()
+        {
+            Assert.Empty(HostAddress.Usable(new[] { IPAddress.Loopback, IPAddress.IPv6Loopback }));
         }
     }
 }
