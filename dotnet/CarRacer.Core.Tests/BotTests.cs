@@ -265,6 +265,34 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void OnlyCarsStillRacingCountAsAhead()
+        {
+            var standings = new StandingsMessage();
+            standings.Order.Add(new StandingsEntry { PlayerId = 1, FinishPosition = 1 });
+            standings.Order.Add(new StandingsEntry { PlayerId = 2 });
+            standings.Order.Add(new StandingsEntry { PlayerId = 3 });
+
+            // 2nd behind a winner who has finished: nothing left for Lightning or a Seeker to go after.
+            Assert.Empty(standings.RacingAhead(2));
+
+            // 3rd behind a 2nd still racing: that car, but not the winner.
+            Assert.Equal(new byte[] { 2 }, standings.RacingAhead(3));
+        }
+
+        [Fact]
+        public void HasRacingAheadSkipsCarsThatHaveFinished()
+        {
+            var standings = new StandingsMessage();
+            standings.Order.Add(new StandingsEntry { PlayerId = 1, FinishPosition = 1 });
+            standings.Order.Add(new StandingsEntry { PlayerId = 2 });
+            standings.Order.Add(new StandingsEntry { PlayerId = 3 });
+
+            Assert.False(standings.HasRacingAhead(1)); // the winner: nobody ahead at all
+            Assert.False(standings.HasRacingAhead(2)); // only the finished winner ahead
+            Assert.True(standings.HasRacingAhead(3)); // a 2nd still racing ahead
+        }
+
+        [Fact]
         public void AnItemHeldTooLongIsUsedAnyway()
         {
             Assert.True(BotItems.ShouldUse(ItemKind.Missile, BotItems.GiveUpSeconds, Normal, Nobody));

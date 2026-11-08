@@ -18,7 +18,9 @@ namespace CarRacer.Core.Bots
         /// <summary>The track just ahead is a straight (see <see cref="BotDriver.CurvatureAhead"/>).</summary>
         public bool OnStraight;
 
-        /// <summary>A car is ahead in the standings, so a Missile has something to chase.</summary>
+        /// <summary>
+        /// A car still racing is ahead in the standings, so a Missile, Lightning or Seeker has a target.
+        /// </summary>
         public bool HasCarAhead;
     }
 
@@ -26,7 +28,7 @@ namespace CarRacer.Core.Bots
     /// When a bot uses its item (design doc §9: "use items opportunistically"). Each item waits for
     /// its moment: Boost on a straight, Shockwave with a rival close by, Missile when there is a car
     /// ahead, Oil or a Fake box with a rival behind, Bomb with a rival in front, Lightning and Seeker
-    /// whenever anyone is ahead in the standings. Nothing is used before the bot's
+    /// whenever anyone still racing is ahead in the standings. Nothing is used before the bot's
     /// skill delay, and anything held too long is used anyway.
     /// </summary>
     public static class BotItems
@@ -46,7 +48,7 @@ namespace CarRacer.Core.Bots
         /// What a bot at <paramref name="position"/> facing <paramref name="forward"/> can see: the nearest of
         /// <paramref name="rivals"/> in front (on or ahead of the line through the bot at right angles to its heading)
         /// and behind, flattened to the ground plane, whether the bend ahead is straight (a driver with no track, such
-        /// as an arena driver, passes 0) and whether anyone leads it in <paramref name="standings"/>.
+        /// as an arena driver, passes 0) and whether anyone still racing leads it in <paramref name="standings"/>.
         /// </summary>
         public static BotItemSituation Observe(
             Vec3 position,
@@ -61,7 +63,7 @@ namespace CarRacer.Core.Bots
                 NearestAhead = float.PositiveInfinity,
                 NearestBehind = float.PositiveInfinity,
                 OnStraight = curvatureAhead < StraightCurvature,
-                HasCarAhead = standings != null && standings.Order.Count > 0 && standings.Order[0].PlayerId != playerId,
+                HasCarAhead = standings != null && standings.HasRacingAhead(playerId),
             };
 
             // Indexed rather than `foreach`, which would box the list's enumerator on every call.
