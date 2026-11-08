@@ -19,16 +19,47 @@ namespace CarRacer.Core.Tests
         public List<T> To<T>(ulong connection) => Sent.Where(s => s.To == connection).Select(s => s.Message).OfType<T>().ToList();
     }
 
-    /// <summary>The host's end of a loopback to one guest: records each message and hands it straight to the guest.</summary>
+    /// <summary>
+    /// The host's end of a loopback to one guest: records each message and hands it straight to the guest, unless held
+    /// back to simulate latency.
+    /// </summary>
     internal sealed class HostLink : ISessionTransport
     {
         public readonly List<IGameMessage> Sent = new List<IGameMessage>();
+        public readonly List<IGameMessage> SentUnreliably = new List<IGameMessage>();
         public GuestSession Guest;
+        public bool HoldBack;
+
+        private readonly List<IGameMessage> _held = new List<IGameMessage>();
 
         public void Send(ulong connection, IGameMessage message, bool reliable)
         {
             Sent.Add(message);
-            Guest?.OnMessage(message);
+            if (!reliable)
+            {
+                SentUnreliably.Add(message);
+            }
+
+            if (HoldBack)
+            {
+                _held.Add(message);
+            }
+            else
+            {
+                Guest?.OnMessage(message);
+            }
+        }
+
+        /// <summary>Stops holding messages back and delivers those held so far, in the order they were sent.</summary>
+        public void Release()
+        {
+            HoldBack = false;
+            foreach (var message in _held)
+            {
+                Guest.OnMessage(message);
+            }
+
+            _held.Clear();
         }
 
         public void Disconnect(ulong connection)
@@ -48,14 +79,26 @@ namespace CarRacer.Core.Tests
         }
     }
 
-    /// <summary>A guest's end of a loopback: hands each message straight to the host, from <see cref="Connection"/>.</summary>
+    /// <summary>
+    /// A guest's end of a loopback: records each message and hands it straight to the host, from
+    /// <see cref="Connection"/>, unless dropped.
+    /// </summary>
     internal sealed class GuestLink : ISessionTransport
     {
         public const ulong Connection = 7;
 
+        public readonly List<IGameMessage> Sent = new List<IGameMessage>();
         public HostSession Host;
+        public bool Drop;
 
-        public void Send(ulong connection, IGameMessage message, bool reliable) => Host.OnMessage(Connection, message);
+        public void Send(ulong connection, IGameMessage message, bool reliable)
+        {
+            Sent.Add(message);
+            if (!Drop)
+            {
+                Host.OnMessage(Connection, message);
+            }
+        }
 
         public void Disconnect(ulong connection)
         {

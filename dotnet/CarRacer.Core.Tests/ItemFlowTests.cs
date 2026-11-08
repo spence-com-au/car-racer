@@ -61,74 +61,9 @@ namespace CarRacer.Core.Tests
     public class ItemFlowTests
     {
         private const ushort Version = 18;
-        private const ulong GuestConnection = 7;
         private const long GuestClockBehindMs = 1_000_000;
 
         private static readonly List<Vec3> BoxPositions = new List<Vec3> { new Vec3(0f, 0.75f, 20f), new Vec3(3f, 0.75f, 20f) };
-
-        /// <summary>Delivers the host's messages to the guest, unless held back to simulate latency.</summary>
-        private sealed class HostLink : ISessionTransport
-        {
-            public readonly List<IGameMessage> Sent = new List<IGameMessage>();
-            public readonly List<IGameMessage> Held = new List<IGameMessage>();
-            public readonly List<IGameMessage> SentUnreliably = new List<IGameMessage>();
-            public GuestSession Guest;
-            public bool HoldBack;
-
-            public void Send(ulong connection, IGameMessage message, bool reliable)
-            {
-                Sent.Add(message);
-                if (!reliable)
-                {
-                    SentUnreliably.Add(message);
-                }
-
-                if (HoldBack)
-                {
-                    Held.Add(message);
-                }
-                else
-                {
-                    Guest?.OnMessage(message);
-                }
-            }
-
-            public void Release()
-            {
-                HoldBack = false;
-                foreach (var m in Held)
-                {
-                    Guest.OnMessage(m);
-                }
-
-                Held.Clear();
-            }
-
-            public void Disconnect(ulong connection)
-            {
-            }
-        }
-
-        /// <summary>Delivers the guest's messages to the host, unless dropped.</summary>
-        private sealed class GuestLink : ISessionTransport
-        {
-            public readonly List<IGameMessage> Sent = new List<IGameMessage>();
-            public HostSession Host;
-            public bool Drop;
-
-            public void Send(ulong connection, IGameMessage message, bool reliable)
-            {
-                Sent.Add(message);
-                if (!Drop)
-                {
-                    Host.OnMessage(GuestConnection, message);
-                }
-            }
-
-            public void Disconnect(ulong connection)
-            {
-            }
-        }
 
         private long _now = 10_000;
         private double _nextRandom = 0.0;
@@ -218,7 +153,7 @@ namespace CarRacer.Core.Tests
             Assert.False(_guestItems.ClaimTouchedBox(BoxPositions[1]));
 
             // Even a claim that gets through is refused.
-            _host.OnMessage(GuestConnection, new ItemBoxClaimMessage { PlayerId = GuestId, BoxIndex = 1 });
+            _host.OnMessage(GuestLink.Connection, new ItemBoxClaimMessage { PlayerId = GuestId, BoxIndex = 1 });
             Assert.Empty(_hostLink.Sent.OfType<ItemBoxTakenMessage>());
         }
 
@@ -279,7 +214,7 @@ namespace CarRacer.Core.Tests
             Assert.True(_guestItems.Boxes.IsUp(1, _now - GuestClockBehindMs));
 
             // Even if a claim gets through, the host refuses a player whose slot is full.
-            _host.OnMessage(GuestConnection, new ItemBoxClaimMessage { PlayerId = GuestId, BoxIndex = 1 });
+            _host.OnMessage(GuestLink.Connection, new ItemBoxClaimMessage { PlayerId = GuestId, BoxIndex = 1 });
             Assert.Single(_hostLink.Sent.OfType<ItemBoxTakenMessage>());
             Assert.True(_hostItems.Boxes.IsUp(1, _now));
         }
@@ -363,7 +298,7 @@ namespace CarRacer.Core.Tests
         public void TheHostRefusesAnItemThePlayerDoesNotHold()
         {
             StartRacing();
-            _host.OnMessage(GuestConnection, new ItemUsedMessage { PlayerId = GuestId, Item = ItemKind.Missile });
+            _host.OnMessage(GuestLink.Connection, new ItemUsedMessage { PlayerId = GuestId, Item = ItemKind.Missile });
             Assert.Empty(_hostSaw);
             Assert.Empty(_hostLink.Sent.OfType<ItemUsedMessage>());
         }
@@ -372,7 +307,7 @@ namespace CarRacer.Core.Tests
         public void AGuestCannotSpeakForAnotherPlayer()
         {
             StartRacing();
-            _host.OnMessage(GuestConnection, new ItemBoxClaimMessage { PlayerId = _host.HostPlayerId, BoxIndex = 0 });
+            _host.OnMessage(GuestLink.Connection, new ItemBoxClaimMessage { PlayerId = _host.HostPlayerId, BoxIndex = 0 });
             Assert.Empty(_hostLink.Sent.OfType<ItemBoxTakenMessage>());
         }
 
@@ -451,7 +386,7 @@ namespace CarRacer.Core.Tests
             StartRacing();
             Assert.True(_guestItems.ClaimTouchedBox(BoxPositions[0]));
             var held = _hostItems.Slots.Held(GuestId);
-            _host.OnDisconnected(GuestConnection);
+            _host.OnDisconnected(GuestLink.Connection);
             Assert.Equal(held, _hostItems.Slots.Held(GuestId));
             Assert.Equal(held, _hostItems.UseHeldForBot(GuestId, Vec3.Zero, Vec3.Zero, 0f));
         }
@@ -464,7 +399,7 @@ namespace CarRacer.Core.Tests
             var held = _guestItems.Held;
             _now += HostSession.AwayAfterMs;
             _host.Tick();
-            Assert.True(_host.IsAway(GuestId));
+            Assert.True(_host.IsBot(GuestId));
             Assert.Equal(held, _hostItems.UseHeldForBot(GuestId, Vec3.Zero, Vec3.Zero, 0f));
 
             Assert.Equal(ItemKind.None, _guestItems.Held);
@@ -524,7 +459,7 @@ namespace CarRacer.Core.Tests
         public void APlayerWhoLeavesTheLobbyLosesTheirSlot()
         {
             _hostItems.Slots.Give(GuestId, ItemKind.Bomb);
-            _host.OnDisconnected(GuestConnection);
+            _host.OnDisconnected(GuestLink.Connection);
             Assert.Equal(ItemKind.None, _hostItems.Slots.Held(GuestId));
         }
 
@@ -538,7 +473,7 @@ namespace CarRacer.Core.Tests
             }
             else
             {
-                _host.OnMessage(GuestConnection, new ItemUsedMessage { PlayerId = player, Item = item, Position = position });
+                _host.OnMessage(GuestLink.Connection, new ItemUsedMessage { PlayerId = player, Item = item, Position = position });
             }
         }
 

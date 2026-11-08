@@ -11,6 +11,9 @@ namespace CarRacer.Core.Track
     /// </summary>
     public static class TrackCatalog
     {
+        /// <summary>Each track's grass reaches this far beyond its road.</summary>
+        public const float GroundMargin = 60f;
+
         /// <summary>Where each of <see cref="SampleTracks.All"/> is moved to, in the same order.</summary>
         private static readonly Vec3[] Offsets =
         {
@@ -50,6 +53,25 @@ namespace CarRacer.Core.Track
             }
 
             return layouts;
+        }
+
+        /// <summary>
+        /// The patch of grass the scene lays under <paramref name="layout"/>: the extent of its road's
+        /// centre line, <see cref="GroundMargin"/> wider all round. It stays clear of every other
+        /// track's ground and of the arenas'.
+        /// </summary>
+        public static (float MinX, float MaxX, float MinZ, float MaxZ) Ground(TrackLayout layout)
+        {
+            float minX = float.MaxValue, maxX = float.MinValue, minZ = float.MaxValue, maxZ = float.MinValue;
+            foreach (var sample in layout.Spline.SampleEvenly(4f))
+            {
+                minX = Math.Min(minX, sample.Position.X);
+                maxX = Math.Max(maxX, sample.Position.X);
+                minZ = Math.Min(minZ, sample.Position.Z);
+                maxZ = Math.Max(maxZ, sample.Position.Z);
+            }
+
+            return (minX - GroundMargin, maxX + GroundMargin, minZ - GroundMargin, maxZ + GroundMargin);
         }
 
         /// <summary>A valid track index: <paramref name="index"/>, or 0 if it is out of range (e.g. from a newer host).</summary>

@@ -97,7 +97,7 @@ namespace CarRacer.Core.Physics
             }
 
             float aheadMs = (nowMs - _latestReceivedMs) + oneWayLatencyMs;
-            aheadMs = Math.Max(0f, Math.Min(aheadMs, _settings.MaxExtrapolationMs));
+            aheadMs = Math.Clamp(aheadMs, 0f, _settings.MaxExtrapolationMs);
             return _latest.Position + _latest.Velocity * (aheadMs / 1000f);
         }
 

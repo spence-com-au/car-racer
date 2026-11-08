@@ -47,7 +47,7 @@ namespace CarRacer.Core.Physics
         {
             float range = MaxImpulsePerMass - MinImpulsePerMass;
             float t = range > 0f ? (impulsePerMass - MinImpulsePerMass) / range : 1f;
-            return Math.Max(0f, Math.Min(1f, t));
+            return Math.Clamp(t, 0f, 1f);
         }
     }
 

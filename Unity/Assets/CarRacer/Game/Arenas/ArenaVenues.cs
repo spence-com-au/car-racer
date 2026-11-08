@@ -56,20 +56,23 @@ namespace CarRacer.Game.Arenas
             rim.name = "Rim";
             SetPlatformRadius(SumoRules.StartRadius);
 
-            var floor = Solid(PrimitiveType.Plane, "Sumo catch floor", centre + Vector3.down * CatchFloorDepth, new Vector3(20f, 1f, 20f), CatchFloorColour);
+            // Unity's plane is 10 m square.
+            float floorScale = 2f * ArenaLayout.GroundReach(GameMode.Sumo) / 10f;
+            var floor = Solid(PrimitiveType.Plane, "Sumo catch floor", centre + Vector3.down * CatchFloorDepth, new Vector3(floorScale, 1f, floorScale), CatchFloorColour);
             floor.gameObject.isStatic = true;
         }
 
         private void BuildBattle()
         {
-            BuildWalledFloor(ArenaLayout.BattleCentre.ToUnity(), BattleRules.BowlRadius, BowlWallHeight, BowlFloorColour, BowlWallColour, "Battle");
+            BuildWalledFloor(GameMode.Battle, BowlWallHeight, BowlFloorColour, BowlWallColour, "Battle");
         }
 
-        /// <summary>A round floor with a ring of wall segments just outside <paramref name="radius"/>.</summary>
-        private void BuildWalledFloor(Vector3 centre, float radius, float wallHeight, Color floorColour, Color wallColour, string name)
+        /// <summary>The floor of <paramref name="mode"/>'s arena, reaching <see cref="ArenaLayout.GroundReach"/>, with a ring of wall segments just outside its radius.</summary>
+        private void BuildWalledFloor(GameMode mode, float wallHeight, Color floorColour, Color wallColour, string name)
         {
-            // The floor extends past the walls so no gap shows beneath them.
-            float floorDiameter = 2f * radius + 4f;
+            var centre = ArenaLayout.CentreFor(mode).ToUnity();
+            float radius = ArenaLayout.StartRadiusFor(mode);
+            float floorDiameter = 2f * ArenaLayout.GroundReach(mode);
             Solid(PrimitiveType.Cylinder, $"{name} floor", centre + Vector3.down * (PlatformThickness / 2f), new Vector3(floorDiameter, PlatformThickness / 2f, floorDiameter), floorColour);
 
             // Each segment is 8% wider than its share of the circumference, so neighbours overlap and leave no gaps.
@@ -85,7 +88,7 @@ namespace CarRacer.Game.Arenas
         /// <summary>The Monster Jam stadium: a dirt floor, a high wall all round, and the ramps from <see cref="ArenaLayout.MonsterRamps"/>.</summary>
         private void BuildMonster()
         {
-            BuildWalledFloor(ArenaLayout.MonsterCentre.ToUnity(), MonsterRules.StadiumRadius, StadiumWallHeight, DirtColour, StadiumWallColour, "Stadium");
+            BuildWalledFloor(GameMode.Monster, StadiumWallHeight, DirtColour, StadiumWallColour, "Stadium");
 
             int n = 0;
             foreach (var ramp in ArenaLayout.MonsterRamps(ArenaLayout.MonsterCentre))

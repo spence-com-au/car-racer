@@ -20,8 +20,6 @@ namespace CarRacer.Core.Net
             _buffer = new byte[Math.Max(initialCapacity, 16)];
         }
 
-        public int Length => _length;
-
         public byte[] ToArray()
         {
             var result = new byte[_length];

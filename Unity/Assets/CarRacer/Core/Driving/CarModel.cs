@@ -166,8 +166,8 @@ namespace CarRacer.Core.Driving
         /// </param>
         public static CarState Step(CarState state, CarInput input, bool grounded, float deltaSeconds, CarTuning tuning, float performance = 1f)
         {
-            float steer = Clamp(input.Steer, -1f, 1f);
-            float throttle = Clamp(input.Throttle, -1f, 1f);
+            float steer = Math.Clamp(input.Steer, -1f, 1f);
+            float throttle = Math.Clamp(input.Throttle, -1f, 1f);
             Vec3 velocity = state.Velocity.Flattened;
 
             state.BoostSecondsLeft = Math.Max(0f, state.BoostSecondsLeft - deltaSeconds);
@@ -361,10 +361,8 @@ namespace CarRacer.Core.Driving
                 return speed / t.FullSteerSpeed;
             }
 
-            float fast = Clamp((speed - t.FullSteerSpeed) / Math.Max(1f, t.MaxSpeed - t.FullSteerSpeed), 0f, 1f);
+            float fast = Math.Clamp((speed - t.FullSteerSpeed) / Math.Max(1f, t.MaxSpeed - t.FullSteerSpeed), 0f, 1f);
             return Interpolation.Lerp(1f, t.TopSpeedSteerFactor, fast);
         }
-
-        private static float Clamp(float v, float min, float max) => v < min ? min : (v > max ? max : v);
     }
 }

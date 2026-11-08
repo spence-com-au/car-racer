@@ -78,8 +78,6 @@ namespace CarRacer.Core.Net
             return true;
         }
 
-        public long ToHostTime(long localMs) => localMs + OffsetMs;
-
         public long ToLocalTime(long hostMs) => hostMs - OffsetMs;
     }
 }

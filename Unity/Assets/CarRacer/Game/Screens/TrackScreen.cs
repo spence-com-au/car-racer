@@ -25,9 +25,6 @@ namespace CarRacer.Game.Screens
     /// </summary>
     public sealed class TrackScreen : MonoBehaviour
     {
-        /// <summary>Each track's grass reaches this far beyond its road (and stays clear of the others; see <c>TrackCatalogPlacementTests</c>).</summary>
-        private const float GroundMargin = 60f;
-
         private static readonly Color RoadColour = new Color(0.32f, 0.33f, 0.36f);
         private static readonly Color WallColour = new Color(0.85f, 0.25f, 0.2f);
         private static readonly Color GrassColour = new Color(0.36f, 0.6f, 0.3f);
@@ -165,25 +162,18 @@ namespace CarRacer.Game.Screens
             gameObject.AddComponent<NetworkedCars>().Initialise(this, _session);
         }
 
-        /// <summary>Builds a track's road, walls and its own patch of grass, reaching <see cref="GroundMargin"/> beyond the road.</summary>
+        /// <summary>Builds a track's road, walls and its own patch of grass (<see cref="TrackCatalog.Ground"/>).</summary>
         private void BuildTrack(TrackLayout layout)
         {
             string name = layout.Definition.DisplayName;
-            float minX = float.MaxValue, maxX = float.MinValue, minZ = float.MaxValue, maxZ = float.MinValue;
-            foreach (var sample in layout.Spline.SampleEvenly(4f))
-            {
-                minX = Mathf.Min(minX, sample.Position.X);
-                maxX = Mathf.Max(maxX, sample.Position.X);
-                minZ = Mathf.Min(minZ, sample.Position.Z);
-                maxZ = Mathf.Max(maxZ, sample.Position.Z);
-            }
+            var (minX, maxX, minZ, maxZ) = TrackCatalog.Ground(layout);
 
             // Unity's plane is 10 m square.
             var ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
             ground.name = name + " ground";
             ground.transform.SetParent(transform, false);
             ground.transform.localPosition = new Vector3((minX + maxX) / 2f, -0.05f, (minZ + maxZ) / 2f);
-            ground.transform.localScale = new Vector3((maxX - minX + 2f * GroundMargin) / 10f, 1f, (maxZ - minZ + 2f * GroundMargin) / 10f);
+            ground.transform.localScale = new Vector3((maxX - minX) / 10f, 1f, (maxZ - minZ) / 10f);
             ground.GetComponent<Renderer>().sharedMaterial = SimpleMaterials.Get(GrassColour);
 
             // The road, walls and scenery go under one object so they can be hidden together; the

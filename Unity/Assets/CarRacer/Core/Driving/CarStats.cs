@@ -62,6 +62,6 @@ namespace CarRacer.Core.Driving
             return tuning;
         }
 
-        private static float Factor(int rating, float step) => 1f + step * (Math.Max(1, Math.Min(MaxRating, rating)) - MidRating);
+        private static float Factor(int rating, float step) => 1f + step * (Math.Clamp(rating, 1, MaxRating) - MidRating);
     }
 }

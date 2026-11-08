@@ -64,7 +64,7 @@ namespace CarRacer.Game.Net
             try
             {
                 viewer._discovery = new CastDiscovery();
-                viewer._discovery.Found += device => Debug.Log("Found a TV: " + device);
+                viewer._discovery.Found += device => Debug.Log("Found a TV: " + ServerLog.Escape(device.ToString()));
             }
             catch (System.Net.Sockets.SocketException e)
             {
@@ -93,7 +93,7 @@ namespace CarRacer.Game.Net
             }
 
             _plan.Request(wanted, takeOver, alreadyShowing: same);
-            Debug.Log(string.IsNullOrEmpty(wanted) ? "Casting to the first TV found" : $"Casting to \"{wanted}\"");
+            Debug.Log(string.IsNullOrEmpty(wanted) ? "Casting to the first TV found" : $"Casting to \"{ServerLog.Escape(wanted)}\"");
         }
 
         private void OnCastCommand(CastCommandMessage command)
@@ -105,7 +105,7 @@ namespace CarRacer.Game.Net
                     StopCasting();
                     break;
                 case CastCommand.Cast when !_streamFailed:
-                    Debug.Log($"The room leader picked \"{command.Device}\"");
+                    Debug.Log($"The room leader picked \"{ServerLog.Escape(command.Device)}\"");
                     CastTo(command.Device, takeOver: true);
                     break;
                 case CastCommand.MusicOn:
@@ -153,7 +153,7 @@ namespace CarRacer.Game.Net
             if (device != null)
             {
                 _cast?.Dispose();
-                Debug.Log($"Casting to {device.Name}{(takeOver ? " (taking over)" : string.Empty)}");
+                Debug.Log($"Casting to {ServerLog.Escape(device.Name)}{(takeOver ? " (taking over)" : string.Empty)}");
                 // The cast thread asks for the URL after connecting; StopStreaming may have cleared _http by then.
                 var http = _http;
                 _cast = new CastConnection(device, address => http.UrlFor(address), _options.Name, takeOver);
@@ -286,17 +286,19 @@ namespace CarRacer.Game.Net
             }
 
             _loggedState = state;
+            string tv = ServerLog.Escape(_cast.Device.Name);
+            string detail = ServerLog.Escape(_cast.Detail);
             switch (state)
             {
                 case CastState.Playing:
-                    Debug.Log($"On TV: {_cast.Device.Name}");
+                    Debug.Log($"On TV: {tv}");
                     break;
                 case CastState.Busy:
                 case CastState.Stopped:
-                    Debug.Log($"Not casting to {_cast.Device.Name}: {_cast.Detail}");
+                    Debug.Log($"Not casting to {tv}: {detail}");
                     break;
                 case CastState.Failed:
-                    Debug.LogWarning($"Casting to {_cast.Device.Name} failed: {_cast.Detail}");
+                    Debug.LogWarning($"Casting to {tv} failed: {detail}");
                     break;
             }
         }
