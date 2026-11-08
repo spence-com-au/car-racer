@@ -33,9 +33,6 @@ namespace CarRacer.Game.Audio
 
         public static void CycleVolume() => VolumeStep = SoundRules.NextVolumeStep(VolumeStep);
 
-        /// <summary>The tune now playing or fading in, or null.</summary>
-        public static string Wanted => _instance != null ? _instance._wanted : null;
-
         public static AudioClip Clip(string name) => Resources.Load<AudioClip>("Music/" + name);
 
         /// <summary>Asks for <paramref name="tune"/> (one of <see cref="MusicChoice.All"/>); does nothing if it is already playing.</summary>

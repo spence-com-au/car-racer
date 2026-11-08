@@ -67,9 +67,6 @@ namespace CarRacer.Game.Screens
         private Button _auto;
         private Button _haptics;
 
-        /// <summary>True while this phone's car has been facing backwards for a while.</summary>
-        public bool IsWrongWay => _progress != null && _progress.IsWrongWay;
-
         public void Initialise(TrackScreen screen)
         {
             _screen = screen;
