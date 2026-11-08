@@ -95,7 +95,11 @@ namespace CarRacer.Game.Net
             return GuestSide != null && GuestSide.State == GuestState.Joined;
         }
 
-        public IReadOnlyList<RosterEntry> Players => IsHost ? HostSide.Roster.ToMessage().Players : GuestSide.Roster.Players;
+        /// <summary>
+        /// Everyone in the session. On the host this is the shared <see cref="HostSession.RosterMessage"/>'s list,
+        /// built once per roster change; a new list means the roster changed.
+        /// </summary>
+        public IReadOnlyList<RosterEntry> Players => IsHost ? HostSide.RosterMessage().Players : GuestSide.Roster.Players;
 
         /// <summary>True when this phone runs the room (design doc §2.3): it hosts, or a dedicated host made it the leader.</summary>
         public bool LeadsRoom => IsHost ? !HostSide.IsDedicated : GuestSide.IsLeader;

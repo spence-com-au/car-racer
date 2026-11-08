@@ -113,6 +113,23 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void TheRosterMessageIsKeptUntilTheRosterChanges()
+        {
+            byte a = Join(7, "Alice");
+            var before = _host.RosterMessage();
+            Assert.False(_host.CanStart);
+            Assert.Same(before, _host.RosterMessage());
+
+            // The guests get the new roster, not the one kept from before the change.
+            _host.OnMessage(7, new SetReadyMessage { Ready = true });
+            var after = _host.RosterMessage();
+            Assert.NotSame(before, after);
+            Assert.Same(after, _hostSide.To<RosterMessage>(7).Last());
+            Assert.True(after.Players.Single(p => p.PlayerId == a).Ready);
+            Assert.True(_host.CanStart);
+        }
+
+        [Fact]
         public void MessagesBeforeJoiningAreIgnored()
         {
             _host.OnMessage(7, new SetReadyMessage { Ready = true });

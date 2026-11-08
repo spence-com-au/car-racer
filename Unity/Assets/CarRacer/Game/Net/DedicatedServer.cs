@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
 using CarRacer.Core.Discovery;
+using CarRacer.Core.Net;
 using CarRacer.Core.Race;
 using CarRacer.Core.Session;
 using CarRacer.Game.Screens;
@@ -18,6 +20,7 @@ namespace CarRacer.Game.Net
     {
         private TrackScreen _screen;
         private NetworkSession _session;
+        private IReadOnlyList<RosterEntry> _lastPlayers;
         private string _lastRoster;
         private RacePhase _lastPhase = RacePhase.Lobby;
 
@@ -67,9 +70,17 @@ namespace CarRacer.Game.Net
 
         private void LogRosterChanges()
         {
+            // The session hands out a new list whenever the roster changes, the leader included.
+            var players = _session.Players;
+            if (ReferenceEquals(players, _lastPlayers))
+            {
+                return;
+            }
+
+            _lastPlayers = players;
             var text = new StringBuilder();
             byte leader = _session.LeaderId;
-            foreach (var p in _session.Players)
+            foreach (var p in players)
             {
                 text.Append(text.Length > 0 ? ", " : string.Empty).Append(p.Name);
                 if (p.IsBot)
@@ -82,6 +93,7 @@ namespace CarRacer.Game.Net
                 }
             }
 
+            // Ready, votes and car changes also make a new list but not a new line.
             string roster = text.Length > 0 ? text.ToString() : "nobody";
             if (roster != _lastRoster)
             {

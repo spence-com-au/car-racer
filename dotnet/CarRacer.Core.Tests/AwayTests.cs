@@ -125,12 +125,15 @@ namespace CarRacer.Core.Tests
             Wait(HostSession.AwayAfterMs);
 
             _host.EventInProgress = false;
+            int changes = 0;
+            _host.RosterChanged += () => changes++;
             _host.RemoveBots();
             var player = _host.Roster.Find(GuestId);
             Assert.NotNull(player);
             Assert.False(player.IsBot);
             Assert.False(player.Ready);
             Assert.False(_host.IsAway(GuestId));
+            Assert.Equal(1, changes);
         }
 
         [Fact]
