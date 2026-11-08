@@ -34,7 +34,7 @@ namespace CarRacer.Core.Discovery
             if (colon >= 0)
             {
                 host = trimmed.Substring(0, colon);
-                if (!ushort.TryParse(trimmed.Substring(colon + 1), NumberStyles.None, CultureInfo.InvariantCulture, out port) || port == 0)
+                if (!TryParsePort(trimmed.Substring(colon + 1), out port))
                 {
                     return false;
                 }
@@ -58,6 +58,14 @@ namespace CarRacer.Core.Discovery
 
             address = host;
             return true;
+        }
+
+        /// <summary>
+        /// Reads a port from 1 to 65535: digits only, so no sign, space or thousands separator, whatever the culture.
+        /// </summary>
+        public static bool TryParsePort(string text, out ushort port)
+        {
+            return ushort.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out port) && port != 0;
         }
 
         /// <summary>

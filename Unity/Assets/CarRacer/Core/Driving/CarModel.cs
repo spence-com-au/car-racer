@@ -258,6 +258,13 @@ namespace CarRacer.Core.Driving
                     return braked >= 0f ? braked : Math.Max(braked, t.ReverseAcceleration * throttle * dt);
                 }
 
+                // A bump can knock a car backwards past its reverse top speed. That eases off like
+                // forward over-speed does, so holding brake doesn't snap away the knock-back.
+                if (speed < -t.MaxReverseSpeed)
+                {
+                    return Math.Min(-t.MaxReverseSpeed, speed + t.OverSpeedDeceleration * dt);
+                }
+
                 return Math.Max(-t.MaxReverseSpeed, speed + t.ReverseAcceleration * throttle * dt);
             }
 

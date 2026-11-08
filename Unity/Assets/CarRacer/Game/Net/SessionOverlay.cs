@@ -371,7 +371,7 @@ namespace CarRacer.Game.Net
             byte leader = _session.LeaderId;
             foreach (var player in _session.Players)
             {
-                string state = player.IsHost ? "host" : player.IsBot ? "bot" : player.PlayerId == leader ? "runs the room" : player.Ready ? "ready" : "not ready";
+                string state = EventText.LobbyState(player, leader);
                 string you = player.PlayerId == me ? " (you)" : string.Empty;
                 var row = UiKit.Row();
                 row.Add(Dot(player.ColourIndex));
@@ -735,106 +735,14 @@ namespace CarRacer.Game.Net
             long msToGo = race.StartAtLocalMs - NetworkSession.NowMs;
             Show(_countdown, EventText.Countdown(race.Phase, msToGo));
             Show(_stunt, Time.unscaledTime < _stuntUntil ? _stuntText : null);
-            if (race.Mode == GameMode.Monster)
-            {
-                UpdateMonsterStatus(race, me, msToGo);
-            }
-            else if (race.Mode != GameMode.Race)
-            {
-                UpdateArenaStatus(race, me, msToGo);
-            }
-            else
-            {
-                UpdateRaceStatus(race, me);
-            }
+            var (corner1, corner2, corner3) = EventText.PhoneStatus(race, me, _cars.Detector.LapsCompleted, -msToGo);
+            Set(_corner1, corner1);
+            Set(_corner2, corner2);
+            Set(_corner3, corner3);
 
             var held = _session.Items?.Held ?? ItemKind.None;
             Set(_itemSlot, held == ItemKind.None ? "—" : ItemNames.Label(held));
             _itemSlot.style.color = held == ItemKind.None ? UiKit.Muted : UiKit.Accent;
-        }
-
-        private void UpdateRaceStatus(IRaceView race, byte me)
-        {
-            int lap = Mathf.Min(_cars.Detector.LapsCompleted + 1, race.LapCount);
-            string position = string.Empty;
-            var standings = race.Standings;
-            if (standings != null)
-            {
-                for (int i = 0; i < standings.Order.Count; i++)
-                {
-                    if (standings.Order[i].PlayerId == me)
-                    {
-                        var entry = standings.Order[i];
-                        position = entry.FinishPosition > 0
-                            ? $"Finished {RaceFormat.Ordinal(entry.FinishPosition)}"
-                            : $"{RaceFormat.Ordinal(i + 1)} / {standings.Order.Count}";
-                        if (entry.FinishPosition > 0)
-                        {
-                            lap = race.LapCount;
-                        }
-                    }
-                }
-            }
-
-            Set(_corner1, position);
-            Set(_corner2, $"Lap {lap} / {race.LapCount}");
-            Set(_corner3, EventText.RulesNote(race.Rules));
-        }
-
-        /// <summary>The Monster Jam HUD (design doc §7.0): this phone's place and points, and the time left.</summary>
-        private void UpdateMonsterStatus(IRaceView race, byte me, long msToGo)
-        {
-            string place = string.Empty;
-            string points = string.Empty;
-            var standings = race.Standings;
-            if (standings != null)
-            {
-                for (int i = 0; i < standings.Order.Count; i++)
-                {
-                    if (standings.Order[i].PlayerId == me)
-                    {
-                        place = $"{RaceFormat.Ordinal(i + 1)} / {standings.Order.Count}";
-                        points = $"{standings.Order[i].Points} pts";
-                    }
-                }
-            }
-
-            Set(_corner1, place);
-            Set(_corner2, points);
-            bool clock = race.Phase == RacePhase.Racing;
-            Set(_corner3, clock ? RaceFormat.Time(EventClock.TimeLeftMs(race.Mode, -msToGo)) : string.Empty);
-        }
-
-        /// <summary>The arena HUD (design doc §7.0): this phone's lives (Battle) or place once out, how many are left, and Battle's clock.</summary>
-        private void UpdateArenaStatus(IRaceView race, byte me, long msToGo)
-        {
-            int left = 0;
-            int total = 0;
-            string status = string.Empty;
-            var standings = race.Standings;
-            if (standings != null)
-            {
-                foreach (var entry in standings.Order)
-                {
-                    total++;
-                    if (!entry.IsOut(race.Mode))
-                    {
-                        left++;
-                    }
-
-                    if (entry.PlayerId == me)
-                    {
-                        status = entry.IsOut(race.Mode)
-                            ? $"Out: {RaceFormat.Ordinal(entry.FinishPosition)}"
-                            : race.Mode == GameMode.Battle ? $"Lives {entry.Lives}" : "Still on";
-                    }
-                }
-            }
-
-            Set(_corner1, status);
-            Set(_corner2, total > 0 ? $"{left} / {total} left" : string.Empty);
-            bool clock = race.Mode == GameMode.Battle && race.Phase == RacePhase.Racing;
-            Set(_corner3, clock ? RaceFormat.Time(EventClock.TimeLeftMs(race.Mode, -msToGo)) : string.Empty);
         }
 
         /// <summary>Everything the results show, so they rebuild only when one of these changes.</summary>

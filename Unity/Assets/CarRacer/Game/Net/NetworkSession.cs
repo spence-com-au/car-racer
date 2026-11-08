@@ -159,8 +159,7 @@ namespace CarRacer.Game.Net
                 return HostLatencyGuessMs;
             }
 
-            float toHost = GuestSide.Clock.HasEstimate ? GuestSide.Clock.OneWayLatencyMs : HostLatencyGuessMs;
-            return DrivenByHost(playerId) ? toHost : 2f * toHost;
+            return GuestSide.Clock.CarLatencyMs(DrivenByHost(playerId), HostLatencyGuessMs);
         }
 
         /// <summary>

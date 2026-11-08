@@ -287,6 +287,18 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void ReverseSpeedPastTheCapEasesOffRatherThanSnapping()
+        {
+            // A head-on bump knocks a car held on brake backwards faster than it can reverse.
+            var brake = new CarInput(0f, -1f);
+            var s = CarModel.Step(Moving(-12.5f), brake, true, Dt, Tuning);
+            Assert.Equal(-12.5f + Tuning.OverSpeedDeceleration * Dt, ForwardSpeed(s), 3);
+
+            s = Run(s, brake, 1f);
+            Assert.Equal(-Tuning.MaxReverseSpeed, ForwardSpeed(s), 3);
+        }
+
+        [Fact]
         public void SlowingDownCancelsADriftWithoutBoost()
         {
             var s = Run(Moving(15f), new CarInput(1f, 0f, drift: true), 0.1f);

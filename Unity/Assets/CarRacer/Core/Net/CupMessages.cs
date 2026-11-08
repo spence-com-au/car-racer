@@ -32,6 +32,12 @@ namespace CarRacer.Core.Net
 
         public bool IsComplete => EventsCompleted >= TotalEvents;
 
+        /// <summary>
+        /// Whether the host has paused the countdown (<c>CupRun.Paused</c>): events are left but no time is set for the
+        /// next.
+        /// </summary>
+        public bool IsPaused => !IsComplete && NextEventAtHostMs == 0;
+
         public void Write(NetWriter w)
         {
             w.WriteString(CupName);
