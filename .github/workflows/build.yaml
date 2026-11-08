@@ -151,11 +151,26 @@ jobs:
         with:
           lfs: true
 
+      # The Unity Android image is large; make room on the runner.
+      - uses: 'jlumbroso/free-disk-space@v1.3.1'
+        with:
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+
       - uses: 'actions/cache@v4.3.0'
         with:
           path: 'Unity/Library'
           key: "Library-test-${{ hashFiles('Unity/Assets/**', 'Unity/Packages/**', 'Unity/ProjectSettings/**') }}"
           restore-keys: 'Library-test-'
+
+      # Tests of the Android player settings (`#if UNITY_ANDROID`) compile only with the Android target active, which
+      # needs the Android editor image; the test runner's default image and target are standalone Linux.
+      - id: 'image'
+        run: |
+          version="$(sed -n 's/^m_EditorVersion: //p' Unity/ProjectSettings/ProjectVersion.txt)"
+          echo "name=unityci/editor:ubuntu-${version}-android-3" >> "${GITHUB_OUTPUT}"
 
       - uses: 'game-ci/unity-test-runner@v4.4.0'
         id: 'tests'
@@ -165,6 +180,8 @@ jobs:
           UNITY_PASSWORD: '${{ secrets.UNITY_PASSWORD }}'
         with:
           projectPath: 'Unity'
+          customImage: '${{ steps.image.outputs.name }}'
+          customParameters: '-buildTarget Android'
           githubToken: '${{ secrets.GITHUB_TOKEN }}'
           checkName: 'Unity test results'
 
