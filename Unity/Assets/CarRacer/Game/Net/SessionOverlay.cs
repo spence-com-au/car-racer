@@ -2,7 +2,6 @@ using System.Text;
 using CarRacer.Core.Arena;
 using CarRacer.Core.Art;
 using CarRacer.Core.Audio;
-using CarRacer.Core.Bots;
 using CarRacer.Core.Discovery;
 using CarRacer.Core.Items;
 using CarRacer.Core.Net;
@@ -525,7 +524,7 @@ namespace CarRacer.Game.Net
             var row = UiKit.Row();
             var mode = UiKit.Button(EventText.ModeName(settings.Mode), () => Change(s =>
             {
-                s.Mode = (GameMode)(((int)s.Mode + 1) % 4);
+                s.Mode = LobbySettings.NextMode(s.Mode);
                 return s;
             }));
             mode.style.width = 190f;
@@ -644,7 +643,7 @@ namespace CarRacer.Game.Net
                     return;
                 }
 
-                next.BotDifficulty = (BotDifficulty)(((int)next.BotDifficulty + 1) % 3);
+                next.BotDifficulty = LobbySettings.NextDifficulty(next.BotDifficulty);
                 _session.ChangeSettings(next);
             }), settings.BotFill > 0);
             panel.Add(UiKit.EvenRow(fill, difficulty));
