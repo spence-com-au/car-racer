@@ -238,11 +238,6 @@ namespace CarRacer.Core.Tests
         [Fact]
         public void AnFfmpegThatHangsIsGivenUpOn()
         {
-            if (!File.Exists("/bin/sh"))
-            {
-                return;
-            }
-
             string script = Path.Combine(Path.GetTempPath(), "hanging-ffmpeg-" + Guid.NewGuid().ToString("N") + ".sh");
             File.WriteAllText(script, "#!/bin/sh\nsleep 30\n");
             Run("chmod", "+x \"" + script + "\"");
