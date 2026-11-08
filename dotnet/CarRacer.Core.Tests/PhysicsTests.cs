@@ -238,5 +238,21 @@ namespace CarRacer.Core.Tests
             Vec3 shown = predictor.UpdateDisplayPosition(1040, 0f, 1f);
             Assert.True(shown.ApproximatelyEquals(new Vec3(1f, 0f, 0f), 0.01f), $"got {shown}");
         }
+
+        [Fact]
+        public void PredictorRecoversFromStatesThatOverflowWhenExtrapolated()
+        {
+            var predictor = new RemoteCarPredictor();
+            Assert.True(predictor.OnState(State(1, Vec3.Zero, Vec3.Zero), 0, 0f));
+
+            // Finite, but 250 ms ahead is past float range, so two in a row subtract infinity from infinity.
+            var huge = new Vec3(3e38f, 0f, 0f);
+            Assert.True(predictor.OnState(State(2, huge, huge), 10, 250f));
+            Assert.True(predictor.OnState(State(3, huge, huge), 20, 250f));
+
+            Assert.True(predictor.OnState(State(4, new Vec3(1f, 0f, 0f), Vec3.Zero), 30, 250f));
+            Vec3 shown = predictor.UpdateDisplayPosition(30, 250f, 0f);
+            Assert.True(shown.ApproximatelyEquals(new Vec3(1f, 0f, 0f)), $"got {shown}");
+        }
     }
 }

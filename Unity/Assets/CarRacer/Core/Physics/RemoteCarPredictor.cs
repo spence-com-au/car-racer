@@ -76,7 +76,10 @@ namespace CarRacer.Core.Physics
             Vec3 predictedAfter = PredictRaw(receivedAtMs, oneWayLatencyMs);
 
             _errorOffset = shownBefore - predictedAfter;
-            if (_errorOffset.Length > _settings.SnapDistance)
+
+            // Extrapolating a huge but finite state can overflow to infinity, and infinity minus infinity is a NaN
+            // that no distance exceeds, so it would stick.
+            if (!_errorOffset.IsFinite || _errorOffset.Length > _settings.SnapDistance)
             {
                 _errorOffset = Vec3.Zero;
             }
