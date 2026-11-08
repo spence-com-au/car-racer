@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using CarRacer.Core.Driving;
 using CarRacer.Core.Net;
 using CarRacer.Core.Race;
@@ -21,6 +22,66 @@ namespace CarRacer.Tests
     public class NetworkSessionTests
     {
         private const ushort TestPort = 47790;
+
+        private static readonly string[] SettingKeys =
+        {
+            HostLobby.BotFillKey,
+            HostLobby.BotDifficultyKey,
+            HostLobby.ModeKey,
+            HostLobby.LapsKey,
+            HostLobby.TrackKey,
+            HostLobby.RulesKey,
+            HostLobby.CupKey,
+            HostLobby.ReverseGridKey,
+        };
+
+        private readonly Dictionary<string, int> _savedSettings = new Dictionary<string, int>();
+        private string _savedCup;
+
+        // Hosting saves the lobby settings to `PlayerPrefs` and loads them back on the next host, so each test starts
+        // from the defaults and leaves the developer's own saved settings as it found them.
+        [SetUp]
+        public void SetUp()
+        {
+            _savedSettings.Clear();
+            foreach (string key in SettingKeys)
+            {
+                if (PlayerPrefs.HasKey(key))
+                {
+                    _savedSettings[key] = PlayerPrefs.GetInt(key);
+                }
+
+                PlayerPrefs.DeleteKey(key);
+            }
+
+            _savedCup = PlayerPrefs.HasKey(HostLobby.SaveKey) ? PlayerPrefs.GetString(HostLobby.SaveKey) : null;
+            PlayerPrefs.DeleteKey(HostLobby.SaveKey);
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            foreach (string key in SettingKeys)
+            {
+                if (_savedSettings.TryGetValue(key, out int value))
+                {
+                    PlayerPrefs.SetInt(key, value);
+                }
+                else
+                {
+                    PlayerPrefs.DeleteKey(key);
+                }
+            }
+
+            if (_savedCup != null)
+            {
+                PlayerPrefs.SetString(HostLobby.SaveKey, _savedCup);
+            }
+            else
+            {
+                PlayerPrefs.DeleteKey(HostLobby.SaveKey);
+            }
+        }
 
         private sealed class NoInput : ICarInputSource
         {
