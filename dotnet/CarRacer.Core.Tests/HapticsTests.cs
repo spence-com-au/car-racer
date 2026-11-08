@@ -79,6 +79,15 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void ADriftLostInTheAirWithNoBoostRunningIsNotABoost()
+        {
+            var before = Drifting(Tuning.DriftTierSeconds[2] + 0.1f);
+            var after = CarModel.Step(before, new CarInput(1f, 1f, drift: true), false, Dt, Tuning);
+            Assert.False(after.Drifting);
+            Assert.Equal(0, HapticPatterns.ReleasedBoostTier(before, after, Dt, Tuning));
+        }
+
+        [Fact]
         public void ReleasingTooEarlyIsNotABoost()
         {
             var before = Drifting(Tuning.DriftTierSeconds[0] / 2f);
