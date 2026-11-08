@@ -29,7 +29,9 @@ namespace CarRacer.Core.Tests
         private static byte Join(HostSession host, RecordingTransport transport, ulong connection, string name)
         {
             host.OnMessage(connection, new JoinRequestMessage { ProtocolVersion = Version, PlayerName = name });
-            return transport.To<JoinReplyMessage>(connection).Last().PlayerId;
+            var reply = transport.To<JoinReplyMessage>(connection).Last();
+            Assert.Equal(JoinResult.Accepted, reply.Result);
+            return reply.PlayerId;
         }
 
         private byte Join(ulong connection, string name) => Join(_server, _transport, connection, name);
