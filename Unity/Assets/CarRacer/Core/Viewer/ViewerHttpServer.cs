@@ -18,7 +18,6 @@ namespace CarRacer.Core.Viewer
     /// </summary>
     public sealed class ViewerHttpServer : IDisposable
     {
-        public const ushort DefaultPort = 47780;
         public const int MaxConcurrentRequests = 16;
         public const int ClientTimeoutMs = 5_000;
         private const int MaxRequestBytes = 8 * 1024;
