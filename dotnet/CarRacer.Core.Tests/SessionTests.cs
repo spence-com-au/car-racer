@@ -232,6 +232,17 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void CuttingANameDoesNotSplitAnEmoji()
+        {
+            Assert.Equal(new string('a', 23), LobbyRoster.CleanName(new string('a', 23) + "\U0001F600"));
+
+            var roster = new LobbyRoster();
+            string name = new string('a', 21) + "\U0001F600";
+            Assert.Equal(name, roster.Add(name).Name);
+            Assert.Equal(new string('a', 21) + " 2", roster.Add(name).Name);
+        }
+
+        [Fact]
         public void BotsSkipNamesPeopleHave()
         {
             var roster = new LobbyRoster();
