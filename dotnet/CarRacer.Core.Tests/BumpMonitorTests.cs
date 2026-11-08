@@ -93,6 +93,40 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void AFallbackHitIsClampedToWhatABumpCouldProduce()
+        {
+            var settings = new BumpSettings();
+            float maxHorizontal = settings.MaxImpulsePerMass * BumpMonitor.CarMass / 2f;
+            var forged = new HitMessage { AttackerId = 2, TargetId = 1, Impulse = new Vec3(3e4f, 1e4f, -4e4f) };
+
+            Assert.True(_monitor.OnHit(forged, 1, 1040, out var impulse));
+            Assert.Equal(maxHorizontal, impulse.Flattened.Length, 3);
+            Assert.True(impulse.Flattened.Normalized.ApproximatelyEquals(forged.Impulse.Flattened.Normalized));
+            Assert.Equal(maxHorizontal * settings.LiftFraction, impulse.Y, 4);
+        }
+
+        [Fact]
+        public void AnHonestFallbackHitIsNotClamped()
+        {
+            var self = new CarBody(Vec3.Zero, new Vec3(0f, 0f, 40f));
+            var other = new CarBody(new Vec3(0f, 0f, 1.8f), new Vec3(0f, 0f, -40f));
+            var honest = new HitMessage { AttackerId = 2, TargetId = 1, Impulse = BumpResolver.ComputeSelfImpulse(self, other, new BumpSettings()) };
+
+            Assert.True(_monitor.OnHit(honest, 1, 1040, out var impulse));
+            Assert.True(impulse.ApproximatelyEquals(honest.Impulse));
+        }
+
+        [Fact]
+        public void ANonFiniteHitIsDroppedWithoutUsingUpTheBump()
+        {
+            var bad = new HitMessage { AttackerId = 2, TargetId = 1, Impulse = new Vec3(float.NaN, 0f, float.PositiveInfinity) };
+            Assert.False(_monitor.OnHit(bad, 1, 1040, out _));
+
+            var good = new HitMessage { AttackerId = 2, TargetId = 1, Impulse = new Vec3(0f, 1f, -5f) };
+            Assert.True(_monitor.OnHit(good, 1, 1050, out _));
+        }
+
+        [Fact]
         public void ItemHitsAlwaysApplyAndHitsForOthersNever()
         {
             Step(Vec3.Zero, new Vec3(0f, 0f, 10f), 1000, new OtherCar(0, new Vec3(0f, 0f, 1.8f), Vec3.Zero));
