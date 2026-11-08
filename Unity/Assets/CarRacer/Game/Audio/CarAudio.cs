@@ -93,7 +93,7 @@ namespace CarRacer.Game.Audio
 
         private void OnPushed(Vector3 impulse)
         {
-            var (size, volume) = SoundRules.Crunch(new Vector2(impulse.x, impulse.z).magnitude, BumpMonitor.CarMass, _bumpSettings);
+            var (size, volume) = SoundRules.Crunch(new Vector2(impulse.x, impulse.z).magnitude, BumpMonitor.ReducedMass, _bumpSettings);
             GameAudio.Play(size == CrunchSize.Heavy ? "crunch_heavy" : size == CrunchSize.Medium ? "crunch_medium" : "crunch_light", volume);
         }
 

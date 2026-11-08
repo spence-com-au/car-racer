@@ -180,8 +180,7 @@ namespace CarRacer.Game.Driving
         public void TakeBump(Vector3 impulse)
         {
             impulse.y = 0f;
-            float reducedMass = _body.mass / 2f;
-            Damaged(_damageEnabled && Damage.AddBump(impulse.magnitude / reducedMass, BumpScale));
+            Damaged(_damageEnabled && Damage.AddBump(impulse.magnitude / BumpMonitor.ReducedMass, BumpScale));
         }
 
         /// <summary>Damage from an item hit that landed (not one a Shield soaked up).</summary>

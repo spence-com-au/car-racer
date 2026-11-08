@@ -35,10 +35,13 @@ namespace CarRacer.Core.Driving
             new HapticPulse(60, 255),
         };
 
-        /// <summary>A car-to-car bump. <paramref name="impulse"/> is the horizontal impulse this car took (mass × Δv).</summary>
-        public static HapticPulse ForBump(float impulse, float mass, BumpSettings settings)
+        /// <summary>
+        /// A car-to-car bump. <paramref name="impulse"/> is the horizontal impulse this car took (mass × Δv), sized per
+        /// unit of the two cars' <paramref name="reducedMass"/> as <see cref="BumpResolver"/> clamps it.
+        /// </summary>
+        public static HapticPulse ForBump(float impulse, float reducedMass, BumpSettings settings)
         {
-            float perMass = mass > 0f ? impulse / mass : 0f;
+            float perMass = reducedMass > 0f ? impulse / reducedMass : 0f;
             float range = settings.MaxImpulsePerMass - settings.MinImpulsePerMass;
             float t = range > 0f ? (perMass - settings.MinImpulsePerMass) / range : 1f;
             t = Math.Max(0f, Math.Min(1f, t));

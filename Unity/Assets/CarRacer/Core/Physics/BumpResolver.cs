@@ -29,10 +29,10 @@ namespace CarRacer.Core.Physics
         /// <summary>Multiplier on the physical impulse; above 1 makes bumps more dramatic (arcade feel).</summary>
         public float Exaggeration = 1.4f;
 
-        /// <summary>Smallest horizontal impulse per unit mass for any approaching contact, so gentle touches still nudge.</summary>
+        /// <summary>Smallest horizontal impulse per unit of reduced mass for any approaching contact, so gentle touches still nudge.</summary>
         public float MinImpulsePerMass = 1.5f;
 
-        /// <summary>Largest horizontal impulse per unit mass; stops head-on boosts launching cars off the map.</summary>
+        /// <summary>Largest horizontal impulse per unit of reduced mass; stops head-on boosts launching cars off the map.</summary>
         public float MaxImpulsePerMass = 25f;
 
         /// <summary>Upward "pop" as a fraction of the horizontal impulse. Applied equally to both cars.</summary>

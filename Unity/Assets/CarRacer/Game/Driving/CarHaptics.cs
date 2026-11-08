@@ -31,7 +31,7 @@ namespace CarRacer.Game.Driving
         private void OnPushed(Vector3 impulse)
         {
             float horizontal = new Vector2(impulse.x, impulse.z).magnitude;
-            Play(HapticPatterns.ForBump(horizontal, BumpMonitor.CarMass, _bumpSettings));
+            Play(HapticPatterns.ForBump(horizontal, BumpMonitor.ReducedMass, _bumpSettings));
         }
 
         private void OnBoostReleased(int tier) => Play(HapticPatterns.ForBoost(tier));
