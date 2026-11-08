@@ -146,7 +146,7 @@ namespace CarRacer.Core.Track
                     continue;
                 }
 
-                float u = Math.Max(0f, Math.Min(1f, Vec3.Dot(position - pa, seg) / segLenSq));
+                float u = Math.Clamp(Vec3.Dot(position - pa, seg) / segLenSq, 0f, 1f);
                 Vec3 p = pa + seg * u;
                 float sq = (position - p).LengthSquared;
                 if (sq < bestSq)

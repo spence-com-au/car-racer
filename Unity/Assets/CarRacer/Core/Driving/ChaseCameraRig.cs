@@ -65,7 +65,7 @@ namespace CarRacer.Core.Driving
     {
         public static ChaseCameraState Step(ChaseCameraState state, Vec3 target, float targetHeading, float speed, float deltaSeconds, ChaseCameraSettings settings)
         {
-            float t = settings.TopSpeed > 0f ? Math.Max(0f, Math.Min(1f, Math.Abs(speed) / settings.TopSpeed)) : 0f;
+            float t = settings.TopSpeed > 0f ? Math.Clamp(Math.Abs(speed) / settings.TopSpeed, 0f, 1f) : 0f;
             float distance = Lerp(settings.Distance, settings.DistanceAtTopSpeed, t);
             float height = Lerp(settings.Height, settings.HeightAtTopSpeed, t);
             float fov = Lerp(settings.FieldOfView, settings.FieldOfViewAtTopSpeed, t);
@@ -98,7 +98,7 @@ namespace CarRacer.Core.Driving
         /// </summary>
         public static ChaseCameraState RearView(ChaseCameraState chase, Vec3 target, float targetHeading, float speed, ChaseCameraSettings settings)
         {
-            float t = settings.TopSpeed > 0f ? Math.Max(0f, Math.Min(1f, Math.Abs(speed) / settings.TopSpeed)) : 0f;
+            float t = settings.TopSpeed > 0f ? Math.Clamp(Math.Abs(speed) / settings.TopSpeed, 0f, 1f) : 0f;
             var forward = Angles.Forward(targetHeading);
             chase.Position = target + forward * Lerp(settings.Distance, settings.DistanceAtTopSpeed, t) + Vec3.Up * Lerp(settings.Height, settings.HeightAtTopSpeed, t);
             chase.LookAt = target - forward * settings.LookAhead + Vec3.Up * settings.LookHeight;
