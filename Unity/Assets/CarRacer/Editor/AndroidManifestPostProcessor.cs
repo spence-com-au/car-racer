@@ -3,6 +3,7 @@ using System.IO;
 using System.Xml;
 using CarRacer.Core.Discovery;
 using UnityEditor.Android;
+using UnityEditor.Build;
 
 namespace CarRacer.Editor
 {
@@ -52,7 +53,11 @@ namespace CarRacer.Editor
             document.Save(manifestPath);
         }
 
-        /// <summary>Lets the launcher activity open <c>carracer://join?…</c> links from the camera app or a browser.</summary>
+        /// <summary>
+        /// Lets the launcher activity open <c>carracer://join?…</c> links from the camera app or a browser. Fails the
+        /// build when the manifest has no launcher activity, as a Unity update might leave it, because the APK would
+        /// otherwise ship with QR links that silently stop opening the game.
+        /// </summary>
         private static void AddJoinLinkFilter(XmlDocument document)
         {
             foreach (XmlNode node in document.GetElementsByTagName("activity"))
@@ -78,6 +83,11 @@ namespace CarRacer.Editor
                 activity.AppendChild(filter);
                 return;
             }
+
+            throw new BuildFailedException(
+                "The generated AndroidManifest.xml has no activity with a LAUNCHER intent filter, so there is nowhere"
+                + $" to add the {JoinLink.Scheme}://{JoinLink.Host} link filter and the host's QR code would not open"
+                + " the game.");
         }
 
         private static XmlElement Named(XmlDocument document, string tag, string name)

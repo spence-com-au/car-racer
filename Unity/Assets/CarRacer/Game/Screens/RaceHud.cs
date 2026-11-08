@@ -162,7 +162,7 @@ namespace CarRacer.Game.Screens
             get
             {
                 var race = _screen.Session != null ? _screen.Session.Race : null;
-                bool stadium = race != null && race.Mode == GameMode.Monster && race.Phase != RacePhase.Lobby;
+                bool stadium = race != null && EventCars.AreTrucks(race.Mode, race.Phase);
                 return !stadium && !_screen.CameraRig.ArenaCentre.HasValue;
             }
         }

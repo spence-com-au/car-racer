@@ -53,7 +53,7 @@ namespace CarRacer.Game.Screens
             var panel = UiKit.Panel(720f);
             panel.style.maxHeight = Length.Percent(90);
             panel.Add(UiKit.Heading("How to drive"));
-            var tips = DrivingTips.For(Accessibility.LeftHanded, PlayerCarInput.AutoAccelerateEnabled, PlayerCarInput.TiltEnabled, lookBack: true);
+            var tips = DrivingTips.For(Accessibility.LeftHanded, PlayerCarInput.AutoAccelerateEnabled, PlayerCarInput.TiltEnabled);
             foreach (string tip in tips)
             {
                 var line = UiKit.Body("•  " + tip);

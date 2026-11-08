@@ -6,11 +6,11 @@ namespace CarRacer.Core.Race
     /// </summary>
     public sealed class WrongWayDetector
     {
-        public float EnterAlignment = -0.3f;
-        public float ExitAlignment = 0.2f;
-        public float MinSpeed = 2f;
-        public float EnterSeconds = 1.0f;
-        public float ExitSeconds = 0.3f;
+        private const float EnterAlignment = -0.3f;
+        private const float ExitAlignment = 0.2f;
+        private const float MinSpeed = 2f;
+        private const float EnterSeconds = 1.0f;
+        private const float ExitSeconds = 0.3f;
 
         private float _timer;
 

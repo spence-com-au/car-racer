@@ -59,5 +59,16 @@ namespace CarRacer.Game.Platform
             cached = value;
             PlayerPrefs.SetInt(key, value ? 1 : 0);
         }
+
+        /// <summary>Reads a remembered number once, then serves it from <paramref name="cached"/>.</summary>
+        internal static int Get(ref int? cached, string key, int fallback) =>
+            cached ?? (int)(cached = PlayerPrefs.GetInt(key, fallback));
+
+        /// <summary>Remembers a number in <paramref name="cached"/> and on the phone.</summary>
+        internal static void Set(ref int? cached, string key, int value)
+        {
+            cached = value;
+            PlayerPrefs.SetInt(key, value);
+        }
     }
 }
