@@ -48,7 +48,7 @@ namespace CarRacer.Core.Driving
         }
 
         /// <summary>A drift boost of tier 1..3 (higher tiers clamp to the strongest).</summary>
-        public static HapticPulse ForBoost(int tier) => BoostPulses[Math.Max(1, Math.Min(tier, BoostPulses.Length)) - 1];
+        public static HapticPulse ForBoost(int tier) => BoostPulses[Math.Clamp(tier, 1, BoostPulses.Length) - 1];
 
         /// <summary>
         /// The boost tier a physics step released, or 0. A release sets the boost timer to at least

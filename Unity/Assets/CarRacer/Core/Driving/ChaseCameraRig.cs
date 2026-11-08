@@ -109,7 +109,7 @@ namespace CarRacer.Core.Driving
         /// </summary>
         private static (float Distance, float Height, float FieldOfView) Framing(float speed, ChaseCameraSettings settings)
         {
-            float t = settings.TopSpeed > 0f ? Math.Max(0f, Math.Min(1f, Math.Abs(speed) / settings.TopSpeed)) : 0f;
+            float t = settings.TopSpeed > 0f ? Math.Clamp(Math.Abs(speed) / settings.TopSpeed, 0f, 1f) : 0f;
             return (
                 Interpolation.Lerp(settings.Distance, settings.DistanceAtTopSpeed, t),
                 Interpolation.Lerp(settings.Height, settings.HeightAtTopSpeed, t),
