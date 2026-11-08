@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Draw the app icon as SVG and render the textures ProjectConfigurator sets as Android's icons.
 
-The SVGs are the source; the PNGs in Unity/Assets/CarRacer/Icon are renders of them. Rendering
-uses Node and Playwright's Chromium (`npm i playwright`, or any machine where
-`require('playwright')` works).
+This script is the source: it writes the SVGs beside it, overwriting any hand edits, and the PNGs in
+Unity/Assets/CarRacer/Icon are renders of them. Rendering uses Node and Playwright's Chromium
+(`npm i playwright`, or any machine where `require('playwright')` works).
 
 Usage: tools/icon/generate_icon.py
 """
