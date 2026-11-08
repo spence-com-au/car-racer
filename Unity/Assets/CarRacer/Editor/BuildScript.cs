@@ -27,7 +27,11 @@ namespace CarRacer.Editor
         [MenuItem("Car Racer/Build/Development APK")]
         public static void BuildDevelopmentApk()
         {
-            PrepareProject();
+            if (!PrepareProject())
+            {
+                return;
+            }
+
             bool useCustomKeystore = PlayerSettings.Android.useCustomKeystore;
             string keystoreName = PlayerSettings.Android.keystoreName;
             string keystorePass = PlayerSettings.Android.keystorePass;
@@ -55,7 +59,11 @@ namespace CarRacer.Editor
         [MenuItem("Car Racer/Build/Release APK")]
         public static void BuildReleaseApk()
         {
-            PrepareProject();
+            if (!PrepareProject())
+            {
+                return;
+            }
+
             Build("build/Android/CarRacer.apk", development: false);
         }
 
@@ -68,8 +76,7 @@ namespace CarRacer.Editor
         [MenuItem("Car Racer/Build/Linux Server")]
         public static void BuildLinuxServer()
         {
-            PrepareProject(BuildTarget.StandaloneLinux64);
-            if (Build(DefaultLinuxServerPath, BuildTarget.StandaloneLinux64, development: false))
+            if (PrepareProject(BuildTarget.StandaloneLinux64) && Build(DefaultLinuxServerPath, BuildTarget.StandaloneLinux64, development: false))
             {
                 CopyServerMusic(DefaultLinuxServerPath);
             }
@@ -81,7 +88,12 @@ namespace CarRacer.Editor
         public static void BuildLinuxServerFromCommandLine()
         {
             var args = ParseArguments(Environment.GetCommandLineArgs());
-            PrepareProject(BuildTarget.StandaloneLinux64);
+            if (!PrepareProject(BuildTarget.StandaloneLinux64))
+            {
+                EditorApplication.Exit(1);
+                return;
+            }
+
             if (args.TryGetValue("buildVersion", out string version) && !string.IsNullOrEmpty(version))
             {
                 PlayerSettings.bundleVersion = version;
@@ -131,7 +143,11 @@ namespace CarRacer.Editor
         public static void BuildFromCommandLine()
         {
             var args = ParseArguments(Environment.GetCommandLineArgs());
-            PrepareProject();
+            if (!PrepareProject())
+            {
+                EditorApplication.Exit(1);
+                return;
+            }
 
             if (args.TryGetValue("buildVersion", out string version) && !string.IsNullOrEmpty(version))
             {
@@ -167,15 +183,38 @@ namespace CarRacer.Editor
             }
         }
 
-        private static void PrepareProject(BuildTarget target = BuildTarget.Android)
+        /// <summary>
+        /// Applies the settings a build needs, or returns false if the editor isn't on
+        /// <paramref name="target"/>. A build can't follow a platform switch in the same call: the
+        /// switch recompiles scripts only on the next editor update, so editor code compiled for the
+        /// old platform would still run, and an APK would lose everything inside
+        /// <c>#if UNITY_ANDROID</c> (<see cref="ProjectConfigurator"/>'s icons, and the manifest's
+        /// permissions and deep link).
+        /// </summary>
+        private static bool PrepareProject(BuildTarget target = BuildTarget.Android)
         {
-            if (EditorUserBuildSettings.activeBuildTarget != target)
+            var active = EditorUserBuildSettings.activeBuildTarget;
+            if (active != target)
             {
-                EditorUserBuildSettings.SwitchActiveBuildTarget(BuildPipeline.GetBuildTargetGroup(target), target);
+                if (Application.isBatchMode)
+                {
+                    Debug.LogError($"The editor is on {active}, not {target}; start it with -buildTarget {target}.");
+                }
+                else if (EditorUserBuildSettings.SwitchActiveBuildTarget(BuildPipeline.GetBuildTargetGroup(target), target))
+                {
+                    Debug.LogError($"Switched the editor from {active} to {target}; build again once its scripts recompile.");
+                }
+                else
+                {
+                    Debug.LogError($"Couldn't switch the editor from {active} to {target}; check that its build support module is installed.");
+                }
+
+                return false;
             }
 
             ProjectConfigurator.Apply();
             EnsureBootstrapScene();
+            return true;
         }
 
         /// <summary>
