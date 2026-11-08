@@ -22,17 +22,32 @@ namespace CarRacer.Game.Items
         public void Initialise(IItemView items)
         {
             _items = items;
-            var material = SimpleMaterials.Get(Colour);
             _boxes = new Transform[items.Boxes.Count];
             for (int i = 0; i < _boxes.Length; i++)
             {
-                var box = new GameObject($"Item box {i}").transform;
-                box.SetParent(transform, false);
-                box.position = items.Boxes.Position(i).ToUnity();
-                var cube = SimpleMaterials.Part(PrimitiveType.Cube, box, Vector3.zero, Vector3.one * Size, material);
-                cube.localRotation = Quaternion.Euler(35f, 0f, 35f);
-                _boxes[i] = box;
+                _boxes[i] = Box($"Item box {i}", transform, items.Boxes.Position(i).ToUnity(), Colour);
             }
+        }
+
+        /// <summary>
+        /// A box at <paramref name="position"/>: a tilted cube that <see cref="Spin"/> turns in place.
+        /// Fake boxes (<see cref="ItemEffectViews"/>) are drawn with it too, so only their colour
+        /// tells them apart.
+        /// </summary>
+        public static Transform Box(string name, Transform parent, Vector3 position, Color colour)
+        {
+            var box = new GameObject(name).transform;
+            box.SetParent(parent, false);
+            box.position = position;
+            var cube = SimpleMaterials.Part(PrimitiveType.Cube, box, Vector3.zero, Vector3.one * Size, SimpleMaterials.Get(colour));
+            cube.localRotation = Quaternion.Euler(35f, 0f, 35f);
+            return box;
+        }
+
+        /// <summary>How far a box turns this frame, applied as <c>spin * box.rotation</c>.</summary>
+        public static Quaternion Spin()
+        {
+            return Quaternion.Euler(0f, SpinDegreesPerSecond * Time.deltaTime, 0f);
         }
 
         private void Update()
@@ -43,7 +58,7 @@ namespace CarRacer.Game.Items
             }
 
             long now = NetworkSession.NowMs;
-            var spin = Quaternion.Euler(0f, SpinDegreesPerSecond * Time.deltaTime, 0f);
+            var spin = Spin();
             for (int i = 0; i < _boxes.Length; i++)
             {
                 bool up = _items.BoxesShown && _items.Boxes.IsUp(i, now);
