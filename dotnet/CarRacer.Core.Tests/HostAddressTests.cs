@@ -43,6 +43,33 @@ namespace CarRacer.Core.Tests
             Assert.False(HostAddress.TryParse(text, out _, out _));
         }
 
+        [Theory]
+        [InlineData("1", 1)]
+        [InlineData("47778", 47778)]
+        [InlineData("65535", 65535)]
+        public void ValidPortsParse(string text, int port)
+        {
+            Assert.True(HostAddress.TryParsePort(text, out ushort parsed));
+            Assert.Equal(port, parsed);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("0")]
+        [InlineData("65536")]
+        [InlineData("-5")]
+        [InlineData("+7777")]
+        [InlineData(" 7777")]
+        [InlineData("7777 ")]
+        [InlineData("7,777")]
+        [InlineData("7777.0")]
+        [InlineData("abc")]
+        public void InvalidPortsDoNot(string text)
+        {
+            Assert.False(HostAddress.TryParsePort(text, out _));
+        }
+
         [Fact]
         public void UsableKeepsOnlyDistinctNonLoopbackIPv4InOrder()
         {
