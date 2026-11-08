@@ -171,6 +171,16 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void AGuestCannotScoreStuntsForAnotherPlayer()
+        {
+            Start();
+            _now += 3_000;
+            _host.OnMessage(GuestLink.Connection, new StuntMessage { PlayerId = HostId, Kind = StuntKind.Air, AirMs = 1_500 });
+            Assert.Equal(0, _race.Stunts.Points(HostId));
+            Assert.Equal(0, _race.Stunts.Points(GuestId));
+        }
+
+        [Fact]
         public void StuntsAndPointsTravelOnTheWire()
         {
             var stunt = Assert.IsType<StuntMessage>(MessageCodec.Decode(MessageCodec.Encode(new StuntMessage { PlayerId = 3, Kind = StuntKind.Crush, AirMs = 1234, VictimId = 5 })));
