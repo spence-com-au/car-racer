@@ -76,24 +76,9 @@ namespace CarRacer.Core.Discovery
         public static IReadOnlyList<string> LocalIPv4Addresses()
         {
             var candidates = new List<IPAddress>();
-            try
+            foreach (var unicast in LocalUnicastAddresses())
             {
-                foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
-                {
-                    if (nic.OperationalStatus != OperationalStatus.Up || nic.NetworkInterfaceType == NetworkInterfaceType.Loopback)
-                    {
-                        continue;
-                    }
-
-                    foreach (var unicast in nic.GetIPProperties().UnicastAddresses)
-                    {
-                        candidates.Add(unicast.Address);
-                    }
-                }
-            }
-            catch (Exception)
-            {
-                // NetworkInformationException, NotImplementedException, etc. on restricted platforms.
+                candidates.Add(unicast.Address);
             }
 
             if (!candidates.Exists(IsUsable))
@@ -114,6 +99,34 @@ namespace CarRacer.Core.Discovery
             }
 
             return Usable(candidates);
+        }
+
+        /// <summary>
+        /// The unicast addresses of every interface that is up and not loopback. Best effort: interface
+        /// enumeration is restricted on some Android versions, in which case this returns what it had
+        /// gathered by then, possibly nothing.
+        /// </summary>
+        internal static IReadOnlyList<UnicastIPAddressInformation> LocalUnicastAddresses()
+        {
+            var result = new List<UnicastIPAddressInformation>();
+            try
+            {
+                foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
+                {
+                    if (nic.OperationalStatus != OperationalStatus.Up || nic.NetworkInterfaceType == NetworkInterfaceType.Loopback)
+                    {
+                        continue;
+                    }
+
+                    result.AddRange(nic.GetIPProperties().UnicastAddresses);
+                }
+            }
+            catch (Exception)
+            {
+                // NetworkInformationException, NotImplementedException, etc. on restricted platforms.
+            }
+
+            return result;
         }
 
         /// <summary>
