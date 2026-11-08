@@ -37,6 +37,7 @@ namespace CarRacer.Tests
 
         private readonly Dictionary<string, int> _savedSettings = new Dictionary<string, int>();
         private string _savedCup;
+        private TrackScreen _screen;
 
         // Hosting saves the lobby settings to `PlayerPrefs` and loads them back on the next host, so each test starts
         // from the defaults and leaves the developer's own saved settings as it found them.
@@ -83,6 +84,19 @@ namespace CarRacer.Tests
             }
         }
 
+        [UnityTearDown]
+        public IEnumerator DestroyTheScreen()
+        {
+            if (_screen != null)
+            {
+                Object.Destroy(_screen.gameObject);
+            }
+
+            // Let NGO shut down before anything else starts a NetworkManager. This runs even when an assertion failed.
+            yield return null;
+            yield return null;
+        }
+
         private sealed class NoInput : ICarInputSource
         {
             public CarInput Read() => default;
@@ -91,224 +105,163 @@ namespace CarRacer.Tests
         [UnityTest]
         public IEnumerator HostingPutsTheHostsCarOnTheGrid()
         {
-            var screen = TrackScreen.Create(new NoInput(), () => NetworkSession.StartHosting("Test host", TestPort));
-            try
-            {
-                yield return null;
-                yield return null;
-
-                var session = screen.Session;
-                Assert.IsFalse(session.Ended, session.Status);
-                Assert.IsTrue(session.IsHost);
-                Assert.IsTrue(session.TryGetLocalPlayerId(out byte me));
-                Assert.AreEqual(0, me);
-                Assert.AreEqual(1, session.Players.Count);
-                Assert.AreEqual("Test host", session.Players[0].Name);
-                Assert.IsNotNull(screen.Car, "the host's car should be spawned");
-
-                int slotIndex = session.Race.GridSlotOf(me);
-                var expected = screen.Track.StartGrid(slotIndex + 1)[slotIndex].Position.ToUnity();
-                var actual = screen.Car.BodyPosition;
-                Assert.That(Vector2.Distance(new Vector2(actual.x, actual.z), new Vector2(expected.x, expected.z)), Is.LessThan(0.5f), "the host's car should stand on its grid slot");
-                Assert.That(actual.y, Is.EqualTo(expected.y).Within(2f), "on the track, not under or above it");
-            }
-            finally
-            {
-                Object.Destroy(screen.gameObject);
-            }
-
-            // Let NGO shut down before anything else starts a NetworkManager.
+            _screen = TrackScreen.Create(new NoInput(), () => NetworkSession.StartHosting("Test host", TestPort));
             yield return null;
             yield return null;
+
+            var session = _screen.Session;
+            Assert.IsFalse(session.Ended, session.Status);
+            Assert.IsTrue(session.IsHost);
+            Assert.IsTrue(session.TryGetLocalPlayerId(out byte me));
+            Assert.AreEqual(0, me);
+            Assert.AreEqual(1, session.Players.Count);
+            Assert.AreEqual("Test host", session.Players[0].Name);
+            Assert.IsNotNull(_screen.Car, "the host's car should be spawned");
+
+            int slotIndex = session.Race.GridSlotOf(me);
+            var expected = _screen.Track.StartGrid(slotIndex + 1)[slotIndex].Position.ToUnity();
+            var actual = _screen.Car.BodyPosition;
+            Assert.That(Vector2.Distance(new Vector2(actual.x, actual.z), new Vector2(expected.x, expected.z)), Is.LessThan(0.5f), "the host's car should stand on its grid slot");
+            Assert.That(actual.y, Is.EqualTo(expected.y).Within(2f), "on the track, not under or above it");
         }
 
         [UnityTest]
         public IEnumerator ASoloRaceHoldsTheCarOnTheGridUntilGo()
         {
             var input = new FullThrottle();
-            var screen = TrackScreen.Create(input, () => NetworkSession.StartHosting("Solo", TestPort + 1));
-            try
-            {
-                yield return null;
-                yield return null;
-                var race = (HostRace)screen.Session.Race;
-                Assert.IsTrue(race.Start(laps: 1));
-
-                yield return new WaitForSeconds(1f);
-                Assert.AreEqual(RacePhase.Countdown, race.Phase);
-                Assert.IsTrue(screen.Car.InputLocked);
-                Assert.That(screen.Car.ForwardSpeed, Is.EqualTo(0f).Within(0.5f), "held on the grid despite full throttle");
-
-                yield return new WaitForSeconds((HostRace.StartLeadMs + HostRace.CountdownMs) / 1000f);
-                Assert.AreEqual(RacePhase.Racing, race.Phase);
-                Assert.IsFalse(screen.Car.InputLocked);
-
-                // Driving off the grid crosses the start line, checkpoint 0.
-                yield return new WaitForSeconds(1.5f);
-                Assert.AreEqual(1, race.Tracker.Get(0).CheckpointsPassed);
-            }
-            finally
-            {
-                Object.Destroy(screen.gameObject);
-            }
-
+            _screen = TrackScreen.Create(input, () => NetworkSession.StartHosting("Solo", TestPort + 1));
             yield return null;
             yield return null;
+            var race = (HostRace)_screen.Session.Race;
+            Assert.IsTrue(race.Start(laps: 1));
+
+            yield return new WaitForSeconds(1f);
+            Assert.AreEqual(RacePhase.Countdown, race.Phase);
+            Assert.IsTrue(_screen.Car.InputLocked);
+            Assert.That(_screen.Car.ForwardSpeed, Is.EqualTo(0f).Within(0.5f), "held on the grid despite full throttle");
+
+            yield return new WaitForSeconds((HostRace.StartLeadMs + HostRace.CountdownMs) / 1000f);
+            Assert.AreEqual(RacePhase.Racing, race.Phase);
+            Assert.IsFalse(_screen.Car.InputLocked);
+
+            // Driving off the grid crosses the start line, checkpoint 0.
+            yield return new WaitForSeconds(1.5f);
+            Assert.AreEqual(1, race.Tracker.Get(0).CheckpointsPassed);
         }
 
         [UnityTest]
         public IEnumerator AServerHostsWithNoCarOfItsOwn()
         {
-            var screen = TrackScreen.CreateServer(() => NetworkSession.StartServer("Test server", TestPort + 2));
-            try
-            {
-                yield return null;
-                yield return null;
-
-                var session = screen.Session;
-                Assert.IsFalse(session.Ended, session.Status);
-                Assert.IsTrue(session.IsHost);
-                Assert.IsTrue(session.IsDedicated);
-                Assert.IsFalse(session.TryGetLocalPlayerId(out _));
-                Assert.AreEqual(0, session.Players.Count);
-                Assert.IsNull(screen.Car, "a server has no car");
-                Assert.IsFalse(session.LeadsRoom, "nobody runs an empty room");
-                Assert.IsFalse(session.CanStart);
-                Assert.IsNotNull(screen.GetComponent<HostLobby>());
-                Assert.IsNull(screen.GetComponent<SessionOverlay>(), "nothing is drawn on a server");
-            }
-            finally
-            {
-                Object.Destroy(screen.gameObject);
-            }
-
+            _screen = TrackScreen.CreateServer(() => NetworkSession.StartServer("Test server", TestPort + 2));
             yield return null;
             yield return null;
+
+            var session = _screen.Session;
+            Assert.IsFalse(session.Ended, session.Status);
+            Assert.IsTrue(session.IsHost);
+            Assert.IsTrue(session.IsDedicated);
+            Assert.IsFalse(session.TryGetLocalPlayerId(out _));
+            Assert.AreEqual(0, session.Players.Count);
+            Assert.IsNull(_screen.Car, "a server has no car");
+            Assert.IsFalse(session.LeadsRoom, "nobody runs an empty room");
+            Assert.IsFalse(session.CanStart);
+            Assert.IsNotNull(_screen.GetComponent<HostLobby>());
+            Assert.IsNull(_screen.GetComponent<SessionOverlay>(), "nothing is drawn on a server");
         }
 
         [UnityTest]
         public IEnumerator TheStartCommandStartsTheEventTheSettingsSay()
         {
-            var screen = TrackScreen.Create(new NoInput(), () => NetworkSession.StartHosting("Host", TestPort + 3));
-            try
-            {
-                yield return null;
-                yield return null;
-
-                var session = screen.Session;
-                var settings = LobbySettings.Default;
-                settings.Laps = 2;
-                settings.Track = 1;
-                session.ChangeSettings(settings);
-                session.Command(LobbyCommand.Start);
-
-                var race = session.Race;
-                Assert.AreEqual(RacePhase.Countdown, race.Phase);
-                Assert.AreEqual(2, race.LapCount);
-                Assert.AreEqual(1, race.TrackIndex);
-            }
-            finally
-            {
-                Object.Destroy(screen.gameObject);
-            }
-
+            _screen = TrackScreen.Create(new NoInput(), () => NetworkSession.StartHosting("Host", TestPort + 3));
             yield return null;
             yield return null;
+
+            var session = _screen.Session;
+            var settings = LobbySettings.Default;
+            settings.Laps = 2;
+            settings.Track = 1;
+            session.ChangeSettings(settings);
+            session.Command(LobbyCommand.Start);
+
+            var race = session.Race;
+            Assert.AreEqual(RacePhase.Countdown, race.Phase);
+            Assert.AreEqual(2, race.LapCount);
+            Assert.AreEqual(1, race.TrackIndex);
         }
 
         [UnityTest]
         public IEnumerator MonsterJamPutsTheCarInTheStadiumAsATruck()
         {
-            var screen = TrackScreen.Create(new NoInput(), () => NetworkSession.StartHosting("Host", TestPort + 4));
-            try
-            {
-                yield return null;
-                yield return null;
-
-                var session = screen.Session;
-                var settings = LobbySettings.Default;
-                settings.Mode = CarRacer.Core.Arena.GameMode.Monster;
-                session.ChangeSettings(settings);
-                session.Command(LobbyCommand.Start);
-                yield return null;
-                yield return null;
-
-                Assert.AreEqual(CarRacer.Core.Arena.GameMode.Monster, session.Race.Mode);
-                Assert.IsTrue(screen.Car.MonsterTruck, "the car handles as a monster truck");
-                var centre = CarRacer.Core.Arena.ArenaLayout.MonsterCentre.ToUnity();
-                Assert.Less(Vector3.Distance(screen.Car.BodyPosition, centre), CarRacer.Core.Arena.MonsterRules.StadiumRadius);
-                Assert.IsNotNull(GameObject.Find("Ramp 0"), "the stadium has its ramps");
-                Assert.IsNull(screen.CameraRig.ArenaCentre, "Monster Jam keeps the chase camera");
-            }
-            finally
-            {
-                Object.Destroy(screen.gameObject);
-            }
-
+            _screen = TrackScreen.Create(new NoInput(), () => NetworkSession.StartHosting("Host", TestPort + 4));
             yield return null;
             yield return null;
+
+            var session = _screen.Session;
+            var settings = LobbySettings.Default;
+            settings.Mode = CarRacer.Core.Arena.GameMode.Monster;
+            session.ChangeSettings(settings);
+            session.Command(LobbyCommand.Start);
+            yield return null;
+            yield return null;
+
+            Assert.AreEqual(CarRacer.Core.Arena.GameMode.Monster, session.Race.Mode);
+            Assert.IsTrue(_screen.Car.MonsterTruck, "the car handles as a monster truck");
+            var centre = CarRacer.Core.Arena.ArenaLayout.MonsterCentre.ToUnity();
+            Assert.Less(Vector3.Distance(_screen.Car.BodyPosition, centre), CarRacer.Core.Arena.MonsterRules.StadiumRadius);
+            Assert.IsNotNull(GameObject.Find("Ramp 0"), "the stadium has its ramps");
+            Assert.IsNull(_screen.CameraRig.ArenaCentre, "Monster Jam keeps the chase camera");
         }
 
         [UnityTest]
         public IEnumerator BotsFillTheGridAreHeldUntilGoThenDriveOffAndReportCheckpoints()
         {
-            var screen = TrackScreen.Create(new NoInput(), () => NetworkSession.StartHosting("Host", TestPort + 5));
-            try
-            {
-                yield return null;
-                yield return null;
-
-                var session = screen.Session;
-                var settings = LobbySettings.Default;
-                settings.BotFill = 3;
-                session.ChangeSettings(settings);
-                session.Command(LobbyCommand.Start);
-                yield return null;
-                yield return null;
-
-                var botIds = new System.Collections.Generic.List<byte>();
-                foreach (var player in session.Players)
-                {
-                    if (player.IsBot)
-                    {
-                        botIds.Add(player.PlayerId);
-                    }
-                }
-
-                Assert.AreEqual(2, botIds.Count, "the bots fill the grid up to the setting");
-                var bots = screen.GetComponent<BotCars>();
-                var race = (HostRace)session.Race;
-                var grid = new Vector3[botIds.Count];
-                for (int i = 0; i < botIds.Count; i++)
-                {
-                    Assert.IsTrue(bots.TryGetPosition(botIds[i], out grid[i]), "every bot in the roster has a car");
-                }
-
-                Assert.AreEqual(RacePhase.Countdown, race.Phase);
-                yield return new WaitForSeconds(0.5f);
-                for (int i = 0; i < botIds.Count; i++)
-                {
-                    bots.TryGetPosition(botIds[i], out var now);
-                    Assert.Less(Vector3.Distance(grid[i], now), 0.5f, "a bot is held on the grid through the countdown");
-                }
-
-                yield return new WaitForSeconds((HostRace.StartLeadMs + HostRace.CountdownMs) / 1000f);
-                Assert.AreEqual(RacePhase.Racing, race.Phase);
-
-                // Driving off the grid crosses the start line, checkpoint 0.
-                yield return new WaitForSeconds(3f);
-                foreach (byte id in botIds)
-                {
-                    Assert.GreaterOrEqual(race.Tracker.Get(id).CheckpointsPassed, 1, "a bot's checkpoints are reported to the referee");
-                }
-            }
-            finally
-            {
-                Object.Destroy(screen.gameObject);
-            }
-
+            _screen = TrackScreen.Create(new NoInput(), () => NetworkSession.StartHosting("Host", TestPort + 5));
             yield return null;
             yield return null;
+
+            var session = _screen.Session;
+            var settings = LobbySettings.Default;
+            settings.BotFill = 3;
+            session.ChangeSettings(settings);
+            session.Command(LobbyCommand.Start);
+            yield return null;
+            yield return null;
+
+            var botIds = new System.Collections.Generic.List<byte>();
+            foreach (var player in session.Players)
+            {
+                if (player.IsBot)
+                {
+                    botIds.Add(player.PlayerId);
+                }
+            }
+
+            Assert.AreEqual(2, botIds.Count, "the bots fill the grid up to the setting");
+            var bots = _screen.GetComponent<BotCars>();
+            var race = (HostRace)session.Race;
+            var grid = new Vector3[botIds.Count];
+            for (int i = 0; i < botIds.Count; i++)
+            {
+                Assert.IsTrue(bots.TryGetPosition(botIds[i], out grid[i]), "every bot in the roster has a car");
+            }
+
+            Assert.AreEqual(RacePhase.Countdown, race.Phase);
+            yield return new WaitForSeconds(0.5f);
+            for (int i = 0; i < botIds.Count; i++)
+            {
+                bots.TryGetPosition(botIds[i], out var now);
+                Assert.Less(Vector3.Distance(grid[i], now), 0.5f, "a bot is held on the grid through the countdown");
+            }
+
+            yield return new WaitForSeconds((HostRace.StartLeadMs + HostRace.CountdownMs) / 1000f);
+            Assert.AreEqual(RacePhase.Racing, race.Phase);
+
+            // Driving off the grid crosses the start line, checkpoint 0.
+            yield return new WaitForSeconds(3f);
+            foreach (byte id in botIds)
+            {
+                Assert.GreaterOrEqual(race.Tracker.Get(id).CheckpointsPassed, 1, "a bot's checkpoints are reported to the referee");
+            }
         }
 
         private sealed class FullThrottle : ICarInputSource
