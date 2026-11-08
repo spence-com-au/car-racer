@@ -2,7 +2,7 @@ using System;
 
 namespace CarRacer.Core.Numerics
 {
-    /// <summary>Engine-independent 2D vector, used for mesh UVs.</summary>
+    /// <summary>Engine-independent 2D vector: mesh UVs, screen and map points, and tilt gravity.</summary>
     [Serializable]
     public struct Vec2 : IEquatable<Vec2>
     {
