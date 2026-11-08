@@ -86,7 +86,10 @@ git push origin v0.1.0
 
 or, from the browser or phone, open **Actions → Release → Run workflow**, keep the branch on
 `master` and enter the version (`v0.1.0`). The run tags `master` itself and then does the same as
-a tag push. Claude can start it too (the `release` skill in `.claude/skills`).
+a tag push. Claude can start it too (the `release` skill in `.claude/skills`). Either way the
+version must look like `v0.1.0`, with no leading zeros, and its tag must be on a commit `master`
+has, or the workflow stops before building. Delete a tag on any other commit before releasing
+its version again.
 
 Don't create the release on the Releases page. The repository's releases
 are immutable, so assets can only be attached while a release is a draft: the workflow uploads
