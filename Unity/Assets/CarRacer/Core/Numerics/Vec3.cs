@@ -50,6 +50,9 @@ namespace CarRacer.Core.Numerics
 
         public static float Distance(Vec3 a, Vec3 b) => (a - b).Length;
 
+        /// <summary>True if the two points are within <paramref name="radius"/> of each other on the ground plane.</summary>
+        public static bool WithinFlat(Vec3 a, Vec3 b, float radius) => (a - b).Flattened.LengthSquared <= radius * radius;
+
         public static Vec3 Lerp(Vec3 a, Vec3 b, float t) => a + (b - a) * t;
 
         /// <summary>Rotates a vector around the up axis by the given angle (clockwise when viewed from above, like Unity).</summary>
