@@ -100,7 +100,7 @@ namespace CarRacer.Core.Physics
         public bool OnHit(HitMessage hit, byte selfId, long nowMs, out Vec3 impulse)
         {
             impulse = Vec3.Zero;
-            if (hit.TargetId != selfId || !IsFinite(hit.Impulse))
+            if (hit.TargetId != selfId || !hit.Impulse.IsFinite)
             {
                 return false;
             }
@@ -132,7 +132,5 @@ namespace CarRacer.Core.Physics
 
             return horizontal + Vec3.Up * Math.Clamp(impulse.Y, 0f, maxHorizontal * _settings.LiftFraction);
         }
-
-        private static bool IsFinite(Vec3 v) => float.IsFinite(v.X) && float.IsFinite(v.Y) && float.IsFinite(v.Z);
     }
 }

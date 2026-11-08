@@ -82,7 +82,9 @@ namespace CarRacer.Core.Physics
             normal = normal.Normalized;
             Vec3 relativeVelocity = (self.Velocity - other.Velocity).Flattened;
             float approachSpeed = -Vec3.Dot(relativeVelocity, normal);
-            if (approachSpeed <= 0f)
+
+            // A NaN speed, from a corrupt remote velocity, would pass through the clamp below as a NaN impulse.
+            if (approachSpeed <= 0f || float.IsNaN(approachSpeed))
             {
                 return Vec3.Zero;
             }

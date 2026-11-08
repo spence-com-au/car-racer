@@ -40,12 +40,19 @@ namespace CarRacer.Core.Physics
         public CarStateMessage Latest => _latest;
 
         /// <summary>
-        /// Accepts a state if it's newer than the current one (sequence numbers wrap safely), or if
-        /// it comes from a different driver. <paramref name="oneWayLatencyMs"/> is the current
-        /// estimate, typically RTT / 2.
+        /// Accepts a state whose numbers are all finite if it's newer than the current one (sequence
+        /// numbers wrap safely), or if it comes from a different driver. <paramref name="oneWayLatencyMs"/>
+        /// is the current estimate, typically RTT / 2.
         /// </summary>
         public bool OnState(CarStateMessage state, long receivedAtMs, float oneWayLatencyMs)
         {
+            // The state comes from another phone. A NaN would stick in the error offset, freezing the car on
+            // screen, and reach this car's physics through bumps.
+            if (!state.Position.IsFinite || !state.Velocity.IsFinite || !float.IsFinite(state.HeadingRadians))
+            {
+                return false;
+            }
+
             // A bot taking over a player's car, or handing it back (design doc §12), sends from its
             // own sequence counter, so the old driver's sequence says nothing about the new one's.
             bool sameDriver = _latest != null
