@@ -97,6 +97,10 @@ namespace CarRacer.Game
             camera.tag = "MainCamera";
             camera.clearFlags = CameraClearFlags.SolidColor;
             camera.backgroundColor = UiKit.Background;
+
+            // Without a listener the menu tune and button ticks are silent until a track screen adds one.
+            camera.gameObject.AddComponent<AudioListener>();
+
             root.AddComponent<MainMenu>().Notice = notice;
             Show(root);
         }
