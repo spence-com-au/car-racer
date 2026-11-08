@@ -31,6 +31,10 @@ namespace CarRacer.Game.Ui
         public static Label Text(string text, int size, Color colour, bool bold = false, bool wrap = false)
         {
             var label = new Label(text);
+
+            // Labels show names sent by other devices on the LAN, which must not restyle themselves with markup.
+            label.enableRichText = false;
+
             label.style.fontSize = Accessibility.Text(size);
             label.style.color = colour;
             label.style.unityFontStyleAndWeight = bold ? FontStyle.Bold : FontStyle.Normal;
@@ -69,6 +73,10 @@ namespace CarRacer.Game.Ui
                 onClick?.Invoke();
             });
             button.text = text;
+
+            // Buttons show TV names from the LAN; see Text.
+            button.enableRichText = false;
+
             Color normal = primary ? Accent : ButtonColour;
             Color pressed = primary ? AccentPressed : ButtonPressed;
             button.style.height = ButtonHeight;
