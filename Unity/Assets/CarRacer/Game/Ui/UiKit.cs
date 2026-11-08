@@ -144,7 +144,7 @@ namespace CarRacer.Game.Ui
             return panel;
         }
 
-        /// <summary>Children side by side; <paramref name="gap"/> reference pixels between them via <see cref="Space"/>.</summary>
+        /// <summary>An empty row for children side by side; space them with <see cref="Space"/>.</summary>
         public static VisualElement Row()
         {
             var row = new VisualElement();
