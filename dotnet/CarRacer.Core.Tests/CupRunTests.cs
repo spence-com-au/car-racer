@@ -210,6 +210,25 @@ namespace CarRacer.Core.Tests
             Assert.Equal(1, _guestRace.GridSlotOf(pole == HostId ? GuestId : HostId));
         }
 
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void ANewcomerStartsAtTheFrontWithReverseGridAndAtTheBackWithout(bool reverseGrid)
+        {
+            var run = NewCup(reverseGrid: reverseGrid);
+            run.StartNextEvent();
+            PlayBattle(run, GuestId);
+
+            // Someone new joins between events, with no points yet.
+            Assert.True(_race.ReturnToLobby());
+            byte newcomer = _host.Roster.AddBot().PlayerId;
+            Assert.True(run.StartNextEvent());
+
+            // The table is Host then Guest, so the reversed grid is Guest then Host.
+            var expected = reverseGrid ? new[] { newcomer, GuestId, HostId } : new[] { HostId, GuestId, newcomer };
+            Assert.Equal(expected, _race.GridOrder);
+        }
+
         [Fact]
         public void TheCupEndsAfterItsLastEvent()
         {
