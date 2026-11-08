@@ -82,7 +82,7 @@ namespace CarRacer.Game.Driving
 
                 foreach (var uv in part.Uvs)
                 {
-                    uvs.Add(new Vector2(uv.X, uv.Y));
+                    uvs.Add(uv.ToUnity());
                 }
 
                 foreach (int i in part.Triangles)
