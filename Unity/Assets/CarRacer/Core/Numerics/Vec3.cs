@@ -27,6 +27,7 @@ namespace CarRacer.Core.Numerics
 
         public float Length => MathF.Sqrt(X * X + Y * Y + Z * Z);
         public float LengthSquared => X * X + Y * Y + Z * Z;
+        public bool IsFinite => float.IsFinite(X) && float.IsFinite(Y) && float.IsFinite(Z);
 
         /// <summary>The vector projected onto the ground plane (Y = 0).</summary>
         public Vec3 Flattened => new Vec3(X, 0f, Z);

@@ -44,10 +44,11 @@ namespace CarRacer.Core.Tests
             Assert.Equal(Base.Acceleration, fast.Acceleration, 4);
             Assert.Equal(Base.SteerDegreesPerSecond, fast.SteerDegreesPerSecond, 4);
 
+            // Pinned to the percentages design doc §4 states, not to the step constants, so changing one fails here.
             var nimble = new CarStats(3, 1, 3).Tuning();
-            Assert.True(nimble.SteerDegreesPerSecond < Base.SteerDegreesPerSecond);
+            Assert.Equal(Base.SteerDegreesPerSecond * 0.86f, nimble.SteerDegreesPerSecond, 4);
             var punchy = new CarStats(3, 3, 4).Tuning();
-            Assert.True(punchy.Acceleration > Base.Acceleration);
+            Assert.Equal(Base.Acceleration * 1.1f, punchy.Acceleration, 4);
 
             // Even the extremes stay within 10% of base top speed, so no car runs away with a race.
             Assert.InRange(new CarStats(1, 3, 3).Tuning().MaxSpeed / Base.MaxSpeed, 0.9f, 1f);

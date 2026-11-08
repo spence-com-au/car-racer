@@ -17,8 +17,8 @@ namespace CarRacer.Core.Discovery
 
         /// <summary>
         /// Reads a join link; false for anything else (another link, a missing or bad host or port). Any page or app
-        /// can open a link, so the host must be an IPv4 address that <see cref="HostAddress.TryParse"/> accepts,
-        /// as if the guest had typed it.
+        /// can open a link, so the host must be an IPv4 address that <see cref="HostAddress.TryParse"/> accepts
+        /// and the port one that <see cref="HostAddress.TryParsePort"/> does, as if the guest had typed them.
         /// </summary>
         public static bool TryParse(string link, out string address, out ushort port)
         {
@@ -45,7 +45,7 @@ namespace CarRacer.Core.Discovery
                 {
                     host = value;
                 }
-                else if (key == "port" && ushort.TryParse(value, out ushort parsed))
+                else if (key == "port" && HostAddress.TryParsePort(value, out ushort parsed))
                 {
                     port = parsed;
                 }

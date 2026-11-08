@@ -19,9 +19,10 @@ and the milestone plan. Update it in the same PR when a decision changes.
 - **A PR is not done when it is opened.** Watch it: fix failing checks, and address each review
   finding or reply with why not, then resolve the thread.
 - **Ask before enabling squash auto-merge** (`gh pr merge --auto --squash`), as
-  [`.claude/rules/org/pull-request.md`](.claude/rules/org/pull-request.md) says. The `master`
-  ruleset requires green CI, an approval (Claude's counts) and resolved conversations, so
-  auto-merge only fires once all of those are met — don't merge by hand.
+  [`.claude/rules/org/pull-request.md`](.claude/rules/org/pull-request.md) says, and don't merge
+  by hand. Auto-merge fires as soon as the rules in force on `master` are met; read them from
+  `gh api repos/{owner}/{repo}/rules/branches/master` rather than assuming a given check or an
+  open thread holds it back.
 
 ## Code layout
 
@@ -37,7 +38,7 @@ and the milestone plan. Update it in the same PR when a decision changes.
 ## Before pushing
 
 ```sh
-dotnet test dotnet/CarRacer.sln          # core unit tests
+dotnet test dotnet/CarRacer.sln          # core unit tests; need ffmpeg and ffprobe on PATH
 python3 tools/generate_unity_meta.py     # create .meta files for any new Unity assets
 python3 tools/generate_unity_meta.py --check
 
@@ -45,7 +46,7 @@ python3 tools/generate_unity_meta.py --check
 dotnet format dotnet/CarRacer.sln --severity warn                   # C# style and naming, Core + tests
 dotnet format whitespace --folder Unity/Assets/CarRacer             # C# layout, Game/Editor/Unity tests
 ruff check --fix tools && ruff format tools                         # Python
-shellcheck server/run-server.sh
+shellcheck server/*.sh
 docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7    # workflows
 ```
 

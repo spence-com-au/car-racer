@@ -128,7 +128,7 @@ namespace CarRacer.Core.Race
             var finished = _racers.Values.Where(r => r.IsFinished).OrderBy(r => r.FinishPosition).Select(r => r.PlayerId);
             var running = _racers.Values
                 .Where(r => !r.IsFinished)
-                .OrderByDescending(r => r.CheckpointsPassed + Clamp01(fractionToNextCheckpoint(r.PlayerId)))
+                .OrderByDescending(r => r.CheckpointsPassed + ClampBelowOne(fractionToNextCheckpoint(r.PlayerId)))
                 .ThenBy(r => r.PlayerId)
                 .Select(r => r.PlayerId);
             return finished.Concat(running).ToList();
@@ -155,6 +155,10 @@ namespace CarRacer.Core.Race
             }
         }
 
-        private static float Clamp01(float v) => v < 0f ? 0f : (v > 0.999f ? 0.999f : v);
+        /// <summary>
+        /// Clamps short of 1, not to it, so a car that has reached or overshot its next checkpoint without passing it
+        /// still ranks behind one that has passed it rather than tying with it.
+        /// </summary>
+        private static float ClampBelowOne(float fraction) => Math.Clamp(fraction, 0f, 0.999f);
     }
 }

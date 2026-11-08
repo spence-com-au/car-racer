@@ -97,8 +97,9 @@ namespace CarRacer.Core.Bots
                 return false;
             }
 
-            foreach (var rival in rivals)
+            for (int i = 0; i < rivals.Count; i++)
             {
+                var rival = rivals[i];
                 float d = (rival - position).Flattened.LengthSquared;
                 if (d < best)
                 {
