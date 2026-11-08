@@ -32,6 +32,16 @@ namespace CarRacer.Core.Race
         /// <summary>Each body keeps its top speed, steering and acceleration ratings; off, every car drives the same.</summary>
         public bool CarStats { get; }
 
+        /// <summary>
+        /// Whether cars take damage in <paramref name="phase"/> of a <paramref name="mode"/> event (design doc §4,
+        /// §11): only while racing in a race, and only if the host left damage on. The arenas have their own rules,
+        /// and the lobby is for messing about.
+        /// </summary>
+        public bool DamageIn(GameMode mode, RacePhase phase) => phase == RacePhase.Racing && mode == GameMode.Race && Damage;
+
+        /// <summary>Whether each body keeps its handling ratings in <paramref name="phase"/>: always in the lobby, as the host set otherwise.</summary>
+        public bool CarStatsIn(RacePhase phase) => phase == RacePhase.Lobby || CarStats;
+
         /// <summary>The rules as they apply in <paramref name="mode"/>: Battle always has items.</summary>
         public EventRules For(GameMode mode) => mode == GameMode.Battle ? new EventRules(Damage, true, CarStats) : this;
 

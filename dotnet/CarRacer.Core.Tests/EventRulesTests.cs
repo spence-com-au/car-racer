@@ -37,5 +37,31 @@ namespace CarRacer.Core.Tests
             Assert.False(noItems.For(GameMode.Sumo).Items);
             Assert.False(noItems.WithDamage(false).For(GameMode.Battle).Damage, "only items are forced");
         }
+
+        [Theory]
+        [InlineData(GameMode.Race, RacePhase.Racing, true, true)]
+        [InlineData(GameMode.Race, RacePhase.Racing, false, false)]
+        [InlineData(GameMode.Race, RacePhase.Lobby, true, false)]
+        [InlineData(GameMode.Race, RacePhase.Countdown, true, false)]
+        [InlineData(GameMode.Race, RacePhase.Results, true, false)]
+        [InlineData(GameMode.Sumo, RacePhase.Racing, true, false)]
+        [InlineData(GameMode.Battle, RacePhase.Racing, true, false)]
+        [InlineData(GameMode.Monster, RacePhase.Racing, true, false)]
+        public void DamageCountsOnlyWhileRacingARace(GameMode mode, RacePhase phase, bool damage, bool expected)
+        {
+            Assert.Equal(expected, EventRules.Default.WithDamage(damage).DamageIn(mode, phase));
+        }
+
+        [Theory]
+        [InlineData(RacePhase.Lobby, false, true)]
+        [InlineData(RacePhase.Lobby, true, true)]
+        [InlineData(RacePhase.Countdown, false, false)]
+        [InlineData(RacePhase.Racing, false, false)]
+        [InlineData(RacePhase.Racing, true, true)]
+        [InlineData(RacePhase.Results, false, false)]
+        public void TheLobbyAlwaysKeepsCarStats(RacePhase phase, bool carStats, bool expected)
+        {
+            Assert.Equal(expected, EventRules.Default.WithCarStats(carStats).CarStatsIn(phase));
+        }
     }
 }

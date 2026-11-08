@@ -383,18 +383,11 @@ namespace CarRacer.Game.Bots
             {
                 if (lineUp)
                 {
-                    var mode = _session.Race.Mode;
-                    bot.ArenaDriver = ArenaDriverFor(bot, mode);
-                    bot.MonsterDriver = MonsterDriverFor(bot, mode);
-                    LineUp(bot, mode);
+                    GiveDrivers(bot);
+                    LineUp(bot, CurrentMode);
                 }
 
-                // Monster Jam's trucks for the event, back to cars for the lobby (this resets the handling, so it comes first).
-                DressAsTruck(bot, trucks);
-                bot.Car.InputLocked = phase != RacePhase.Racing;
-                var rules = _session.Race.Rules;
-                bot.Car.DamageEnabled = phase == RacePhase.Racing && _session.Race.Mode == GameMode.Race && rules.Damage;
-                bot.Car.UseBodyStats(phase == RacePhase.Lobby || rules.CarStats);
+                FollowEvent(bot);
             }
 
             _phase = phase;
@@ -432,25 +425,34 @@ namespace CarRacer.Game.Bots
             bot.LastPosition = position;
             var racer = (_session.Race as HostRace)?.Tracker?.Get(bot.PlayerId);
             bot.Detector.Resume(racer != null ? racer.CheckpointsPassed : 0);
-            bot.ArenaDriver = ArenaDriverFor(bot, CurrentMode);
-            bot.MonsterDriver = MonsterDriverFor(bot, CurrentMode);
-            DressAsTruck(bot, CurrentMode == GameMode.Monster);
-            bot.Car.InputLocked = _session.Race.Phase != RacePhase.Racing;
-            var rules = _session.Race.Rules;
-            bot.Car.DamageEnabled = _session.Race.Phase == RacePhase.Racing && _session.Race.Mode == GameMode.Race && rules.Damage;
-            bot.Car.UseBodyStats(_session.Race.Phase == RacePhase.Lobby || rules.CarStats);
+            GiveDrivers(bot);
+            FollowEvent(bot);
         }
 
         /// <summary>The mode of the event under way, or Race in the lobby.</summary>
         private GameMode CurrentMode => _session.Race.Phase == RacePhase.Lobby ? GameMode.Race : _session.Race.Mode;
 
-        private static ArenaBotDriver ArenaDriverFor(Bot bot, GameMode mode) =>
-            mode == GameMode.Sumo || mode == GameMode.Battle ? new ArenaBotDriver(bot.Skill, bot.Car.Tuning, mode, bot.PlayerId) : null;
-
-        private static MonsterBotDriver MonsterDriverFor(Bot bot, GameMode mode) =>
-            mode == GameMode.Monster
+        /// <summary>Gives a bot the arena or stadium driver for the event under way, or neither for a race.</summary>
+        private void GiveDrivers(Bot bot)
+        {
+            var mode = CurrentMode;
+            bot.ArenaDriver = mode == GameMode.Sumo || mode == GameMode.Battle ? new ArenaBotDriver(bot.Skill, bot.Car.Tuning, mode, bot.PlayerId) : null;
+            bot.MonsterDriver = mode == GameMode.Monster
                 ? new MonsterBotDriver(bot.Skill, bot.Car.Tuning, ArenaLayout.MonsterRamps(ArenaLayout.MonsterCentre), ArenaLayout.MonsterCentre, MonsterRules.StadiumRadius, bot.PlayerId)
                 : null;
+        }
+
+        /// <summary>Dresses a bot's car for the race phase and plays it by the event's rules: controls only while racing.</summary>
+        private void FollowEvent(Bot bot)
+        {
+            var race = _session.Race;
+
+            // Monster Jam's trucks for the event, back to cars for the lobby (this resets the handling, so it comes first).
+            DressAsTruck(bot, CurrentMode == GameMode.Monster);
+            bot.Car.InputLocked = race.Phase != RacePhase.Racing;
+            bot.Car.DamageEnabled = race.Rules.DamageIn(race.Mode, race.Phase);
+            bot.Car.UseBodyStats(race.Rules.CarStatsIn(race.Phase));
+        }
 
         /// <summary>Draws the bot's car as a monster truck (or back as a car) and gives it the truck's handling.</summary>
         private void DressAsTruck(Bot bot, bool truck)
@@ -538,10 +540,8 @@ namespace CarRacer.Game.Bots
                     }
                     else
                     {
-                        car.InputLocked = true;
-                        bot.ArenaDriver = ArenaDriverFor(bot, CurrentMode);
-                        bot.MonsterDriver = MonsterDriverFor(bot, CurrentMode);
-                        DressAsTruck(bot, CurrentMode == GameMode.Monster);
+                        GiveDrivers(bot);
+                        FollowEvent(bot);
                         LineUp(bot, CurrentMode);
                     }
 

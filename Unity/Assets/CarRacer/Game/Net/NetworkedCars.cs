@@ -501,11 +501,9 @@ namespace CarRacer.Game.Net
             _screen.Car.MonsterTruck = trucks;
             _bumpSettings.Exaggeration = trucks ? MonsterRules.BumpExaggeration : _carExaggeration;
 
-            // Damage counts in a race unless the host turned it off (design doc §4, §11); the arenas have
-            // their own rules, and the lobby is for messing about. Car stats follow the host's rules too.
             var rules = _session.Race.Rules;
-            _screen.Car.DamageEnabled = phase == RacePhase.Racing && _session.Race.Mode == GameMode.Race && rules.Damage;
-            _screen.Car.UseBodyStats(phase == RacePhase.Lobby || rules.CarStats);
+            _screen.Car.DamageEnabled = rules.DamageIn(_session.Race.Mode, phase);
+            _screen.Car.UseBodyStats(rules.CarStatsIn(phase));
             _phase = phase;
         }
 
