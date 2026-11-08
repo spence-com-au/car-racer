@@ -1,6 +1,7 @@
 #if UNITY_ANDROID
 using System.IO;
 using System.Xml;
+using CarRacer.Core.Discovery;
 using UnityEditor.Android;
 
 namespace CarRacer.Editor
@@ -71,8 +72,8 @@ namespace CarRacer.Editor
                 filter.AppendChild(Named(document, "category", "android.intent.category.DEFAULT"));
                 filter.AppendChild(Named(document, "category", "android.intent.category.BROWSABLE"));
                 XmlElement data = document.CreateElement("data");
-                SetAndroidAttribute(document, data, "scheme", "carracer");
-                SetAndroidAttribute(document, data, "host", "join");
+                SetAndroidAttribute(document, data, "scheme", JoinLink.Scheme);
+                SetAndroidAttribute(document, data, "host", JoinLink.Host);
                 filter.AppendChild(data);
                 activity.AppendChild(filter);
                 return;
