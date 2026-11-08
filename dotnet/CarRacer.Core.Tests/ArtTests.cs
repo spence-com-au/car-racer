@@ -113,6 +113,57 @@ f -4/-4/-1 -3/-3/-1 -2/-2/-1
             Assert.Equal(160, rgba[6]);
             Assert.Equal(new byte[] { 0, 200, 0, 255, 0, 200, 0, 255 }, rgba.Skip(8).ToArray());
         }
+
+        [Theory]
+        [InlineData(0.5f, 0f, 0.5f, 1f)] // no width
+        [InlineData(0f, 0.5f, 1f, 0.5f)] // no height
+        [InlineData(1f, 0f, 0f, 1f)] // back to front
+        [InlineData(2f, 0f, 3f, 1f)] // right of the texture
+        [InlineData(-1f, 0f, 0f, 1f)] // left of the texture
+        [InlineData(0f, 2f, 1f, 3f)] // above the texture
+        [InlineData(0f, -1f, 1f, 0f)] // below the texture
+        public void LeavesTheTextureAloneForAnAreaWithNoPixelsInIt(float uMin, float vMin, float uMax, float vMax)
+        {
+            byte[] rgba = { 100, 0, 0, 255, 200, 0, 0, 255, 0, 200, 0, 255, 0, 200, 0, 255 };
+            byte[] original = (byte[])rgba.Clone();
+
+            PaintRecolour.Recolour(rgba, 2, 2, new UvRect(uMin, vMin, uMax, vMax), 0, 0, 120);
+
+            Assert.Equal(original, rgba);
+        }
+
+        [Fact]
+        public void ClipsAnAreaHangingOffTheTextureToTheEdge()
+        {
+            byte[] rgba = { 100, 0, 0, 255, 200, 0, 0, 255, 0, 200, 0, 255, 0, 200, 0, 255 };
+
+            PaintRecolour.Recolour(rgba, 2, 2, new UvRect(-0.5f, -0.5f, 0.5f, 0.5f), 0, 0, 120);
+
+            // Only the bottom-left pixel is inside the texture and in the area, so it takes the whole colour.
+            Assert.Equal(new byte[] { 0, 0, 120, 255, 200, 0, 0, 255, 0, 200, 0, 255, 0, 200, 0, 255 }, rgba);
+        }
+
+        [Fact]
+        public void PaintsAnAllBlackAreaBlackRatherThanDividingByZero()
+        {
+            // A mean of 0 would make every shade NaN, and casting NaN to a byte is unspecified.
+            byte[] rgba = { 0, 0, 0, 255, 0, 0, 0, 255 };
+
+            PaintRecolour.Recolour(rgba, 2, 1, new UvRect(0f, 0f, 1f, 1f), 200, 100, 50);
+
+            Assert.Equal(new byte[] { 0, 0, 0, 255, 0, 0, 0, 255 }, rgba);
+        }
+
+        [Fact]
+        public void ClampsAChannelBrighterThanTheColourCanReach()
+        {
+            // The mean grey is 50, so the 200 pixel is four times as light as average and 100 * 4 would wrap a byte.
+            byte[] rgba = { 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 200, 200, 200, 255 };
+
+            PaintRecolour.Recolour(rgba, 4, 1, new UvRect(0f, 0f, 1f, 1f), 100, 50, 0);
+
+            Assert.Equal(new byte[] { 255, 200, 0, 255 }, rgba.Skip(12).ToArray());
+        }
     }
 
     public class CarModelAssetTests

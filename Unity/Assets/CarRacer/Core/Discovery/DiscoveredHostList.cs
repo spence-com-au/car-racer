@@ -20,6 +20,16 @@ namespace CarRacer.Core.Discovery
             : IsFull ? "Full"
             : Announcement.State == HostSessionState.InEvent ? "Racing"
             : "Open";
+
+        /// <summary>
+        /// The join list's heading for this host. A host on another protocol version announces only
+        /// its version and session id, so it goes by its address instead of a name.
+        /// </summary>
+        public string Title => IsCompatible ? Announcement.HostName : Address;
+
+        /// <summary>The line under <see cref="Title"/>; another protocol version's player count is unknown.</summary>
+        public string Details =>
+            IsCompatible ? $"{Announcement.PlayerCount}/{Announcement.MaxPlayers} players · {StatusText}" : StatusText;
     }
 
     /// <summary>

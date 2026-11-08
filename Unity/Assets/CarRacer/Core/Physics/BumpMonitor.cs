@@ -159,8 +159,7 @@ namespace CarRacer.Core.Physics
 
         private Vec3 LimitBump(Vec3 impulse)
         {
-            // All cars weigh CarMass, so the reduced mass BumpResolver clamps with is half of it.
-            float maxHorizontal = _settings.MaxImpulsePerMass * CarMass / 2f;
+            float maxHorizontal = _settings.MaxImpulsePerMass * ReducedMass;
             Vec3 horizontal = impulse.Flattened;
             if (horizontal.Length > maxHorizontal)
             {

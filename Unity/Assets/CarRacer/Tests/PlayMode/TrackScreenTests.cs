@@ -1,12 +1,14 @@
 using System.Collections;
 using CarRacer.Core.Driving;
 using CarRacer.Core.Physics;
+using CarRacer.Core.Track;
 using CarRacer.Game;
 using CarRacer.Game.Driving;
 using CarRacer.Game.Screens;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
+using CarModels = CarRacer.Core.Art.CarModels;
 
 namespace CarRacer.Tests
 {
@@ -252,6 +254,40 @@ namespace CarRacer.Tests
             Assert.That(Car.Damage.Value, Is.EqualTo(0f));
         }
 
+        [Test]
+        public void OnlyTheTrackCarsAreOnIsDrawnButEveryTrackStaysSolid()
+        {
+            AssertOnlyTrackDrawn(0);
+
+            Assert.IsTrue(_screen.UseTrack(3));
+            Assert.AreEqual(3, _screen.TrackIndex);
+            AssertOnlyTrackDrawn(3);
+
+            Assert.IsFalse(_screen.UseTrack(3), "already there");
+            AssertOnlyTrackDrawn(3);
+
+            Assert.IsTrue(_screen.UseTrack(TrackCatalog.Count), "an unknown track falls back to the first");
+            Assert.AreEqual(0, _screen.TrackIndex);
+            AssertOnlyTrackDrawn(0);
+        }
+
+        [Test]
+        public void ReplacingABodySwapsTheModelAndTheHandlingWithIt()
+        {
+            var car = CarFactory.Build("Spare car", Color.red, _screen.transform, haptics: false);
+            var visual = car.transform.Find("Body");
+            Assert.AreEqual(CarModels.Race.Name, visual.GetChild(0).name);
+            float raceSpeed = car.Tuning.MaxSpeed;
+
+            var hatchback = CarModels.Bodies[3];
+            CarFactory.ReplaceBody(car.gameObject, Color.blue, hatchback);
+
+            Assert.AreEqual(1, visual.childCount, "the old body is detached, not left under the new one");
+            Assert.AreEqual(hatchback.Name, visual.GetChild(0).name);
+            Assert.AreNotEqual(raceSpeed, car.Tuning.MaxSpeed);
+            Assert.AreEqual(hatchback.Stats.Tuning().MaxSpeed, car.Tuning.MaxSpeed);
+        }
+
         /// <summary>The damage a single bump of <paramref name="impulsePerMass"/> does to an undamaged car.</summary>
         private static float BumpDamage(float impulsePerMass)
         {
@@ -259,6 +295,40 @@ namespace CarRacer.Tests
             damage.AddBump(impulsePerMass, new BumpSettings());
             return damage.Value;
         }
+
+        /// <summary>
+        /// Asserts that only track <paramref name="drawn"/> has its road, walls and scenery drawn, that every
+        /// track's grass is drawn, and that every track's road and walls still collide.
+        /// </summary>
+        private void AssertOnlyTrackDrawn(int drawn)
+        {
+            for (int i = 0; i < TrackCatalog.Count; i++)
+            {
+                string name = TrackCatalog.Layouts[i].Definition.DisplayName;
+                var track = _screen.transform.Find(name);
+                Assert.IsNotNull(track, name);
+
+                var renderers = track.GetComponentsInChildren<Renderer>(true);
+                Assert.That(renderers, Is.Not.Empty, name);
+                foreach (var renderer in renderers)
+                {
+                    Assert.AreEqual(i == drawn, IsDrawn(renderer), $"{renderer.name} with track {drawn} drawn");
+                }
+
+                var colliders = track.GetComponentsInChildren<Collider>(true);
+                Assert.That(colliders, Is.Not.Empty, name);
+                foreach (var collider in colliders)
+                {
+                    bool solid = collider.enabled && collider.gameObject.activeInHierarchy;
+                    Assert.IsTrue(solid, $"{collider.name} collides");
+                }
+
+                var grass = _screen.transform.Find(name + " ground").GetComponent<Renderer>();
+                Assert.IsTrue(IsDrawn(grass), $"{name} grass is drawn");
+            }
+        }
+
+        private static bool IsDrawn(Renderer renderer) => renderer.enabled && renderer.gameObject.activeInHierarchy;
 
         /// <summary>Waits until <paramref name="done"/> or <paramref name="timeout"/> seconds have passed.</summary>
         private static IEnumerator WaitUntil(System.Func<bool> done, float timeout)

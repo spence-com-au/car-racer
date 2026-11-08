@@ -132,6 +132,19 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void OvershootingTheNextCheckpointStillRanksBehindPassingIt()
+        {
+            var tracker = new RaceTracker(4, 3, new[] { 1, 2 });
+            tracker.ReportCheckpoint(1, 0, 0);
+            tracker.ReportCheckpoint(2, 0, 0);
+            tracker.ReportCheckpoint(2, 1, 0);
+
+            // Player 1 is past checkpoint 1 without having passed it; player 2 has just passed it.
+            var fractions = new[] { 0f, 1.5f, 0f };
+            Assert.Equal(new[] { 2, 1 }, tracker.ComputeStandings(p => fractions[p]));
+        }
+
+        [Fact]
         public void FinishRemainingAssignsPositionsAndMarksDnf()
         {
             var tracker = new RaceTracker(3, 1, new[] { 1, 2, 3 });
