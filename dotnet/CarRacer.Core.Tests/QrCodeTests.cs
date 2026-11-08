@@ -98,6 +98,15 @@ namespace CarRacer.Core.Tests
             Assert.Throws<ArgumentException>(() => QrCode.Encode(new string('a', 272), QrErrorCorrection.Low));
         }
 
+        // An unchecked 8 would be ORed into the format bits' level and read back as a different level and mask.
+        [Theory]
+        [InlineData(-2)]
+        [InlineData(8)]
+        public void AMaskOutsideTheEightPatternsIsRefused(int mask)
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(() => QrCode.Encode("HELLO", QrErrorCorrection.Medium, mask));
+        }
+
         [Fact]
         public void OutsideTheGridIsLight()
         {
