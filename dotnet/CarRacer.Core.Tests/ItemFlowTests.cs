@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using CarRacer.Core.Arena;
 using CarRacer.Core.Items;
 using CarRacer.Core.Net;
 using CarRacer.Core.Numerics;
@@ -367,6 +368,52 @@ namespace CarRacer.Core.Tests
             StartRacing();
             _host.OnMessage(GuestConnection, new ItemBoxClaimMessage { PlayerId = _host.HostPlayerId, BoxIndex = 0 });
             Assert.Empty(_hostLink.Sent.OfType<ItemBoxTakenMessage>());
+        }
+
+        /// <summary>Starts a Battle with a bot in it, so the guest going out leaves it running.</summary>
+        private void StartBattle()
+        {
+            _host.BotFill = 3;
+            Assert.True(_hostRace.Start(1, GameMode.Battle));
+            Tick();
+            _now += HostRace.StartLeadMs + HostRace.CountdownMs;
+            Tick();
+            Assert.Equal(RacePhase.Racing, _guestRace.Phase);
+        }
+
+        private void KnockTheGuestOut()
+        {
+            for (int i = 0; i < BattleRules.StartingLives; i++)
+            {
+                _hostRace.ReportSpinOut(GuestId);
+            }
+
+            Assert.Equal(RacePhase.Racing, _guestRace.Phase);
+            Assert.True(ArenaStandings.IsOut(_guestRace, GuestId));
+        }
+
+        [Fact]
+        public void AGuestOutOfABattleLeavesBoxesAlone()
+        {
+            StartBattle();
+            KnockTheGuestOut();
+            Assert.False(_guestItems.ClaimTouchedBox(BoxPositions[0]));
+            Assert.True(_guestItems.Boxes.IsUp(0, _now - GuestClockBehindMs));
+            Assert.Empty(_guestLink.Sent.OfType<ItemBoxClaimMessage>());
+        }
+
+        [Fact]
+        public void AGuestOutOfABattleKeepsTheItemItHeld()
+        {
+            StartBattle();
+            Assert.True(_guestItems.ClaimTouchedBox(BoxPositions[0]));
+            var held = _guestItems.Held;
+            Assert.NotEqual(ItemKind.None, held);
+            KnockTheGuestOut();
+            Assert.Equal(ItemKind.None, _guestItems.UseHeld(Vec3.Zero, Vec3.Zero, 0f));
+            Assert.Equal(held, _guestItems.Held);
+            Assert.Empty(_guestLink.Sent.OfType<ItemUsedMessage>());
+            Assert.Empty(_guestSaw);
         }
 
         [Fact]

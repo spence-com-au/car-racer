@@ -212,8 +212,7 @@ namespace CarRacer.Game.Net
             bool pressed = input != null && input.ConsumeItemPress();
             _shield.Tick(Time.deltaTime);
             // A wreck can't use its item (design doc §4): a Boost would drive it, and the item keeps for later.
-            // Nor can a car that is out of an arena event, which must not still decide it.
-            if (pressed && car != null && _phase == RacePhase.Racing && !car.Damage.Wrecked && !ArenaStandings.IsOut(_session.Race, _me))
+            if (pressed && car != null && _phase == RacePhase.Racing && !car.Damage.Wrecked)
             {
                 var item = _session.Items.UseHeld(car.BodyPosition.ToCore(), car.BodyVelocity.ToCore(), car.State.Heading);
                 if (item == ItemKind.Boost)

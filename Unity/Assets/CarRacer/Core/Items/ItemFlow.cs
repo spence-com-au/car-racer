@@ -41,8 +41,9 @@ namespace CarRacer.Core.Items
         bool ClaimTouchedBox(Vec3 carPosition);
 
         /// <summary>
-        /// Uses the held item, returning which it was (<see cref="ItemKind.None"/> if nothing was held
-        /// or the race isn't on). The caller applies Boost and Shield to its own car at once.
+        /// Uses the held item, returning which it was (<see cref="ItemKind.None"/> if nothing was held,
+        /// the race isn't on or the player is out of an arena event). The caller applies Boost and
+        /// Shield to its own car at once.
         /// </summary>
         ItemKind UseHeld(Vec3 position, Vec3 velocity, float headingRadians);
     }
@@ -508,7 +509,7 @@ namespace CarRacer.Core.Items
                 _pendingBox = -1;
             }
 
-            if (_race.Phase != RacePhase.Racing || !_race.Rules.Items || Held != ItemKind.None || _pendingBox >= 0)
+            if (_race.Phase != RacePhase.Racing || !_race.Rules.Items || ArenaStandings.IsOut(_race, _session.PlayerId) || Held != ItemKind.None || _pendingBox >= 0)
             {
                 return false;
             }
@@ -530,7 +531,7 @@ namespace CarRacer.Core.Items
         public ItemKind UseHeld(Vec3 position, Vec3 velocity, float headingRadians)
         {
             var item = Held;
-            if (_race.Phase != RacePhase.Racing || item == ItemKind.None)
+            if (_race.Phase != RacePhase.Racing || ArenaStandings.IsOut(_race, _session.PlayerId) || item == ItemKind.None)
             {
                 return ItemKind.None;
             }
