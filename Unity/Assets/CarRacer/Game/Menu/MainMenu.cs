@@ -452,8 +452,8 @@ namespace CarRacer.Game.Menu
                 var text = new VisualElement();
                 text.style.flexGrow = 1f;
                 text.pickingMode = PickingMode.Ignore;
-                text.Add(UiKit.Body(a.HostName));
-                text.Add(UiKit.Hint($"{a.PlayerCount}/{a.MaxPlayers} players · {host.StatusText}"));
+                text.Add(UiKit.Body(host.Title));
+                text.Add(UiKit.Hint(host.Details));
                 card.Add(text);
                 string address = host.Address;
                 ushort gamePort = a.GamePort;
