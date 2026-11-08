@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using CarRacer.Core.Discovery;
 using CarRacer.Core.Items;
 using CarRacer.Core.Net;
@@ -12,6 +13,9 @@ using Unity.Collections;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
 using UnityEngine;
+
+// The PlayMode tests feed `NetworkSession.Receive` frames themselves, as there is no peer to send them.
+[assembly: InternalsVisibleTo("CarRacer.Tests.PlayMode")]
 
 namespace CarRacer.Game.Net
 {
@@ -35,7 +39,7 @@ namespace CarRacer.Game.Net
 
         private static int _live;
 
-        private readonly List<(ulong Connection, float AtTime)> _pendingDisconnects = new List<(ulong, float)>();
+        private readonly DelayedDisconnects _disconnects = new DelayedDisconnects();
         private NetworkManager _network;
         private DiscoveryAnnouncer _announcer;
         private DiscoveryAnnouncement _announcement;
@@ -326,11 +330,10 @@ namespace CarRacer.Game.Net
                 return;
             }
 
-            byte[] bytes = MessageCodec.Encode(message);
-            using (var writer = new FastBufferWriter(bytes.Length + sizeof(int), Allocator.Temp))
+            byte[] frame = MessageCodec.EncodeFrame(message);
+            using (var writer = new FastBufferWriter(frame.Length, Allocator.Temp))
             {
-                writer.WriteValueSafe(bytes.Length);
-                writer.WriteBytesSafe(bytes);
+                writer.WriteBytesSafe(frame);
 
                 // Fragmented, because NGO throws on an unfragmented message over its `NonFragmentedMessageMaxSize`
                 // (about 1.3 KB) and a TV status can be twice that. Unity Transport sends both kinds down the same
@@ -339,12 +342,12 @@ namespace CarRacer.Game.Net
                 _network.CustomMessagingManager.SendNamedMessage(MessageName, connection, writer, delivery);
             }
 
-            PerfOverlay.Traffic.Sent(bytes.Length + sizeof(int), Time.realtimeSinceStartupAsDouble);
+            PerfOverlay.Traffic.Sent(frame.Length, Time.realtimeSinceStartupAsDouble);
         }
 
         void ISessionTransport.Disconnect(ulong connection)
         {
-            _pendingDisconnects.Add((connection, Time.realtimeSinceStartup + RefusalDisconnectDelaySeconds));
+            _disconnects.Add(connection, Time.realtimeSinceStartup + RefusalDisconnectDelaySeconds);
         }
 
         private void RegisterHandler()
@@ -354,27 +357,21 @@ namespace CarRacer.Game.Net
 
         private void OnNamedMessage(ulong sender, FastBufferReader reader)
         {
-            IGameMessage message;
-            try
-            {
-                reader.ReadValueSafe(out int length);
+            // Exactly the bytes NGO delivered, so the length the frame claims is checked against what arrived rather
+            // than trusted.
+            int size = reader.Length - reader.Position;
+            var frame = new byte[size];
+            reader.ReadBytesSafe(ref frame, size);
+            PerfOverlay.Traffic.Received(size, Time.realtimeSinceStartupAsDouble);
+            Receive(sender, frame);
+        }
 
-                // Checked before `new byte[length]`, so a bad length can't allocate more than the message carries.
-                int received = reader.Length - reader.Position;
-                if (length <= 0 || length > received)
-                {
-                    Debug.LogWarning($"Dropped a message from connection {sender} claiming {length} bytes when {received} arrived.");
-                    return;
-                }
-
-                PerfOverlay.Traffic.Received(length + sizeof(int), Time.realtimeSinceStartupAsDouble);
-                var bytes = new byte[length];
-                reader.ReadBytesSafe(ref bytes, length);
-                message = MessageCodec.Decode(bytes);
-            }
-            catch (Exception e) when (e is NetFormatException || e is OverflowException || e is IndexOutOfRangeException)
+        /// <summary>Handles a frame from <paramref name="sender"/>, which anyone on the LAN could have sent.</summary>
+        internal void Receive(ulong sender, byte[] frame)
+        {
+            if (!MessageCodec.TryDecodeFrame(frame, out var message, out string error))
             {
-                Debug.LogWarning($"Dropped a malformed message from client {sender}: {e.Message}");
+                Debug.LogWarning($"Dropped a malformed message from connection {sender}: {error}");
                 return;
             }
 
@@ -387,7 +384,7 @@ namespace CarRacer.Game.Net
                 GuestSide.OnMessage(message);
                 if (GuestSide.State == GuestState.Refused)
                 {
-                    Fail(RefusalText(GuestSide.RefusalReason));
+                    Fail(GuestSession.RefusalText(GuestSide.RefusalReason));
                 }
                 else if (GuestSide.State == GuestState.Joined)
                 {
@@ -458,16 +455,11 @@ namespace CarRacer.Game.Net
                 _announcer.Tick(_announcement, now);
             }
 
-            for (int i = _pendingDisconnects.Count - 1; i >= 0; i--)
+            while (_disconnects.TryTakeDue(Time.realtimeSinceStartup, out ulong connection))
             {
-                if (Time.realtimeSinceStartup >= _pendingDisconnects[i].AtTime)
+                if (_network != null && _network.IsServer)
                 {
-                    if (_network != null && _network.IsServer)
-                    {
-                        _network.DisconnectClient(_pendingDisconnects[i].Connection);
-                    }
-
-                    _pendingDisconnects.RemoveAt(i);
+                    _network.DisconnectClient(connection);
                 }
             }
         }
@@ -495,21 +487,6 @@ namespace CarRacer.Game.Net
             Status = reason;
             _announcer?.Dispose();
             _announcer = null;
-        }
-
-        private static string RefusalText(JoinResult result)
-        {
-            switch (result)
-            {
-                case JoinResult.SessionFull:
-                    return "That game is full";
-                case JoinResult.VersionMismatch:
-                    return "That game needs a different version of Car Racer";
-                case JoinResult.EventInProgress:
-                    return "That game has already started";
-                default:
-                    return "Couldn't join";
-            }
         }
     }
 }

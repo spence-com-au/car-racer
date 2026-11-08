@@ -297,15 +297,67 @@ namespace CarRacer.Core.Net
         };
     }
 
-    /// <summary>Frames game messages as [type byte][payload].</summary>
+    /// <summary>Frames game messages as [type byte][payload], and on the wire each as [length][that].</summary>
     public static class MessageCodec
     {
+        /// <summary>The length ahead of every message on the wire, a little-endian int.</summary>
+        public const int FrameHeaderBytes = sizeof(int);
+
         public static byte[] Encode(IGameMessage message)
         {
             var writer = new NetWriter();
             writer.WriteByte((byte)message.Type);
             message.Write(writer);
             return writer.ToArray();
+        }
+
+        /// <summary>The message as it travels: its length, then its <see cref="Encode"/>d bytes.</summary>
+        public static byte[] EncodeFrame(IGameMessage message)
+        {
+            byte[] bytes = Encode(message);
+            var writer = new NetWriter(FrameHeaderBytes + bytes.Length);
+            writer.WriteInt(bytes.Length);
+            writer.WriteBytes(bytes);
+            return writer.ToArray();
+        }
+
+        /// <summary>
+        /// Reads the message in a frame that anyone on the LAN could have sent. Anything that isn't a whole,
+        /// well-formed message is reported in <paramref name="error"/> rather than thrown, so a bad packet can't take
+        /// the session down.
+        /// </summary>
+        public static bool TryDecodeFrame(byte[] frame, out IGameMessage message, out string error)
+        {
+            message = null;
+            error = null;
+            try
+            {
+                if (frame.Length < FrameHeaderBytes)
+                {
+                    throw new NetFormatException(
+                        $"Packet truncated: needed {FrameHeaderBytes} more bytes, {frame.Length} remaining.");
+                }
+
+                int length = frame[0] | (frame[1] << 8) | (frame[2] << 16) | (frame[3] << 24);
+                if (length <= 0)
+                {
+                    throw new NetFormatException($"Message length {length} is not positive.");
+                }
+
+                int remaining = frame.Length - FrameHeaderBytes;
+                if (length > remaining)
+                {
+                    throw new NetFormatException($"Packet truncated: needed {length} more bytes, {remaining} remaining.");
+                }
+
+                message = Decode(frame, FrameHeaderBytes, length);
+                return true;
+            }
+            catch (Exception e) when (e is NetFormatException || e is OverflowException || e is IndexOutOfRangeException)
+            {
+                error = e.Message;
+                return false;
+            }
         }
 
         public static IGameMessage Decode(byte[] data) => Decode(data, 0, data.Length);
