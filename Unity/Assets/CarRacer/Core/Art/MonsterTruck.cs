@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using CarRacer.Core.Numerics;
 
 namespace CarRacer.Core.Art
@@ -28,7 +29,7 @@ namespace CarRacer.Core.Art
             {
                 if (IsRoadWheel(part) && part.Positions.Count > 0)
                 {
-                    Bounds(part, out var min, out var max);
+                    var (min, max) = ObjModel.BoundsOf(part.Positions);
                     radius += (max.Y - min.Y) / 2f;
                     wheels++;
                 }
@@ -37,8 +38,6 @@ namespace CarRacer.Core.Art
             radius = wheels > 0 ? radius / wheels : 0f;
             float lift = (WheelScale - 1f) * radius;
             var truck = new ObjModel();
-            var lo = new Vec3(float.MaxValue, float.MaxValue, float.MaxValue);
-            var hi = new Vec3(float.MinValue, float.MinValue, float.MinValue);
             foreach (var part in car.Parts)
             {
                 var copy = new ObjPart { Name = part.Name, Material = part.Material };
@@ -47,7 +46,7 @@ namespace CarRacer.Core.Art
                 copy.Triangles.AddRange(part.Triangles);
                 if (IsRoadWheel(part) && part.Positions.Count > 0)
                 {
-                    Bounds(part, out var min, out var max);
+                    var (min, max) = ObjModel.BoundsOf(part.Positions);
                     var centre = (min + max) * 0.5f;
                     float outward = Math.Sign(centre.X) * (max.X - min.X) / 2f * (WheelScale - 1f);
                     var moved = centre + new Vec3(outward, lift, 0f);
@@ -65,29 +64,11 @@ namespace CarRacer.Core.Art
                     }
                 }
 
-                foreach (var p in copy.Positions)
-                {
-                    lo = new Vec3(Math.Min(lo.X, p.X), Math.Min(lo.Y, p.Y), Math.Min(lo.Z, p.Z));
-                    hi = new Vec3(Math.Max(hi.X, p.X), Math.Max(hi.Y, p.Y), Math.Max(hi.Z, p.Z));
-                }
-
                 truck.Parts.Add(copy);
             }
 
-            truck.Min = lo.X <= hi.X ? lo : Vec3.Zero;
-            truck.Max = lo.X <= hi.X ? hi : Vec3.Zero;
+            (truck.Min, truck.Max) = ObjModel.BoundsOf(truck.Parts.SelectMany(part => part.Positions));
             return truck;
-        }
-
-        private static void Bounds(ObjPart part, out Vec3 min, out Vec3 max)
-        {
-            min = new Vec3(float.MaxValue, float.MaxValue, float.MaxValue);
-            max = new Vec3(float.MinValue, float.MinValue, float.MinValue);
-            foreach (var p in part.Positions)
-            {
-                min = new Vec3(Math.Min(min.X, p.X), Math.Min(min.Y, p.Y), Math.Min(min.Z, p.Z));
-                max = new Vec3(Math.Max(max.X, p.X), Math.Max(max.Y, p.Y), Math.Max(max.Z, p.Z));
-            }
         }
     }
 }
