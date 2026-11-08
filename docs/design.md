@@ -130,12 +130,12 @@ player of its own (`HostSession.Dedicated`, `HostPlayerId` is `NoPlayer`).
   phone host's own buttons go through the same path (`HostSession.RunCommand`).
 - **Starting.** The leader may start once everyone else is ready (`LobbyRoster.ReadyToStart`);
   pressing Start counts as the leader's own Ready, and a leader alone can start a practice race.
-- **In the game.** `HostLobby` is the host's side of the lobby on a phone host and a server
-  alike: it remembers the settings between sessions, carries out commands, and runs the cup with
-  its auto-save. The lobby and results screens read the settings from the session and send
-  commands, so the leader's phone shows the same settings and buttons as a phone host's, and its
-  row in the lobby list says "runs the room". Everyone else sees what's next ("Next: Race, 3 laps,
-  Canyon. Rules: no damage").
+- **In the game.** `HostLobbyRules` (Core) is the host's side of the lobby on a phone host and a
+  server alike: it carries out commands and runs the cup with its auto-save. `HostLobby` wires it
+  to the session and keeps the settings and the save between sessions. The lobby and results
+  screens read the settings from the session and send commands, so the leader's phone shows the
+  same settings and buttons as a phone host's, and its row in the lobby list says "runs the
+  room". Everyone else sees what's next ("Next: Race, 3 laps, Canyon. Rules: no damage").
 - **Server mode.** Launched with `-server` (the Linux server build always is), the game skips the
   menus and hosts (`DedicatedServer`): the track screen is built without a car, camera, controls,
   HUD or overlay, but with every track, arena and car, which the host needs for bots, item hits

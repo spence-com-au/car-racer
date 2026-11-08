@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using CarRacer.Core.Bots;
 using CarRacer.Core.Net;
+using CarRacer.Core.Race;
+using CarRacer.Core.Scoring;
 
 namespace CarRacer.Core.Session
 {
@@ -768,6 +770,183 @@ namespace CarRacer.Core.Session
             {
                 _transport.Send(HostConnection, message, reliable);
             }
+        }
+    }
+
+    /// <summary>Where the host keeps the cup auto-save between sessions.</summary>
+    public interface ICupSaveStore
+    {
+        /// <summary>The saved cup, or empty if there is none.</summary>
+        string Load();
+
+        void Save(string save);
+
+        void Delete();
+    }
+
+    /// <summary>
+    /// The host's side of the lobby (design doc §2.3, §10, §11), on a phone host and on a server
+    /// alike: carries out the room leader's commands (start a single event or a cup, resume the
+    /// saved cup, pause, skip, leave, back to the lobby) and runs the <see cref="CupRun"/> under
+    /// way, keeping its auto-save in an <see cref="ICupSaveStore"/>.
+    /// </summary>
+    public sealed class HostLobbyRules
+    {
+        private readonly HostSession _session;
+        private readonly HostRace _race;
+        private readonly Func<long> _clockMs;
+        private readonly ICupSaveStore _store;
+        private string _savedText;
+        private CupRun _saved;
+
+        public HostLobbyRules(HostSession session, HostRace race, Func<long> clockMs, ICupSaveStore store)
+        {
+            _session = session;
+            _race = race;
+            _clockMs = clockMs;
+            _store = store;
+            ReportSave();
+        }
+
+        /// <summary>The cup in progress, or null.</summary>
+        public CupRun Run { get; private set; }
+
+        /// <summary>Call every frame on the host.</summary>
+        public void Tick()
+        {
+            Run?.Tick();
+
+            // A server whose players have all left (their cars now bots) has nobody to press Back to
+            // lobby, and would refuse every new guest as mid-event; once the event's results are in,
+            // it goes back by itself. A cup in progress is left, keeping its save to resume.
+            if (_session.IsDedicated && _session.LeaderId == HostSession.NoPlayer && _race.Phase == RacePhase.Results)
+            {
+                Run = null;
+                _race.ReturnToLobby();
+            }
+        }
+
+        /// <summary>Carries out a command from the room leader (<see cref="HostSession.LobbyCommandReceived"/>).</summary>
+        public void RunCommand(LobbyCommand command)
+        {
+            switch (command)
+            {
+                case LobbyCommand.Start:
+                    if (_race.Phase != RacePhase.Lobby || !_session.CanStart)
+                    {
+                        return;
+                    }
+
+                    var settings = _session.Settings;
+                    if (settings.CupChosen)
+                    {
+                        Begin(new CupRun(_session, _race, _clockMs, Cups.All[settings.Cup - 1], settings.ReverseGrid));
+                    }
+                    else
+                    {
+                        _race.Start(settings.Laps, settings.Mode, settings.Track);
+                    }
+
+                    break;
+                case LobbyCommand.ResumeSavedCup:
+                    var saved = LoadSave();
+                    if (saved != null && _race.Phase == RacePhase.Lobby && _session.CanStart)
+                    {
+                        Begin(saved);
+                    }
+
+                    break;
+                case LobbyCommand.PauseCup:
+                case LobbyCommand.UnpauseCup:
+                    Run?.SetPaused(command == LobbyCommand.PauseCup);
+                    break;
+                case LobbyCommand.NextEvent:
+                    Run?.AdvanceNow();
+                    break;
+                case LobbyCommand.LeaveCup:
+                    // Leaving keeps the save, so the cup can be resumed from the lobby.
+                    if (Run != null)
+                    {
+                        Run = null;
+                        _race.ReturnToLobby();
+                    }
+
+                    break;
+                case LobbyCommand.BackToLobby:
+                    if (Run == null)
+                    {
+                        _race.ReturnToLobby();
+                    }
+                    else if (Run.IsComplete)
+                    {
+                        // The finished cup is done with: its save goes too.
+                        Run = null;
+                        _store.Delete();
+                        ReportSave();
+                        _race.ReturnToLobby();
+                    }
+
+                    break;
+            }
+        }
+
+        private void Begin(CupRun run)
+        {
+            if (!run.StartNextEvent())
+            {
+                return;
+            }
+
+            run.Saved += SaveCup;
+            Run = run;
+            _savedText = null;
+        }
+
+        private void SaveCup(byte[] save)
+        {
+            _store.Save(Convert.ToBase64String(save));
+            ReportSave();
+        }
+
+        /// <summary>Tells every phone which cup is saved, so the room leader can offer to resume it.</summary>
+        private void ReportSave()
+        {
+            var saved = LoadSave();
+            int cup = 0;
+            for (int i = 0; saved != null && i < Cups.All.Count; i++)
+            {
+                if (Cups.All[i] == saved.Cup)
+                {
+                    cup = i + 1;
+                }
+            }
+
+            _session.SetSavedCup(cup, saved?.Championship.EventsCompleted ?? 0);
+        }
+
+        /// <summary>The saved cup, read again only when the save changes.</summary>
+        private CupRun LoadSave()
+        {
+            string text = _store.Load();
+            if (text == _savedText)
+            {
+                return _saved;
+            }
+
+            _savedText = text;
+            _saved = null;
+            if (text.Length > 0)
+            {
+                try
+                {
+                    _saved = CupRun.Resume(Convert.FromBase64String(text), _session, _race, _clockMs);
+                }
+                catch (FormatException)
+                {
+                }
+            }
+
+            return _saved;
         }
     }
 }
