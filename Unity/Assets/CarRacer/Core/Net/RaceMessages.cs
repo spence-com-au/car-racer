@@ -37,6 +37,22 @@ namespace CarRacer.Core.Net
 
         public MessageType Type => MessageType.Standings;
 
+        /// <summary>
+        /// The cars ahead of <paramref name="playerId"/> that are still racing, in race order: what Lightning strikes,
+        /// and what a bot waits for before using an item that goes after the cars ahead. Cars that have finished (or
+        /// are out) are left be.
+        /// </summary>
+        public IEnumerable<byte> RacingAhead(byte playerId)
+        {
+            for (int i = 0; i < Order.Count && Order[i].PlayerId != playerId; i++)
+            {
+                if (Order[i].FinishPosition == 0)
+                {
+                    yield return Order[i].PlayerId;
+                }
+            }
+        }
+
         public void Write(NetWriter w)
         {
             w.WriteByte((byte)Order.Count);

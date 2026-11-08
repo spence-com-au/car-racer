@@ -271,12 +271,9 @@ namespace CarRacer.Core.Items
                 return;
             }
 
-            for (int i = 0; i < standings.Order.Count && standings.Order[i].PlayerId != playerId; i++)
+            foreach (byte target in standings.RacingAhead(playerId))
             {
-                if (standings.Order[i].FinishPosition == 0)
-                {
-                    Hit(playerId, standings.Order[i].PlayerId, ItemEffects.LightningImpulse);
-                }
+                Hit(playerId, target, ItemEffects.LightningImpulse);
             }
         }
 

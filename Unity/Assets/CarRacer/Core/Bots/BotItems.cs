@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using CarRacer.Core.Items;
 using CarRacer.Core.Net;
 using CarRacer.Core.Numerics;
@@ -63,17 +64,8 @@ namespace CarRacer.Core.Bots
                 NearestAhead = float.PositiveInfinity,
                 NearestBehind = float.PositiveInfinity,
                 OnStraight = curvatureAhead < StraightCurvature,
+                HasCarAhead = standings != null && standings.RacingAhead(playerId).Any(),
             };
-
-            // Only a car still racing counts, as the item rules leave finished (or out) cars be.
-            for (int i = 0; standings != null && i < standings.Order.Count && standings.Order[i].PlayerId != playerId; i++)
-            {
-                if (standings.Order[i].FinishPosition == 0)
-                {
-                    situation.HasCarAhead = true;
-                    break;
-                }
-            }
 
             // Indexed rather than `foreach`, which would box the list's enumerator on every call.
             for (int i = 0; i < rivals.Count; i++)
