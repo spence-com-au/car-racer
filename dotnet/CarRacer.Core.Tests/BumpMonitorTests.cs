@@ -96,7 +96,7 @@ namespace CarRacer.Core.Tests
         public void AFallbackHitIsClampedToWhatABumpCouldProduce()
         {
             var settings = new BumpSettings();
-            float maxHorizontal = settings.MaxImpulsePerMass * BumpMonitor.CarMass / 2f;
+            float maxHorizontal = settings.MaxImpulsePerMass * BumpMonitor.ReducedMass;
             var forged = new HitMessage { AttackerId = 2, TargetId = 1, Impulse = new Vec3(3e4f, 1e4f, -4e4f) };
 
             Assert.True(_monitor.OnHit(forged, 1, 1040, out var impulse));
