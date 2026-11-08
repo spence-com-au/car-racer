@@ -13,7 +13,7 @@ the empty slots. Built with Unity 6.3 LTS and Netcode for GameObjects.
 **M19: TV viewer** is the latest milestone; [the milestone plan](docs/design.md#16-milestones)
 lists each one. LAN multiplayer for 2–6 phones, with bots filling empty slots:
 - **Host game**, **Join game** (games found on the Wi-Fi, by IP or by QR code) and **Practice**
-  (offline with bots). Everyone drives around the lobby, picks a car and votes for the track.
+  (an offline free drive). Everyone drives around the lobby, picks a car and votes for the track.
 - **Events:** races on 8 tracks, Sumo and Battle arenas, Monster Jam, and Grand Prix and Mixed
   cups with points, standings and resume.
 - Arcade drift-and-boost handling, car-to-car bumping, nine items, damage, and twelve Kenney
