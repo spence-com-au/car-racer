@@ -44,12 +44,6 @@ namespace CarRacer.Game.Net
         /// <summary>The Chromecasts found lately.</summary>
         public IReadOnlyList<CastDevice> Devices => _discovery != null ? _discovery.Devices : (IReadOnlyList<CastDevice>)new List<CastDevice>();
 
-        /// <summary>The current or last cast, or null.</summary>
-        public CastConnection Cast => _cast;
-
-        /// <summary>Whether streaming can't work here (no ffmpeg, or the port is taken).</summary>
-        public bool Unavailable => _streamFailed;
-
         public static TvViewer Create(GameObject owner, ServerOptions options, NetworkSession session, NetworkedCars cars)
         {
             var viewer = owner.AddComponent<TvViewer>();
@@ -89,7 +83,7 @@ namespace CarRacer.Game.Net
         /// Casts to <paramref name="wanted"/> (a name, id or address; empty for the first TV found),
         /// switching from any TV being cast to. <paramref name="takeOver"/> replaces whatever the TV shows.
         /// </summary>
-        public void CastTo(string wanted, bool takeOver)
+        private void CastTo(string wanted, bool takeOver)
         {
             bool casting = _cast != null && !_cast.Finished;
             bool same = casting && _cast.Device.Matches(wanted ?? string.Empty);
@@ -126,7 +120,7 @@ namespace CarRacer.Game.Net
         public bool Music { get; set; }
 
         /// <summary>Stops casting and streaming until asked again.</summary>
-        public void StopCasting()
+        private void StopCasting()
         {
             _plan.Forget();
             _cast?.Stop();
