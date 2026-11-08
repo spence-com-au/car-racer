@@ -24,6 +24,7 @@ namespace CarRacer.Game.Driving
         private CarInput _current;
         private bool _useTilt;
         private bool _itemPressed;
+        private Rect _safeArea;
 
         public TouchControls TouchState => _touchControls;
 
@@ -76,9 +77,10 @@ namespace CarRacer.Game.Driving
         {
             var safe = Screen.safeArea;
             float buttonScale = Accessibility.LargeControls ? TouchControlLayout.LargeButtonScale : 1f;
-            if (Layout == null || Layout.ScreenWidth != Screen.width || Layout.ScreenHeight != Screen.height
+            if (Layout == null || Layout.ScreenWidth != Screen.width || Layout.ScreenHeight != Screen.height || safe != _safeArea
                 || Layout.LeftHanded != Accessibility.LeftHanded || Layout.ButtonScale != buttonScale)
             {
+                _safeArea = safe;
                 Layout = new TouchControlLayout(Screen.width, Screen.height, safe.xMin, safe.yMin, safe.xMax, safe.yMax, Screen.dpi, Accessibility.LeftHanded, buttonScale);
             }
 
