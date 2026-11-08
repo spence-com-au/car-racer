@@ -428,8 +428,7 @@ namespace CarRacer.Core.Tests
 
             // The guest hears nothing from the end of this race until the next one is under way.
             _hostLink.HoldBack = true;
-            _hostRace.Tracker.Retire(GuestId);
-            _hostRace.Tracker.Retire(_host.HostPlayerId);
+            _hostRace.Tracker.FinishRemaining(_ => 0f, 0);
             Tick();
             Assert.True(_hostRace.ReturnToLobby());
             Assert.True(_hostRace.Start(3));
