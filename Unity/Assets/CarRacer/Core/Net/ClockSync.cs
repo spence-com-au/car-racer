@@ -27,7 +27,6 @@ namespace CarRacer.Core.Net
         }
 
         public bool HasEstimate => _samples.Count > 0;
-        public int SampleCount => _samples.Count;
 
         /// <summary>Host clock minus local clock, in ms. Zero until the first sample.</summary>
         public long OffsetMs { get; private set; }

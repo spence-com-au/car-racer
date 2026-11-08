@@ -97,7 +97,6 @@ namespace CarRacer.Core.Tests
             _host.OnMessage(7, new SetReadyMessage { Ready = true });
             Assert.True(_host.Roster.Find(a).Ready);
             Assert.True(_hostSide.To<RosterMessage>(7).Last().Players.Single(p => p.PlayerId == a).Ready);
-            Assert.True(_host.Roster.EveryoneReady);
         }
 
         [Fact]

@@ -140,14 +140,6 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
-        public void OwnSessionIsIgnored()
-        {
-            var list = new DiscoveredHostList { IgnoreSessionId = 42 };
-            Assert.False(list.Observe(Sample(42), "192.168.1.20", 0));
-            Assert.Empty(list.Hosts);
-        }
-
-        [Fact]
         public void JoinableHostsSortFirst()
         {
             var list = new DiscoveredHostList();

@@ -37,17 +37,9 @@ namespace CarRacer.Core.Discovery
             _expiryMs = expiryMs;
         }
 
-        /// <summary>Session id to ignore (the local player's own hosted session).</summary>
-        public uint? IgnoreSessionId { get; set; }
-
         /// <summary>Returns true if this announcement added a new host to the list.</summary>
         public bool Observe(DiscoveryAnnouncement announcement, string address, long nowMs)
         {
-            if (IgnoreSessionId.HasValue && announcement.SessionId == IgnoreSessionId.Value)
-            {
-                return false;
-            }
-
             var key = (address, announcement.SessionId);
             if (_hosts.TryGetValue(key, out var existing))
             {

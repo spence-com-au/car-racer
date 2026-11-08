@@ -33,8 +33,6 @@ namespace CarRacer.Core.Discovery
             _socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.MulticastTimeToLive, 1);
         }
 
-        public IReadOnlyList<IPEndPoint> Targets => _targets;
-
         /// <summary>Sends the announcement if the interval has elapsed. Returns true if it sent.</summary>
         public bool Tick(DiscoveryAnnouncement announcement, long nowMs)
         {
@@ -158,7 +156,6 @@ namespace CarRacer.Core.Discovery
                         SocketOptionLevel.IP,
                         SocketOptionName.AddMembership,
                         new MulticastOption(DiscoveryConstants.MulticastGroup, IPAddress.Any));
-                    JoinedMulticast = true;
                 }
                 catch (SocketException)
                 {
@@ -169,8 +166,6 @@ namespace CarRacer.Core.Discovery
 
         /// <summary>The bound port (useful when constructed with port 0 in tests).</summary>
         public int Port { get; }
-
-        public bool JoinedMulticast { get; }
 
         /// <summary>Drains pending datagrams into <paramref name="hosts"/>, then expires stale hosts. Returns the number of new hosts.</summary>
         public int Poll(DiscoveredHostList hosts, long nowMs)
