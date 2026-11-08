@@ -21,14 +21,6 @@ namespace CarRacer.Editor
         public const string BootstrapScenePath = "Assets/Scenes/" + Bootstrap.SceneName + ".unity";
 
         /// <summary>
-        /// Committed debug key, relative to the Unity project. Unity otherwise signs development
-        /// builds with a per-machine debug key, and Android refuses to install a build over one
-        /// signed with a different key, so every CI run's APK would need an uninstall first.
-        /// It uses the standard Android debug credentials and must never sign a release.
-        /// </summary>
-        public const string SharedDebugKeystorePath = "Keystores/debug.keystore";
-
-        /// <summary>
         /// Restores the signing settings afterwards, so a later release build in the same session
         /// still uses the keystore configured in Player Settings rather than the public debug key.
         /// </summary>
@@ -43,7 +35,7 @@ namespace CarRacer.Editor
             string keyaliasPass = PlayerSettings.Android.keyaliasPass;
             try
             {
-                UseSharedDebugKeystore();
+                Apply(AndroidSigning.SharedDebug);
                 Build("build/Android/CarRacer-dev.apk", development: true);
             }
             finally
@@ -64,18 +56,8 @@ namespace CarRacer.Editor
         public static void BuildReleaseApk()
         {
             PrepareProject();
-            if (PlayerSettings.Android.useCustomKeystore && IsSharedDebugKeystore(PlayerSettings.Android.keystoreName))
-            {
-                Debug.LogError($"Refusing to sign a release with the shared debug keystore ({SharedDebugKeystorePath}); set a release keystore in Player Settings.");
-                return;
-            }
-
             Build("build/Android/CarRacer.apk", development: false);
         }
-
-        private static bool IsSharedDebugKeystore(string keystoreName) =>
-            !string.IsNullOrEmpty(keystoreName)
-            && string.Equals(Path.GetFullPath(keystoreName), Path.GetFullPath(SharedDebugKeystorePath), StringComparison.Ordinal);
 
         /// <summary>
         /// A plain Linux player, which hosts with no player when run with
@@ -162,24 +144,7 @@ namespace CarRacer.Editor
             }
 
             bool development = args.ContainsKey("carRacerDevelopment");
-            if (args.TryGetValue("androidKeystoreName", out string keystore) && !string.IsNullOrEmpty(keystore))
-            {
-                PlayerSettings.Android.useCustomKeystore = true;
-                PlayerSettings.Android.keystoreName = keystore;
-                PlayerSettings.Android.keystorePass = args.TryGetValue("androidKeystorePass", out string kp) ? kp : string.Empty;
-                PlayerSettings.Android.keyaliasName = args.TryGetValue("androidKeyaliasName", out string an) ? an : string.Empty;
-                PlayerSettings.Android.keyaliasPass = args.TryGetValue("androidKeyaliasPass", out string ap) ? ap : string.Empty;
-            }
-            else if (development)
-            {
-                UseSharedDebugKeystore();
-            }
-            else
-            {
-                // A non-development build without a release keystore falls back to Unity's per-machine
-                // debug key, never the public shared one.
-                PlayerSettings.Android.useCustomKeystore = false;
-            }
+            Apply(AndroidSigning.FromArguments(args, development));
 
             string output = args.TryGetValue("customBuildPath", out string path) && !string.IsNullOrEmpty(path)
                 ? path
@@ -189,13 +154,17 @@ namespace CarRacer.Editor
             EditorApplication.Exit(succeeded ? 0 : 1);
         }
 
-        private static void UseSharedDebugKeystore()
+        /// <summary>Leaves the keystore settings alone when <paramref name="signing"/> uses Unity's own debug key.</summary>
+        private static void Apply(AndroidSigning signing)
         {
-            PlayerSettings.Android.useCustomKeystore = true;
-            PlayerSettings.Android.keystoreName = SharedDebugKeystorePath;
-            PlayerSettings.Android.keystorePass = "android";
-            PlayerSettings.Android.keyaliasName = "androiddebugkey";
-            PlayerSettings.Android.keyaliasPass = "android";
+            PlayerSettings.Android.useCustomKeystore = signing.UseCustomKeystore;
+            if (signing.UseCustomKeystore)
+            {
+                PlayerSettings.Android.keystoreName = signing.KeystoreName;
+                PlayerSettings.Android.keystorePass = signing.KeystorePass;
+                PlayerSettings.Android.keyaliasName = signing.KeyaliasName;
+                PlayerSettings.Android.keyaliasPass = signing.KeyaliasPass;
+            }
         }
 
         private static void PrepareProject(BuildTarget target = BuildTarget.Android)
@@ -209,7 +178,28 @@ namespace CarRacer.Editor
             EnsureBootstrapScene();
         }
 
-        private static bool Build(string outputPath, bool development) => Build(outputPath, BuildTarget.Android, development);
+        /// <summary>
+        /// Every Android build comes through here, so the rule that a release is never signed with the shared debug
+        /// keystore holds for whichever entry point set the signing up.
+        /// </summary>
+        private static bool Build(string outputPath, bool development)
+        {
+            var signing = new AndroidSigning(
+                PlayerSettings.Android.useCustomKeystore,
+                PlayerSettings.Android.keystoreName,
+                PlayerSettings.Android.keystorePass,
+                PlayerSettings.Android.keyaliasName,
+                PlayerSettings.Android.keyaliasPass);
+            if (!signing.IsAllowedFor(development))
+            {
+                Debug.LogError(
+                    $"Refusing to sign a release with the shared debug keystore ({AndroidSigning.SharedDebugKeystorePath}); "
+                    + "use a release keystore.");
+                return false;
+            }
+
+            return Build(outputPath, BuildTarget.Android, development);
+        }
 
         private static bool Build(string outputPath, BuildTarget target, bool development)
         {

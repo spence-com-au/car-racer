@@ -37,7 +37,7 @@ sysinfo.txt
 # Secrets: never commit these
 *.keystore
 *.jks
-# The shared debug key is deliberately public (see BuildScript.UseSharedDebugKeystore).
+# The shared debug key is deliberately public (see `AndroidSigning.SharedDebug`).
 !/Unity/Keystores/debug.keystore
 *.ulf
 *.alf
