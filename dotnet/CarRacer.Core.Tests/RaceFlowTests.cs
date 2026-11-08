@@ -277,7 +277,7 @@ namespace CarRacer.Core.Tests
         {
             _race.Start(laps: 1);
             _race.ReportOwnCheckpoint(0);
-            _session.OnMessage(7, new CheckpointReachedMessage { PlayerId = 1, CheckpointIndex = 0 });
+            _session.OnMessage(GuestLink.Connection, new CheckpointReachedMessage { PlayerId = 1, CheckpointIndex = 0 });
             Assert.Equal(0, _race.Tracker.Get(0).CheckpointsPassed);
             Assert.Equal(0, _race.Tracker.Get(1).CheckpointsPassed);
         }
@@ -357,10 +357,10 @@ namespace CarRacer.Core.Tests
             Advance(HostRace.StartLeadMs + HostRace.CountdownMs + 10_000);
             for (int c = 0; c < Checkpoints; c++)
             {
-                _session.OnMessage(7, new CheckpointReachedMessage { PlayerId = 1, CheckpointIndex = (ushort)c, RaceTimeMs = 1 });
+                _session.OnMessage(GuestLink.Connection, new CheckpointReachedMessage { PlayerId = 1, CheckpointIndex = (ushort)c, RaceTimeMs = 1 });
             }
 
-            _session.OnMessage(7, new CheckpointReachedMessage { PlayerId = 1, CheckpointIndex = 0, RaceTimeMs = 999_999 });
+            _session.OnMessage(GuestLink.Connection, new CheckpointReachedMessage { PlayerId = 1, CheckpointIndex = 0, RaceTimeMs = 999_999 });
             Assert.InRange(_race.Tracker.Get(1).FinishTimeMs, 9_900, 10_100);
         }
 
@@ -369,7 +369,7 @@ namespace CarRacer.Core.Tests
         {
             _race.Start(laps: 1);
             Advance(HostRace.StartLeadMs + HostRace.CountdownMs);
-            _session.OnMessage(7, new CheckpointReachedMessage { PlayerId = 0, CheckpointIndex = 0 });
+            _session.OnMessage(GuestLink.Connection, new CheckpointReachedMessage { PlayerId = 0, CheckpointIndex = 0 });
             Assert.Equal(0, _race.Tracker.Get(0).CheckpointsPassed);
         }
 
@@ -390,7 +390,7 @@ namespace CarRacer.Core.Tests
             _race.Start(laps: 1);
             Advance(HostRace.StartLeadMs + HostRace.CountdownMs);
             Report(1, 0);
-            _session.OnDisconnected(7);
+            _session.OnDisconnected(GuestLink.Connection);
 
             // Same player, now a bot, still racing from where they were.
             var player = _session.Roster.Find(1);
@@ -419,7 +419,7 @@ namespace CarRacer.Core.Tests
         [Fact]
         public void LeavingInTheLobbyKeepsThemOutOfTheRace()
         {
-            _session.OnDisconnected(7);
+            _session.OnDisconnected(GuestLink.Connection);
             Assert.True(_race.Start(laps: 1));
             Assert.Equal(new[] { 0 }, _race.Tracker.PlayerIds);
         }
