@@ -15,14 +15,7 @@ namespace CarRacer.Game.Audio
     {
         public const string VolumeKey = "effectsVolume";
 
-        /// <summary>Every clip in <c>Resources/Audio</c>, so a test can check they all load.</summary>
-        public static readonly string[] ClipNames =
-        {
-            "crunch_light", "crunch_medium", "crunch_heavy", "boost", "item_box",
-            "missile", "bomb_throw", "shockwave", "shield", "oil", "explosion",
-        };
-
-        private static readonly Dictionary<string, AudioClip> Clips = new Dictionary<string, AudioClip>();
+        private static readonly Dictionary<Sfx, AudioClip> Clips = new Dictionary<Sfx, AudioClip>();
         private static readonly Dictionary<UiSound, AudioClip> UiClips = new Dictionary<UiSound, AudioClip>();
         private static AudioClip _engine;
         private static AudioSource _speaker;
@@ -42,12 +35,12 @@ namespace CarRacer.Game.Audio
 
         public static void CycleVolume() => VolumeStep = SoundRules.NextVolumeStep(VolumeStep);
 
-        public static AudioClip Clip(string name)
+        public static AudioClip Clip(Sfx sfx)
         {
-            if (!Clips.TryGetValue(name, out var clip))
+            if (!Clips.TryGetValue(sfx, out var clip))
             {
-                clip = Resources.Load<AudioClip>("Audio/" + name);
-                Clips[name] = clip;
+                clip = Resources.Load<AudioClip>("Audio/" + sfx.FileName());
+                Clips[sfx] = clip;
             }
 
             return clip;
@@ -67,9 +60,9 @@ namespace CarRacer.Game.Audio
         }
 
         /// <summary>Plays a clip in the world at <paramref name="position"/>, quieter the further it is from the camera.</summary>
-        public static void PlayAt(string name, Vector3 position, float volume = 1f)
+        public static void PlayAt(Sfx sfx, Vector3 position, float volume = 1f)
         {
-            var clip = Clip(name);
+            var clip = Clip(sfx);
             if (clip != null && Volume > 0f)
             {
                 AudioSource.PlayClipAtPoint(clip, position, volume * Volume);
@@ -77,9 +70,9 @@ namespace CarRacer.Game.Audio
         }
 
         /// <summary>Plays a clip straight to the speaker, for what happens to this phone's own car.</summary>
-        public static void Play(string name, float volume = 1f)
+        public static void Play(Sfx sfx, float volume = 1f)
         {
-            var clip = Clip(name);
+            var clip = Clip(sfx);
             if (clip != null && Volume > 0f)
             {
                 Speaker().PlayOneShot(clip, volume * Volume);
