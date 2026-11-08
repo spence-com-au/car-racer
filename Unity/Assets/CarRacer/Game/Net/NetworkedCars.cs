@@ -561,7 +561,7 @@ namespace CarRacer.Game.Net
         {
             _inRoster.Clear();
             var race = _session.Race;
-            bool truck = race != null && race.Mode == GameMode.Monster && race.Phase != RacePhase.Lobby;
+            bool truck = race != null && EventCars.AreTrucks(race.Mode, race.Phase);
             foreach (var player in _session.Players)
             {
                 _inRoster.Add(player.PlayerId);
