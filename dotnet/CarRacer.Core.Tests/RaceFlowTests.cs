@@ -38,19 +38,19 @@ namespace CarRacer.Core.Tests
     {
         private static readonly TrackLayout Oval = new TrackLayout(SampleTracks.Oval());
 
-        private static Vec3 Along(float distance, float lateral = 0f)
+        private static Vec3 Along(float distance, float lateral = 0f, TrackLayout track = null)
         {
-            var s = Oval.Spline.SampleAtDistance(distance);
+            var s = (track ?? Oval).Spline.SampleAtDistance(distance);
             return s.Position + s.Right * lateral;
         }
 
         /// <summary>Drives along the centre line in 1 m steps.</summary>
-        private static List<int> Drive(CheckpointDetector detector, float from, float to, float lateral = 0f)
+        private static List<int> Drive(CheckpointDetector detector, float from, float to, float lateral = 0f, TrackLayout track = null)
         {
             var crossed = new List<int>();
             for (float d = from; d < to; d += 1f)
             {
-                int c = detector.Update(Along(d, lateral), Along(d + 1f, lateral));
+                int c = detector.Update(Along(d, lateral, track), Along(d + 1f, lateral, track));
                 if (c >= 0)
                 {
                     crossed.Add(c);
@@ -91,16 +91,7 @@ namespace CarRacer.Core.Tests
             // Banking, climbs and the figure-eight's bridge all change a gate's height and lateral reach.
             var track = new TrackLayout(SampleTracks.All().Single(t => t.Id == id));
             var detector = new CheckpointDetector(track.CheckpointGates());
-            var crossed = new List<int>();
-            for (float d = -6f; d < track.Spline.Length + 1f; d += 1f)
-            {
-                int c = detector.Update(track.Spline.SampleAtDistance(d).Position, track.Spline.SampleAtDistance(d + 1f).Position);
-                if (c >= 0)
-                {
-                    crossed.Add(c);
-                }
-            }
-
+            var crossed = Drive(detector, -6f, track.Spline.Length + 1f, track: track);
             Assert.Equal(Enumerable.Range(0, track.CheckpointCount).Append(0), crossed);
             Assert.Equal(1, detector.LapsCompleted);
         }
