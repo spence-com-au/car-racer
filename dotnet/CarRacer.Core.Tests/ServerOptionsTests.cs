@@ -1,3 +1,6 @@
+using System;
+using System.Linq;
+using System.Reflection;
 using CarRacer.Core.Discovery;
 using CarRacer.Core.Session;
 using Xunit;
@@ -88,5 +91,31 @@ namespace CarRacer.Core.Tests
         [InlineData("-viewer-port", "x")]
         [InlineData("-ffmpeg", " ")]
         public void BadTvViewerOptionsAreErrors(string flag, string value) => Assert.NotNull(ServerOptions.Parse(new[] { "-server", flag, value }).Error);
+
+        [Theory]
+        [InlineData("-help")]
+        [InlineData("--help")]
+        [InlineData("-HELP")]
+        public void HelpIsRead_InEitherSpelling_AmongOtherOptions(string flag)
+        {
+            Assert.False(ServerOptions.Parse(new[] { "-server" }).Help);
+
+            var options = ServerOptions.Parse(new[] { "-server", flag, "-port", "47900" });
+            Assert.True(options.Help);
+            Assert.Equal(47900, options.Port);
+        }
+
+        [Fact]
+        public void UsageHasALineForEveryOption_ButTheServerFlagRunServerShPasses()
+        {
+            var flags = typeof(ServerOptions).GetFields(BindingFlags.Public | BindingFlags.Static)
+                .Where(field => field.IsLiteral && field.Name.EndsWith("Flag", StringComparison.Ordinal) && field.Name != nameof(ServerOptions.ServerFlag))
+                .Select(field => (string)field.GetRawConstantValue())
+                .OrderBy(flag => flag, StringComparer.Ordinal);
+            var listed = ServerOptions.Usage.Split('\n').Skip(1)
+                .Select(line => line.TrimStart().Split(' ')[0])
+                .OrderBy(flag => flag, StringComparer.Ordinal);
+            Assert.Equal(flags, listed);
+        }
     }
 }

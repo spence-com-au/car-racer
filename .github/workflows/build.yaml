@@ -129,6 +129,15 @@ jobs:
             exit 1
           fi
 
+          # `--help` should print the options and exit 0 rather than host.
+          status=0
+          timeout 30 build/StandaloneLinux64/run-server.sh --help > help.log 2>&1 || status=$?
+          tail -n 12 help.log
+          if [ "${status}" -ne 0 ] || ! grep -q 'Usage: run-server.sh' help.log; then
+            echo "::error::--help exited with status ${status}; it should print the usage and exit 0."
+            exit 1
+          fi
+
       # The release packages and containerises the same files, but only after the tag exists, so a mistake in
       # either would otherwise surface mid-release. Keep the packaging command in step with release.yaml.
       - name: 'Check the release packaging'

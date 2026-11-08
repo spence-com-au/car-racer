@@ -62,6 +62,7 @@ WantedBy=multi-user.target
 | `-ffmpeg <path>` | `ffmpeg` | The ffmpeg the TV stream is made with |
 | `-viewer-port <port>` | `47780` | The TCP port the TV fetches the stream from |
 | `-tv-music` | off | Play the music on the TV (phones then fade theirs); the room leader can switch it |
+| `-help` | off | Print these options with their defaults and exit, without hosting (`--help` works too) |
 
 Open UDP **47777** (discovery) and the game port in any firewall. If phones can't see the server
 (some networks block broadcast), they can still **join by IP** with the server's address.

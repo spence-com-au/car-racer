@@ -11,7 +11,8 @@ namespace CarRacer.Core.Session
     /// <c>-name</c> for the name phones list it under. Unity's own arguments are ignored. For the TV
     /// viewer (design doc §2.4): <c>-cast [TV]</c> casts to a Chromecast by itself (the first found
     /// if no TV is named), <c>-ffmpeg</c> says where ffmpeg is, and <c>-viewer-port</c> is the TCP
-    /// port the stream is served on, and <c>-tv-music</c> plays the music on the TV.
+    /// port the stream is served on, and <c>-tv-music</c> plays the music on the TV. <c>-help</c> (or
+    /// <c>--help</c>) prints them all instead of hosting.
     /// </summary>
     public sealed class ServerOptions
     {
@@ -22,7 +23,9 @@ namespace CarRacer.Core.Session
         public const string FfmpegFlag = "-ffmpeg";
         public const string ViewerPortFlag = "-viewer-port";
         public const string TvMusicFlag = "-tv-music";
+        public const string HelpFlag = "-help";
         public const string DefaultName = "Car Racer server";
+        public const string DefaultFfmpegPath = "ffmpeg";
         public const ushort DefaultViewerPort = 47780;
 
         public bool IsServer { get; private set; }
@@ -33,7 +36,7 @@ namespace CarRacer.Core.Session
         public string CastTo { get; private set; }
 
         /// <summary>The ffmpeg to stream with; "ffmpeg" looks on the PATH.</summary>
-        public string FfmpegPath { get; private set; } = "ffmpeg";
+        public string FfmpegPath { get; private set; } = DefaultFfmpegPath;
 
         /// <summary>Whether the TV plays the music to begin with; the room leader can switch it.</summary>
         public bool TvMusic { get; private set; }
@@ -41,8 +44,22 @@ namespace CarRacer.Core.Session
         /// <summary>The TCP port the TV viewer's stream is served on.</summary>
         public ushort ViewerPort { get; private set; } = DefaultViewerPort;
 
+        /// <summary>Whether to print <see cref="Usage"/> and exit rather than host.</summary>
+        public bool Help { get; private set; }
+
         /// <summary>Why the command line couldn't be used, or null if it could.</summary>
         public string Error { get; private set; }
+
+        /// <summary>What <see cref="HelpFlag"/> prints: each option <c>run-server.sh</c> passes on, with its default.</summary>
+        public static string Usage => string.Join("\n",
+            "Usage: run-server.sh [option...]",
+            Option(NameFlag + " <name>", $"What phones list the game as, up to {LobbyRoster.MaxNameChars} characters (default \"{DefaultName}\")"),
+            Option(PortFlag + " <port>", $"The game port guests connect to, over UDP (default {DiscoveryConstants.DefaultGamePort})"),
+            Option(CastFlag + " [TV]", "Cast the room to a Chromecast by itself: a TV's name, id or address, or none for the first found"),
+            Option(FfmpegFlag + " <path>", $"The ffmpeg the TV stream is made with (default \"{DefaultFfmpegPath}\", from the PATH)"),
+            Option(ViewerPortFlag + " <port>", $"The TCP port the TV fetches the stream from (default {DefaultViewerPort})"),
+            Option(TvMusicFlag, "Play the music on the TV, and phones fade theirs; the room leader can switch it"),
+            Option(HelpFlag, "Print this and exit"));
 
         public static ServerOptions Parse(IReadOnlyList<string> args)
         {
@@ -53,6 +70,10 @@ namespace CarRacer.Core.Session
                 if (string.Equals(arg, ServerFlag, StringComparison.OrdinalIgnoreCase))
                 {
                     options.IsServer = true;
+                }
+                else if (string.Equals(arg, HelpFlag, StringComparison.OrdinalIgnoreCase) || string.Equals(arg, "-" + HelpFlag, StringComparison.OrdinalIgnoreCase))
+                {
+                    options.Help = true;
                 }
                 else if (string.Equals(arg, PortFlag, StringComparison.OrdinalIgnoreCase))
                 {
@@ -114,6 +135,11 @@ namespace CarRacer.Core.Session
             }
 
             return options;
+        }
+
+        private static string Option(string flag, string description)
+        {
+            return "  " + flag.PadRight(22) + description;
         }
 
         /// <summary>
