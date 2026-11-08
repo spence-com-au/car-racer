@@ -25,7 +25,7 @@ namespace CarRacer.Core.Driving
         public const float WallMinSpeed = 6f;
 
         /// <summary>A wall hit at this speed or more does <see cref="WallMaxDamage"/>.</summary>
-        public const float WallFullSpeed = 26f;
+        public const float WallFullSpeed = CarTuning.BaseMaxSpeed;
         public const float WallMinDamage = 0.03f;
         public const float WallMaxDamage = 0.2f;
 

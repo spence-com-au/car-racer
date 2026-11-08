@@ -1,5 +1,6 @@
 using System;
 using CarRacer.Core.Audio;
+using CarRacer.Core.Driving;
 using CarRacer.Core.Physics;
 using CarRacer.Game.Driving;
 using CarRacer.Game.Net;
@@ -15,7 +16,7 @@ namespace CarRacer.Game.Audio
     public sealed class CarAudio : MonoBehaviour
     {
         /// <summary>Speed (m/s) at which the engine reaches its top note.</summary>
-        private const float TopSpeed = 26f;
+        private const float TopSpeed = CarTuning.BaseMaxSpeed;
 
         private readonly BumpSettings _bumpSettings = new BumpSettings();
         private AudioSource _engine;
