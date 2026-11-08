@@ -188,7 +188,7 @@ namespace CarRacer.Game.Bots
             bot.WasSpunOut = spun;
             if (race.Mode != GameMode.Race)
             {
-                bot.Car.InputLocked = NetworkedCars.IsOut(race, bot.PlayerId);
+                bot.Car.InputLocked = ArenaStandings.IsOut(race, bot.PlayerId);
             }
         }
 
@@ -235,14 +235,14 @@ namespace CarRacer.Game.Bots
         {
             _rivals.Clear();
             var race = _session.Race;
-            if (_screen.Car != null && _session.TryGetLocalPlayerId(out byte me) && !NetworkedCars.IsOut(race, me))
+            if (_screen.Car != null && _session.TryGetLocalPlayerId(out byte me) && !ArenaStandings.IsOut(race, me))
             {
                 _rivals.Add(_screen.Car.BodyPosition.ToCore());
             }
 
             foreach (var pair in _bots)
             {
-                if (pair.Key != playerId && !NetworkedCars.IsOut(race, pair.Key))
+                if (pair.Key != playerId && !ArenaStandings.IsOut(race, pair.Key))
                 {
                     _rivals.Add(pair.Value.Car.BodyPosition.ToCore());
                 }
@@ -250,7 +250,7 @@ namespace CarRacer.Game.Bots
 
             foreach (var remote in _cars.RemoteCars)
             {
-                if (remote.HasState && !NetworkedCars.IsOut(race, remote.PlayerId))
+                if (remote.HasState && !ArenaStandings.IsOut(race, remote.PlayerId))
                 {
                     _rivals.Add(remote.transform.position.ToCore());
                 }

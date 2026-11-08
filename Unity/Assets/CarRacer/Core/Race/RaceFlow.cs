@@ -632,4 +632,28 @@ namespace CarRacer.Core.Race
             return gridOrder.Count == 0 ? playerId : gridOrder.Count + playerId;
         }
     }
+
+    /// <summary>Who is out of an arena event (Sumo or Battle, design doc §7.0), as every phone sees it.</summary>
+    public static class ArenaStandings
+    {
+        /// <summary>Whether <paramref name="playerId"/> is out of the arena event, from the latest standings.</summary>
+        public static bool IsOut(IRaceView race, byte playerId)
+        {
+            var standings = race.Standings;
+            if (standings == null)
+            {
+                return false;
+            }
+
+            foreach (var entry in standings.Order)
+            {
+                if (entry.PlayerId == playerId)
+                {
+                    return entry.IsOut(race.Mode);
+                }
+            }
+
+            return false;
+        }
+    }
 }
