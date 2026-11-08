@@ -236,10 +236,7 @@ namespace CarRacer.Core.Tests
 
         internal static CastSession Playing()
         {
-            var session = new CastSession("Lounge", takeOver: false);
-            session.Begin(Url, 0);
-            session.Handle(Status(), 1);
-            session.Handle(Status(App(CastSession.MediaReceiverAppId, "Default Media Receiver", idle: false)), 2);
+            var session = Loading();
             session.Handle(Media("{\"playerState\":\"PLAYING\"}"), 3);
             Assert.Equal(CastState.Playing, session.State);
             return session;
