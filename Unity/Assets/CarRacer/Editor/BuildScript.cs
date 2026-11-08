@@ -218,8 +218,9 @@ namespace CarRacer.Editor
         }
 
         /// <summary>
-        /// Every Android build comes through here, so the rule that a release is never signed with the shared debug
-        /// keystore holds for whichever entry point set the signing up.
+        /// Every `BuildScript` Android build comes through here, so the rule that a release is never signed with the
+        /// shared debug keystore holds for whichever entry point set the signing up. A build started outside
+        /// `BuildScript`, such as the File > Build window, does not.
         /// </summary>
         private static bool Build(string outputPath, bool development)
         {
