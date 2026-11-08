@@ -49,9 +49,12 @@ namespace CarRacer.Game.Platform
         /// <summary>Multiplies a font size for the large-text option.</summary>
         public static int Text(int size) => LargeText ? Mathf.RoundToInt(size * LargeTextScale) : size;
 
-        private static bool Get(ref bool? cached, string key) => cached ?? (bool)(cached = PlayerPrefs.GetInt(key, 0) != 0);
+        /// <summary>Reads a remembered on/off choice once, then serves it from <paramref name="cached"/>.</summary>
+        internal static bool Get(ref bool? cached, string key, bool fallback = false) =>
+            cached ?? (bool)(cached = PlayerPrefs.GetInt(key, fallback ? 1 : 0) != 0);
 
-        private static void Set(ref bool? cached, string key, bool value)
+        /// <summary>Remembers an on/off choice in <paramref name="cached"/> and on the phone.</summary>
+        internal static void Set(ref bool? cached, string key, bool value)
         {
             cached = value;
             PlayerPrefs.SetInt(key, value ? 1 : 0);

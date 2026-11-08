@@ -24,12 +24,8 @@ namespace CarRacer.Game.Platform
 
         public static bool Enabled
         {
-            get => _enabled ?? (bool)(_enabled = PlayerPrefs.GetInt(EnabledKey, 1) != 0);
-            set
-            {
-                _enabled = value;
-                PlayerPrefs.SetInt(EnabledKey, value ? 1 : 0);
-            }
+            get => Accessibility.Get(ref _enabled, EnabledKey, fallback: true);
+            set => Accessibility.Set(ref _enabled, EnabledKey, value);
         }
 
         public static string Label => Enabled ? "Haptics: on" : "Haptics: off";
