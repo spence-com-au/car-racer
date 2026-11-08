@@ -103,8 +103,12 @@ cars exactly.
 3. **Fallback:** if A detects contact that B might miss because of timing, A sends `HitMessage`
    with the impulse for B. B applies it unless it already handled contact with A in the last
    **100 ms** (`HitDeduplicator`), so contacts are neither missed nor doubled. B clamps the
-   impulse to the same max × reduced mass (and matching pop) and drops a non-finite one, so a
-   modified phone can't fling other cars off the map.
+   impulse to the same max × reduced mass (and matching pop), drops a non-finite one, ignores
+   one from a car it last saw more than **8 m** away (`BumpMonitor.FallbackReach`), and takes
+   at most one from the same car every **1.5 s** (`BumpMonitor.FallbackCooldownMs`), by when
+   the hardest bump has worn off. So a modified phone can't fling other cars off the map, from
+   afar or by bumping over and over. The cost is a second contact with the same car within
+   1.5 s that B also missed, which only A's car then feels.
 4. Feel helpers that hide small disagreements: slightly larger car-to-car colliders, a short
    wobble or spin-out, crunch sound scaled by impact, screen shake, and haptics.
 
