@@ -239,7 +239,7 @@ namespace CarRacer.Core.Arena
             return true;
         }
 
-        /// <summary>Puts a player straight out, whatever lives they have (fell off, or left with no bot to take over).</summary>
+        /// <summary>Puts a player straight out, whatever lives they have (fell off the arena).</summary>
         public bool Eliminate(int playerId, long atMs)
         {
             if (!_lives.TryGetValue(playerId, out int lives) || lives <= 0)

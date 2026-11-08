@@ -35,9 +35,6 @@ namespace CarRacer.Core.Race
 
         public long FinishTimeMs { get; internal set; }
         public bool DidNotFinish { get; internal set; }
-
-        /// <summary>Out of the race before finishing (left the session); placed last, as DNF, when the race ends.</summary>
-        public bool Retired { get; internal set; }
     }
 
     /// <summary>
@@ -79,8 +76,8 @@ namespace CarRacer.Core.Race
         public int CheckpointCount { get; }
         public int LapCount { get; }
         public IReadOnlyList<int> FinishOrder => _finishOrder;
-        /// <summary>True when every racer has finished or retired, so the race can end.</summary>
-        public bool AllFinished => _racers.Values.All(r => r.IsFinished || r.Retired);
+        /// <summary>True when every racer has finished, so the race can end.</summary>
+        public bool AllFinished => _racers.Values.All(r => r.IsFinished);
         public IEnumerable<int> PlayerIds => _racers.Keys;
 
         private int CrossingsToFinish => LapCount * CheckpointCount + 1;
@@ -89,7 +86,7 @@ namespace CarRacer.Core.Race
 
         public CheckpointResult ReportCheckpoint(int playerId, int checkpointIndex, long raceTimeMs)
         {
-            if (!_racers.TryGetValue(playerId, out var racer) || racer.IsFinished || racer.Retired)
+            if (!_racers.TryGetValue(playerId, out var racer) || racer.IsFinished)
             {
                 return CheckpointResult.Ignored;
             }
@@ -124,37 +121,17 @@ namespace CarRacer.Core.Race
         /// <summary>
         /// Current race order. Finished racers by finishing position, then everyone still racing by
         /// checkpoints passed plus <paramref name="fractionToNextCheckpoint"/> (0..1, how far
-        /// along they are towards their next checkpoint, from track geometry), then retired racers.
+        /// along they are towards their next checkpoint, from track geometry).
         /// </summary>
         public IReadOnlyList<int> ComputeStandings(Func<int, float> fractionToNextCheckpoint)
         {
             var finished = _racers.Values.Where(r => r.IsFinished).OrderBy(r => r.FinishPosition).Select(r => r.PlayerId);
             var running = _racers.Values
-                .Where(r => !r.IsFinished && !r.Retired)
+                .Where(r => !r.IsFinished)
                 .OrderByDescending(r => r.CheckpointsPassed + Clamp01(fractionToNextCheckpoint(r.PlayerId)))
                 .ThenBy(r => r.PlayerId)
                 .Select(r => r.PlayerId);
-            var retired = _racers.Values
-                .Where(r => !r.IsFinished && r.Retired)
-                .OrderByDescending(r => r.CheckpointsPassed)
-                .ThenBy(r => r.PlayerId)
-                .Select(r => r.PlayerId);
-            return finished.Concat(running).Concat(retired).ToList();
-        }
-
-        /// <summary>
-        /// Takes a racer out of the race (they left the session). Returns false if they had already
-        /// finished or retired, or aren't in this race.
-        /// </summary>
-        public bool Retire(int playerId)
-        {
-            if (!_racers.TryGetValue(playerId, out var racer) || racer.IsFinished || racer.Retired)
-            {
-                return false;
-            }
-
-            racer.Retired = true;
-            return true;
+            return finished.Concat(running).ToList();
         }
 
         /// <summary>

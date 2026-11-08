@@ -146,11 +146,7 @@ namespace CarRacer.Core.Tests
         {
             _host.BotFill = 4;
             StartRacing();
-            foreach (var p in _host.Roster.Players.ToList())
-            {
-                _race.Tracker.Retire(p.PlayerId);
-            }
-
+            _race.Tracker.FinishRemaining(_ => 0f, 0);
             _race.Tick();
             Assert.Equal(RacePhase.Results, _race.Phase);
             Assert.Contains(_race.Results.Results, r => r.Name == LobbyRoster.BotNames[0]);

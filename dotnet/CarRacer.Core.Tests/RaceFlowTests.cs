@@ -396,7 +396,6 @@ namespace CarRacer.Core.Tests
             var player = _session.Roster.Find(1);
             Assert.True(player.IsBot);
             Assert.Equal("Guest", player.Name);
-            Assert.False(_race.Tracker.Get(1).Retired);
             Assert.Equal(1, _race.Tracker.Get(1).NextCheckpoint);
 
             // The host reports the bot's checkpoints for the rest of the lap.
@@ -418,7 +417,7 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
-        public void LeavingInTheLobbyRetiresNobody()
+        public void LeavingInTheLobbyKeepsThemOutOfTheRace()
         {
             _session.OnDisconnected(7);
             Assert.True(_race.Start(laps: 1));
@@ -446,68 +445,6 @@ namespace CarRacer.Core.Tests
 
             Assert.True(_race.Start(laps: 1)); // rematch
             Assert.Null(_guestRace.Results);
-        }
-    }
-}
-
-namespace CarRacer.Core.Tests
-{
-    public class RaceTrackerRetireTests
-    {
-        [Fact]
-        public void RetiredRacersAreDoneButPlacedLast()
-        {
-            var tracker = new RaceTracker(checkpointCount: 2, lapCount: 1, playerIds: new[] { 1, 2, 3 });
-            tracker.ReportCheckpoint(2, 0, 100);
-            tracker.ReportCheckpoint(2, 1, 200); // player 2 is furthest along...
-            Assert.True(tracker.Retire(2));       // ...then leaves
-
-            Assert.False(tracker.AllFinished);
-            Assert.Equal(new[] { 1, 3, 2 }, tracker.ComputeStandings(_ => 0f));
-
-            foreach (int id in new[] { 1, 3 })
-            {
-                tracker.ReportCheckpoint(id, 0, 100);
-                tracker.ReportCheckpoint(id, 1, 200);
-                tracker.ReportCheckpoint(id, 0, 300);
-            }
-
-            Assert.True(tracker.AllFinished);
-            tracker.FinishRemaining(_ => 0f, 400);
-            Assert.Equal(new[] { 1, 3, 2 }, tracker.FinishOrder);
-            Assert.True(tracker.Get(2).DidNotFinish);
-            Assert.Equal(3, tracker.Get(2).FinishPosition);
-        }
-
-        [Fact]
-        public void ARetiredRacersReportsAreIgnored()
-        {
-            var tracker = new RaceTracker(2, 1, new[] { 1, 2 });
-            tracker.Retire(1);
-            Assert.Equal(CheckpointResult.Ignored, tracker.ReportCheckpoint(1, 0, 100));
-        }
-
-        [Fact]
-        public void FinishersAndStrangersCannotRetire()
-        {
-            var tracker = new RaceTracker(1, 1, new[] { 1, 2 });
-            tracker.ReportCheckpoint(1, 0, 100);
-            tracker.ReportCheckpoint(1, 0, 200);
-            Assert.True(tracker.Get(1).IsFinished);
-            Assert.False(tracker.Retire(1));
-            Assert.False(tracker.Retire(9));
-            Assert.True(tracker.Retire(2));
-            Assert.False(tracker.Retire(2));
-        }
-
-        [Fact]
-        public void RetiredRacersAreOrderedByProgress()
-        {
-            var tracker = new RaceTracker(4, 1, new[] { 1, 2, 3 });
-            tracker.ReportCheckpoint(2, 0, 100);
-            tracker.Retire(1);
-            tracker.Retire(2);
-            Assert.Equal(new[] { 3, 2, 1 }, tracker.ComputeStandings(_ => 0f));
         }
     }
 }
