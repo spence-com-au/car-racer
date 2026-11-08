@@ -3,6 +3,7 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 using CarRacer.Core.Discovery;
+using CarRacer.Core.Session;
 using Xunit;
 
 namespace CarRacer.Core.Tests
@@ -34,11 +35,13 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
-        public void LongHostNamesAreTruncated()
+        public void LongestCleanHostNameFitsAnAnnouncement()
         {
-            byte[] bytes = Sample(name: new string('a', 100)).Encode();
+            // Three UTF-8 bytes per character, the most a UTF-16 code unit can cost.
+            string name = LobbyRoster.CleanName(new string('\u20AC', 100));
+            byte[] bytes = Sample(name: name).Encode();
             Assert.True(DiscoveryAnnouncement.TryDecode(bytes, bytes.Length, out var decoded));
-            Assert.Equal(DiscoveryConstants.MaxHostNameChars, decoded.HostName.Length);
+            Assert.Equal(name, decoded.HostName);
         }
 
         [Fact]
