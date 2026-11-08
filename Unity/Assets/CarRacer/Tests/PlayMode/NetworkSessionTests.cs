@@ -23,18 +23,6 @@ namespace CarRacer.Tests
     {
         private const ushort TestPort = 47790;
 
-        private static readonly string[] SettingKeys =
-        {
-            HostLobby.BotFillKey,
-            HostLobby.BotDifficultyKey,
-            HostLobby.ModeKey,
-            HostLobby.LapsKey,
-            HostLobby.TrackKey,
-            HostLobby.RulesKey,
-            HostLobby.CupKey,
-            HostLobby.ReverseGridKey,
-        };
-
         private readonly Dictionary<string, int> _savedSettings = new Dictionary<string, int>();
         private string _savedCup;
         private TrackScreen _screen;
@@ -45,7 +33,7 @@ namespace CarRacer.Tests
         public void SetUp()
         {
             _savedSettings.Clear();
-            foreach (string key in SettingKeys)
+            foreach (string key in HostLobby.SettingKeys)
             {
                 if (PlayerPrefs.HasKey(key))
                 {
@@ -62,7 +50,7 @@ namespace CarRacer.Tests
         [TearDown]
         public void TearDown()
         {
-            foreach (string key in SettingKeys)
+            foreach (string key in HostLobby.SettingKeys)
             {
                 if (_savedSettings.TryGetValue(key, out int value))
                 {
@@ -187,6 +175,46 @@ namespace CarRacer.Tests
             Assert.AreEqual(RacePhase.Countdown, race.Phase);
             Assert.AreEqual(2, race.LapCount);
             Assert.AreEqual(1, race.TrackIndex);
+        }
+
+        [UnityTest]
+        public IEnumerator HostingAgainBringsBackTheSettingsTheLastHostSaved()
+        {
+            _screen = TrackScreen.Create(new NoInput(), () => NetworkSession.StartHosting("Host", TestPort + 6));
+            yield return null;
+            yield return null;
+
+            // Each setting differs from its default, and from every other setting, so a swapped key shows.
+            var changed = new LobbySettings
+            {
+                Mode = CarRacer.Core.Arena.GameMode.Monster,
+                Laps = 7,
+                Track = 6,
+                Rules = new EventRules(damage: false, items: true, carStats: false),
+                BotFill = 4,
+                BotDifficulty = CarRacer.Core.Bots.BotDifficulty.Hard,
+                Cup = 1,
+                ReverseGrid = false,
+            };
+            _screen.Session.ChangeSettings(changed);
+
+            Object.Destroy(_screen.gameObject);
+            yield return null;
+            yield return null;
+
+            _screen = TrackScreen.Create(new NoInput(), () => NetworkSession.StartHosting("Host", TestPort + 7));
+            yield return null;
+            yield return null;
+
+            var loaded = _screen.Session.Settings;
+            Assert.AreEqual(changed.Mode, loaded.Mode);
+            Assert.AreEqual(changed.Laps, loaded.Laps);
+            Assert.AreEqual(changed.Track, loaded.Track);
+            Assert.AreEqual(changed.Rules.ToByte(), loaded.Rules.ToByte());
+            Assert.AreEqual(changed.BotFill, loaded.BotFill);
+            Assert.AreEqual(changed.BotDifficulty, loaded.BotDifficulty);
+            Assert.AreEqual(changed.Cup, loaded.Cup);
+            Assert.AreEqual(changed.ReverseGrid, loaded.ReverseGrid);
         }
 
         [UnityTest]
