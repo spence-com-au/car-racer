@@ -191,9 +191,11 @@ jobs:
           tags: |
             ${{ steps.image.outputs.name }}:${{ env.TAG }}
             ${{ steps.image.outputs.name }}:latest
+          # The version replaces the `ubuntu` base image's own (`22.04`), which the image would otherwise inherit.
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.description=Car Racer LAN host with no player of its own
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
 
   publish:
     name: 'Publish the release'
