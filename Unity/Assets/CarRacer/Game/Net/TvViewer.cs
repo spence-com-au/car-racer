@@ -28,6 +28,7 @@ namespace CarRacer.Game.Net
         private CastDiscovery _discovery;
         private ViewerHttpServer _http;
         private ViewerStream _stream;
+        private string _streamFolder;
         private CastConnection _cast;
         private CastState? _loggedState;
         private RacePhase _phase = RacePhase.Lobby;
@@ -216,10 +217,12 @@ namespace CarRacer.Game.Net
 
         private void StartStreaming()
         {
-            string folder = Path.Combine(Path.GetTempPath(), "car-racer-viewer-" + _session.Port);
+            // A name no one can guess, so another user on this host can't create the folder in the shared temp
+            // directory first and either block the stream or serve the TV their own playlist from it.
+            _streamFolder = Path.Combine(Path.GetTempPath(), "car-racer-viewer-" + System.Guid.NewGuid().ToString("N"));
             try
             {
-                _http = new ViewerHttpServer(folder, _options.ViewerPort);
+                _http = new ViewerHttpServer(_streamFolder, _options.ViewerPort);
             }
             catch (System.Net.Sockets.SocketException e)
             {
@@ -227,7 +230,7 @@ namespace CarRacer.Game.Net
                 return;
             }
 
-            _stream = ViewerStream.Start(_options.FfmpegPath, folder, out string error);
+            _stream = ViewerStream.Start(_options.FfmpegPath, _streamFolder, out string error);
             if (_stream == null)
             {
                 GiveUp("TV viewer off: " + error);
@@ -257,6 +260,19 @@ namespace CarRacer.Game.Net
             _stream = null;
             _http?.Dispose();
             _http = null;
+            if (_streamFolder != null && Directory.Exists(_streamFolder))
+            {
+                try
+                {
+                    Directory.Delete(_streamFolder, recursive: true);
+                }
+                catch (IOException e)
+                {
+                    Debug.LogWarning($"Couldn't remove the TV stream's folder {_streamFolder}: {e.Message}");
+                }
+            }
+
+            _streamFolder = null;
         }
 
         private void LogCastState()
