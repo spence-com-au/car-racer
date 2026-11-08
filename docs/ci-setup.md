@@ -12,7 +12,8 @@ Four GitHub Actions workflows live in `.github/workflows/`:
 Claude reviews every non-draft PR into `master` on each push, from `claude-review.yaml`, which the
 org's `Workflows` ruleset runs from [`spence-com-au/.github`](https://github.com/spence-com-au/.github).
 
-Until the Unity secrets exist, `build.yaml` skips its jobs with a notice instead of failing.
+Without the Unity secrets, `build.yaml` fails rather than skipping its jobs: they are required
+checks, and a skipped job would pass one.
 
 Add secrets under **GitHub → repository → Settings → Secrets and variables → Actions → New
 repository secret**.

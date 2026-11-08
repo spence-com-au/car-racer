@@ -740,7 +740,8 @@ leader).
   push and PR. Unity-only C# (`Game`, `Editor`, Unity tests) can't be compiled outside Unity, so
   it gets only the whitespace check; the analyser and naming rules cover `Core` and its tests.
 - **`Build` workflow** (GameCI): Unity tests and a **development APK artifact** on every PR.
-  Needs `UNITY_LICENSE`, `UNITY_EMAIL`, `UNITY_PASSWORD`; skipped with a notice if they're absent.
+  Needs `UNITY_LICENSE`, `UNITY_EMAIL` and `UNITY_PASSWORD`, and fails without them rather than
+  skipping, since its jobs are required checks and a skipped job would pass one.
 - **`Release` workflow:** pushing a `v*` tag (or running it by hand with a version, which tags
   `master`) builds a **release-signed APK** and publishes it to **GitHub Releases**
   (Obtainium-friendly). Needs the Android keystore secrets too. Releases are immutable, so the
