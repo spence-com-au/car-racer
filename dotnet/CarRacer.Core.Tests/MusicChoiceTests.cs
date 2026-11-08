@@ -1,3 +1,4 @@
+using System;
 using CarRacer.Core.Arena;
 using CarRacer.Core.Audio;
 using CarRacer.Core.Track;
@@ -41,6 +42,19 @@ namespace CarRacer.Core.Tests
         {
             Assert.Equal("oval", MusicChoice.For(true, GameMode.Race, MusicChoice.TrackTunes.Length));
             Assert.Equal("ridge", MusicChoice.For(true, GameMode.Race, -1));
+        }
+
+        [Fact]
+        public void EveryChoiceIsAKnownTune()
+        {
+            foreach (GameMode mode in Enum.GetValues(typeof(GameMode)))
+            {
+                for (int track = -1; track <= MusicChoice.TrackTunes.Length; track++)
+                {
+                    Assert.Contains(MusicChoice.For(false, mode, track), MusicChoice.All);
+                    Assert.Contains(MusicChoice.For(true, mode, track), MusicChoice.All);
+                }
+            }
         }
     }
 }
