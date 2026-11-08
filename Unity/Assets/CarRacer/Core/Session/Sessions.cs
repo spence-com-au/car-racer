@@ -670,6 +670,16 @@ namespace CarRacer.Core.Session
                     break;
                 case RosterMessage roster:
                     Roster = roster;
+
+                    // The host's roster has the last word on this phone's Ready: it clears it when the lobby reopens.
+                    foreach (var p in roster.Players)
+                    {
+                        if (State == GuestState.Joined && p.PlayerId == PlayerId)
+                        {
+                            Ready = p.Ready;
+                        }
+                    }
+
                     RosterChanged?.Invoke();
                     break;
                 case LobbySettingsMessage lobby:
