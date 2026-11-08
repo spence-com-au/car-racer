@@ -25,7 +25,7 @@ namespace CarRacer.Core.Tests
             // Masks are compared with the reference's choice fixed: python-qrcode scores masks a little
             // differently from the standard, and any mask reads the same.
             var reference = QrReference.Cases[index];
-            var code = QrCode.Encode(reference.Text, reference.Level, QrReference.ChosenMasks[index]);
+            var code = QrCode.Encode(reference.Text, reference.Level, reference.Mask);
             Assert.Equal(reference.Version, code.Version);
             Assert.Equal(reference.Rows.Length, code.Size);
 
