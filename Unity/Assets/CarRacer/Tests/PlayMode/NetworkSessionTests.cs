@@ -386,6 +386,14 @@ namespace CarRacer.Tests
             var pushes = new List<Vector3>();
             _screen.Car.Pushed += pushes.Add;
 
+            // The host takes a guest's bump report only from a car it saw within reach of its own car at its last
+            // physics step: past touching (2 m) but well inside `BumpMonitor.FallbackReach` (8 m).
+            GuestReports(session, guest, 1, _screen.Car.BodyPosition + new Vector3(3f, 0f, 0f));
+            yield return null;
+            yield return new WaitForFixedUpdate();
+            yield return new WaitForFixedUpdate();
+            Assert.IsEmpty(pushes, "a car 3 m away is no contact");
+
             session.HostSide.OnMessage(GuestConnection, new HitMessage
             {
                 AttackerId = guest,
@@ -534,7 +542,10 @@ namespace CarRacer.Tests
 
             var back = cars.RemoteCars.Single();
             Assert.AreEqual(guest, back.PlayerId);
-            Assert.IsFalse(back.HasState, "the guest's car is shown again from its next report");
+            Assert.IsFalse(back.HasState, "the host ignores the guest's reports until it echoes where its car was handed back");
+
+            // As the phone does on taking the car back, which lets its reports through.
+            session.HostSide.OnMessage(GuestConnection, new ControlReturnedMessage { PlayerId = guest });
             GuestReports(session, guest, 3, OnTheRoad(60f));
             Assert.IsTrue(back.HasState);
         }
