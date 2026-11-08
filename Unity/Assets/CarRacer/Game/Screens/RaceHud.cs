@@ -137,7 +137,7 @@ namespace CarRacer.Game.Screens
                 _haptics = TopButton(string.Empty, 168f, () => Vibration.Enabled = !Vibration.Enabled);
                 bar.Add(_haptics);
                 bar.Add(UiKit.Space(12f));
-                _auto = TopButton(string.Empty, 248f, () => input.AutoAccelerate = !input.AutoAccelerate);
+                _auto = TopButton(string.Empty, 248f, () => PlayerCarInput.AutoAccelerateEnabled = !PlayerCarInput.AutoAccelerateEnabled);
                 bar.Add(_auto);
                 bar.Add(UiKit.Space(12f));
             }
@@ -271,8 +271,8 @@ namespace CarRacer.Game.Screens
             var input = _screen.PlayerInput;
             if (input != null && _auto != null)
             {
-                _auto.text = input.AutoAccelerate ? "Auto-accelerate: on" : "Auto-accelerate: off";
-                _haptics.text = Vibration.Enabled ? "Haptics: on" : "Haptics: off";
+                _auto.text = PlayerCarInput.AutoAccelerateLabel;
+                _haptics.text = Vibration.Label;
             }
         }
 
@@ -287,7 +287,7 @@ namespace CarRacer.Game.Screens
                 var touch = input.TouchState;
                 AddButton(layout, layout.DriftCentre, "DRIFT", touch.DriftHeld, ref used);
                 AddButton(layout, layout.BrakeCentre, "BRAKE", touch.BrakeHeld, ref used);
-                if (!input.AutoAccelerate)
+                if (!PlayerCarInput.AutoAccelerateEnabled)
                 {
                     AddButton(layout, layout.GasCentre, "GAS", touch.GasHeld, ref used);
                 }

@@ -15,7 +15,6 @@ namespace CarRacer.Game.Screens
     /// </summary>
     public sealed class DrivingTipsPanel : MonoBehaviour
     {
-        private PlayerCarInput _input;
         private UiRoot _layer;
 
         public static bool Seen
@@ -32,13 +31,12 @@ namespace CarRacer.Game.Screens
         {
             if (!Seen && input != null)
             {
-                screen.gameObject.AddComponent<DrivingTipsPanel>().Build(input);
+                screen.gameObject.AddComponent<DrivingTipsPanel>().Build();
             }
         }
 
-        private void Build(PlayerCarInput input)
+        private void Build()
         {
-            _input = input;
             _layer = UiRoot.Create(transform, "Driving tips", order: 20);
             _layer.Restyle += Rebuild;
             Rebuild();
@@ -55,7 +53,7 @@ namespace CarRacer.Game.Screens
             var panel = UiKit.Panel(720f);
             panel.style.maxHeight = Length.Percent(90);
             panel.Add(UiKit.Heading("How to drive"));
-            var tips = DrivingTips.For(Accessibility.LeftHanded, _input.AutoAccelerate, PlayerCarInput.TiltEnabled, lookBack: true);
+            var tips = DrivingTips.For(Accessibility.LeftHanded, PlayerCarInput.AutoAccelerateEnabled, PlayerCarInput.TiltEnabled, lookBack: true);
             foreach (string tip in tips)
             {
                 var line = UiKit.Body("•  " + tip);

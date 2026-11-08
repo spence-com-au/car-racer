@@ -16,12 +16,12 @@ namespace CarRacer.Game.Driving
     /// </summary>
     public sealed class PlayerCarInput : MonoBehaviour, ICarInputSource
     {
-        public const string AutoAccelerateKey = "autoAccelerate";
+        private const string AutoAccelerateKey = "autoAccelerate";
 
+        private static bool? _autoAccelerateEnabled;
         private readonly TouchControls _touchControls = new TouchControls();
         private readonly List<TouchPoint> _touches = new List<TouchPoint>();
         private CarInput _current;
-        private bool _autoAccelerate;
         private bool _useTilt;
         private bool _itemPressed;
 
@@ -37,15 +37,18 @@ namespace CarRacer.Game.Driving
         public bool LookingBack { get; private set; }
         public TouchControlLayout Layout { get; private set; }
 
-        public bool AutoAccelerate
+        /// <summary>Auto-accelerate (design doc §5): on by default; the choice is remembered.</summary>
+        public static bool AutoAccelerateEnabled
         {
-            get => _autoAccelerate;
+            get => _autoAccelerateEnabled ?? (bool)(_autoAccelerateEnabled = PlayerPrefs.GetInt(AutoAccelerateKey, 1) != 0);
             set
             {
-                _autoAccelerate = value;
+                _autoAccelerateEnabled = value;
                 PlayerPrefs.SetInt(AutoAccelerateKey, value ? 1 : 0);
             }
         }
+
+        public static string AutoAccelerateLabel => AutoAccelerateEnabled ? "Auto-accelerate: on" : "Auto-accelerate: off";
 
         /// <summary>Tilt steering (design doc §5): off by default; the choice is remembered.</summary>
         public static bool TiltEnabled
@@ -66,7 +69,6 @@ namespace CarRacer.Game.Driving
 
         private void Awake()
         {
-            _autoAccelerate = PlayerPrefs.GetInt(AutoAccelerateKey, 1) != 0;
             _useTilt = TiltEnabled;
         }
 
@@ -81,7 +83,7 @@ namespace CarRacer.Game.Driving
             }
 
             ReadTouches(_touches);
-            var touch = _touchControls.Update(_touches, Layout, showGas: !_autoAccelerate, showItem: ShowItem, showLookBack: ShowLookBack);
+            var touch = _touchControls.Update(_touches, Layout, showGas: !AutoAccelerateEnabled, showItem: ShowItem, showLookBack: ShowLookBack);
             var devices = ReadDevices();
             if (_useTilt)
             {
@@ -93,7 +95,7 @@ namespace CarRacer.Game.Driving
                 }
             }
 
-            _current = DriverInput.Combine(touch, devices, _autoAccelerate);
+            _current = DriverInput.Combine(touch, devices, AutoAccelerateEnabled);
             _itemPressed |= touch.UseItem || devices.UseItem;
             LookingBack = touch.LookBack || devices.LookBack;
         }
