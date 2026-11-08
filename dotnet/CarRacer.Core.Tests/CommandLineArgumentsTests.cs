@@ -26,6 +26,19 @@ namespace CarRacer.Core.Tests
             Assert.False(args.ContainsKey("secret"));
         }
 
+        [Theory]
+        [InlineData("androidKeystoreName")]
+        [InlineData("androidKeystorePass")]
+        [InlineData("androidKeyaliasName")]
+        [InlineData("androidKeyaliasPass")]
+        public void TheBuildsPasswordAndNameFlagsTakeAValueThatStartsWithADash(string flag)
+        {
+            string[] argv = { "-" + flag, "-secret", "-quit" };
+            var args = CommandLineArguments.Parse(argv, CommandLineArguments.BuildValueArguments);
+            Assert.Equal("-secret", args[flag]);
+            Assert.False(args.ContainsKey("secret"));
+        }
+
         [Fact]
         public void AnyOtherFlagLeavesADashedEntryForTheNextFlag()
         {

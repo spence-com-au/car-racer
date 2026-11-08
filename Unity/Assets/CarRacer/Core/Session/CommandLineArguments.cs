@@ -10,6 +10,18 @@ namespace CarRacer.Core.Session
     /// </summary>
     public static class CommandLineArguments
     {
+        /// <summary>The <c>valueArguments</c> for <c>BuildScript</c>: every flag it reads a value from.</summary>
+        public static readonly HashSet<string> BuildValueArguments = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "customBuildPath",
+            "buildVersion",
+            "androidVersionCode",
+            "androidKeystoreName",
+            "androidKeystorePass",
+            "androidKeyaliasName",
+            "androidKeyaliasPass",
+        };
+
         /// <summary>Maps each flag, without its dashes, to its value; an empty string for a flag with none.</summary>
         public static Dictionary<string, string> Parse(IReadOnlyList<string> argv, ISet<string> valueArguments)
         {
