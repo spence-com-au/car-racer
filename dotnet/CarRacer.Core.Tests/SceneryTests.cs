@@ -82,7 +82,7 @@ namespace CarRacer.Core.Tests
                 case TrackScenery.TowerGreen:
                     return TrackScenery.TowerRadius;
                 default:
-                    return p.Scale * 0.25f;
+                    return p.Scale * TrackScenery.TreeRadiusPerScale;
             }
         }
 

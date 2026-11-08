@@ -49,6 +49,9 @@ namespace CarRacer.Core.Art
 
         public const float TowerRadius = 1.5f;
 
+        /// <summary>A tree's footprint radius per unit of its scale.</summary>
+        public const float TreeRadiusPerScale = 0.25f;
+
         /// <summary>How far apart trees are tried, along each side.</summary>
         public const float TreeSpacing = 14f;
 
@@ -106,7 +109,7 @@ namespace CarRacer.Core.Art
                     float scale = TreeMinScale + (float)random.NextDouble() * (TreeMaxScale - TreeMinScale);
                     string model = random.NextDouble() < 0.5 ? TreeLarge : TreeSmall;
                     float yaw = (float)random.NextDouble() * 2f * MathF.PI;
-                    TryAdd(placements, footprints, road, model, s.Position + s.Right * (side * offset), yaw, scale, scale * 0.25f);
+                    TryAdd(placements, footprints, road, model, s.Position + s.Right * (side * offset), yaw, scale, scale * TreeRadiusPerScale);
                 }
             }
 
