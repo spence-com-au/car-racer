@@ -89,6 +89,18 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void AnotherGuestsCarReachesUsViaTheHostAtTwiceTheLatency()
+        {
+            var sync = new ClockSync();
+            Assert.Equal(15f, sync.CarLatencyMs(carIsHosts: true, noEstimateMs: 15f));
+            Assert.Equal(30f, sync.CarLatencyMs(carIsHosts: false, noEstimateMs: 15f));
+
+            sync.AddSample(localSentMs: 1000, hostMs: 1000 + 40 + 5000, localReceivedMs: 1080);
+            Assert.Equal(40f, sync.CarLatencyMs(carIsHosts: true, noEstimateMs: 15f));
+            Assert.Equal(80f, sync.CarLatencyMs(carIsHosts: false, noEstimateMs: 15f));
+        }
+
+        [Fact]
         public void TheFastestRecentSampleWins()
         {
             var sync = new ClockSync();
