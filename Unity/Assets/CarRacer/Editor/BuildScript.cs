@@ -26,21 +26,54 @@ namespace CarRacer.Editor
         /// </summary>
         public const string SharedDebugKeystorePath = "Keystores/debug.keystore";
 
+        /// <summary>
+        /// Restores the signing settings afterwards, so a later release build in the same session
+        /// still uses the keystore configured in Player Settings rather than the public debug key.
+        /// </summary>
         [MenuItem("Car Racer/Build/Development APK")]
         public static void BuildDevelopmentApk()
         {
             PrepareProject();
-            UseSharedDebugKeystore();
-            Build("build/Android/CarRacer-dev.apk", development: true);
+            bool useCustomKeystore = PlayerSettings.Android.useCustomKeystore;
+            string keystoreName = PlayerSettings.Android.keystoreName;
+            string keystorePass = PlayerSettings.Android.keystorePass;
+            string keyaliasName = PlayerSettings.Android.keyaliasName;
+            string keyaliasPass = PlayerSettings.Android.keyaliasPass;
+            try
+            {
+                UseSharedDebugKeystore();
+                Build("build/Android/CarRacer-dev.apk", development: true);
+            }
+            finally
+            {
+                PlayerSettings.Android.useCustomKeystore = useCustomKeystore;
+                PlayerSettings.Android.keystoreName = keystoreName;
+                PlayerSettings.Android.keystorePass = keystorePass;
+                PlayerSettings.Android.keyaliasName = keyaliasName;
+                PlayerSettings.Android.keyaliasPass = keyaliasPass;
+            }
         }
 
-        /// <summary>Uses the keystore configured in Player Settings (Publishing Settings) on this machine.</summary>
+        /// <summary>
+        /// Uses the keystore configured in Player Settings (Publishing Settings) on this machine, and
+        /// refuses to build if that is the shared debug keystore.
+        /// </summary>
         [MenuItem("Car Racer/Build/Release APK")]
         public static void BuildReleaseApk()
         {
             PrepareProject();
+            if (PlayerSettings.Android.useCustomKeystore && IsSharedDebugKeystore(PlayerSettings.Android.keystoreName))
+            {
+                Debug.LogError($"Refusing to sign a release with the shared debug keystore ({SharedDebugKeystorePath}); set a release keystore in Player Settings.");
+                return;
+            }
+
             Build("build/Android/CarRacer.apk", development: false);
         }
+
+        private static bool IsSharedDebugKeystore(string keystoreName) =>
+            !string.IsNullOrEmpty(keystoreName)
+            && string.Equals(Path.GetFullPath(keystoreName), Path.GetFullPath(SharedDebugKeystorePath), StringComparison.Ordinal);
 
         /// <summary>
         /// A plain Linux player, which hosts with no player when run with
