@@ -45,7 +45,7 @@ python3 tools/generate_unity_meta.py --check
 dotnet format dotnet/CarRacer.sln --severity warn                   # C# style and naming, Core + tests
 dotnet format whitespace --folder Unity/Assets/CarRacer             # C# layout, Game/Editor/Unity tests
 ruff check --fix tools && ruff format tools                         # Python
-shellcheck server/run-server.sh
+shellcheck server/*.sh
 docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7    # workflows
 ```
 

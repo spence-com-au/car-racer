@@ -164,8 +164,7 @@ jobs:
       - name: 'Package the server'
         run: |
           sudo chown -R "$(id -u):$(id -g)" build
-          cp server/run-server.sh server/Dockerfile build/StandaloneLinux64/
-          tar -czf "CarRacer-server-${TAG}-linux-x86_64.tar.gz" --transform "s,^build/StandaloneLinux64,car-racer-server," build/StandaloneLinux64
+          server/package.sh "CarRacer-server-${TAG}-linux-x86_64.tar.gz"
 
       - uses: 'softprops/action-gh-release@v2.6.2'
         with:
