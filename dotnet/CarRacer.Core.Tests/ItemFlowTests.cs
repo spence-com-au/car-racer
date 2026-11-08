@@ -38,8 +38,13 @@ namespace CarRacer.Core.Tests
             Assert.Equal(99, used.UsedAtHostMs);
             Assert.Equal(40000, used.EffectId);
 
-            var gone = Assert.IsType<HazardGoneMessage>(MessageCodec.Decode(MessageCodec.Encode(new HazardGoneMessage { EffectId = 1234 })));
+            var gone = Assert.IsType<HazardGoneMessage>(MessageCodec.Decode(MessageCodec.Encode(new HazardGoneMessage
+            {
+                EffectId = 1234, Item = ItemKind.Bomb, Position = new Vec3(4f, 0.5f, -6f),
+            })));
             Assert.Equal(1234, gone.EffectId);
+            Assert.Equal(ItemKind.Bomb, gone.Item);
+            Assert.Equal(new Vec3(4f, 0.5f, -6f), gone.Position);
 
             var flying = new ProjectilesMessage();
             flying.Projectiles.Add(new ProjectileSnapshot { EffectId = 5, Kind = ItemKind.Bomb, Position = new Vec3(1f, 2f, 3f) });
@@ -833,14 +838,13 @@ namespace CarRacer.Core.Tests
             var thrower = _host.HostPlayerId;
             _cars[thrower] = new Vec3(0f, 0.6f, 0f);
             _cars[GuestId] = new Vec3(50f, 0.6f, 0f); // well clear of where the bomb lands
-            var guestExplosions = new List<Vec3>();
-            _guestItems.BombExploded += guestExplosions.Add;
+            var guestExplosions = new List<ItemKind>();
+            _guestItems.ProjectileEnded += (kind, position) => guestExplosions.Add(kind);
             GiveAndUse(thrower, ItemKind.Bomb, _cars[thrower]);
 
             // The thrower catches up with the bomb after its safe moment: it blows up on them, and the guest is close enough too.
             Advance(ProjectileRules.BombSafeMs);
             Assert.Empty(_hostHits);
-            Advance(100); // let a position update reach the guest
             _cars[thrower] = _hostItems.Projectiles[0].Position;
             _cars[GuestId] = _cars[thrower] + new Vec3(ProjectileRules.BombBlastRadius - 1f, 0f, 0f);
             Advance(20);
@@ -848,7 +852,30 @@ namespace CarRacer.Core.Tests
             Assert.Single(_hostHits);
             Assert.Single(_guestHits);
             Assert.Empty(_hostItems.Projectiles);
-            Assert.Single(guestExplosions);
+            Assert.Equal(ItemKind.Bomb, Assert.Single(guestExplosions));
+        }
+
+        [Theory]
+        [InlineData(ItemKind.Bomb, 1f)]
+        [InlineData(ItemKind.Missile, 3f)]
+        public void TheGuestSeesAProjectileThatEndsBeforeAnyPositionUpdate(ItemKind item, float guestAhead)
+        {
+            StartRacing();
+            var thrower = _host.HostPlayerId;
+            _cars[thrower] = new Vec3(0f, 0.6f, 0f);
+            _cars[GuestId] = new Vec3(0f, 0.6f, guestAhead); // close enough that the projectile meets them on its first step
+            var hostEnds = new List<(ItemKind, Vec3)>();
+            var guestEnds = new List<(ItemKind, Vec3)>();
+            _hostItems.ProjectileEnded += (kind, position) => hostEnds.Add((kind, position));
+            _guestItems.ProjectileEnded += (kind, position) => guestEnds.Add((kind, position));
+            GiveAndUse(thrower, item, _cars[thrower]);
+            Advance(20);
+
+            Assert.Empty(_hostLink.Sent.OfType<ProjectilesMessage>());
+            Assert.Single(_guestHits);
+            Assert.Equal(item, Assert.Single(guestEnds).Item1);
+            Assert.Equal(hostEnds, guestEnds);
+            Assert.Empty(_guestItems.Projectiles);
         }
 
         [Fact]
@@ -858,7 +885,7 @@ namespace CarRacer.Core.Tests
             _cars[GuestId] = new Vec3(0f, 0.6f, 0f);
             _cars[_host.HostPlayerId] = new Vec3(100f, 0.6f, 0f);
             var explosions = new List<Vec3>();
-            _hostItems.BombExploded += explosions.Add;
+            _hostItems.ProjectileEnded += (kind, position) => explosions.Add(position);
             GiveAndUse(GuestId, ItemKind.Bomb, _cars[GuestId]);
             Advance(ProjectileRules.BombFuseMs - 40);
             Assert.Empty(explosions);

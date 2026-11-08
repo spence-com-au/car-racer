@@ -9,7 +9,7 @@ namespace CarRacer.Core.Discovery
         /// Bump whenever any network message format changes, or a message's meaning does (e.g. a
         /// new track index an older build doesn't have); mismatched hosts show as "Update required".
         /// </summary>
-        public const ushort ProtocolVersion = 26;
+        public const ushort ProtocolVersion = 27;
 
         /// <summary>Administratively-scoped (site-local) multicast group used for lobby announcements.</summary>
         public static readonly IPAddress MulticastGroup = IPAddress.Parse("239.255.42.99");

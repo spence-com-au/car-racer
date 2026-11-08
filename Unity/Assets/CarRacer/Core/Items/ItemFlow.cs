@@ -25,8 +25,8 @@ namespace CarRacer.Core.Items
         /// <summary>Missiles, Seekers and Bombs in flight, where this phone last knew them to be.</summary>
         IReadOnlyList<ProjectileSnapshot> Projectiles { get; }
 
-        /// <summary>A Bomb went off here.</summary>
-        event Action<Vec3> BombExploded;
+        /// <summary>A Missile, Seeker or Bomb ended here: it hit a car, blew up or ran out.</summary>
+        event Action<ItemKind, Vec3> ProjectileEnded;
 
         /// <summary>
         /// Someone used an item. This phone's own use is raised at once, so its effects feel instant;
@@ -93,7 +93,7 @@ namespace CarRacer.Core.Items
         public IReadOnlyList<ProjectileSnapshot> Projectiles => _snapshots;
 
         public event Action<ItemUsedMessage> ItemUsed;
-        public event Action<Vec3> BombExploded;
+        public event Action<ItemKind, Vec3> ProjectileEnded;
 
         public void Tick()
         {
@@ -302,7 +302,8 @@ namespace CarRacer.Core.Items
                 if (done)
                 {
                     _flying.RemoveAt(i);
-                    _session.Broadcast(new HazardGoneMessage { EffectId = p.EffectId }, reliable: true);
+                    _session.Broadcast(new HazardGoneMessage { EffectId = p.EffectId, Item = p.Kind, Position = p.Position }, reliable: true);
+                    ProjectileEnded?.Invoke(p.Kind, p.Position);
                 }
             }
 
@@ -395,7 +396,6 @@ namespace CarRacer.Core.Items
                 }
             }
 
-            BombExploded?.Invoke(bomb.Position);
             return true;
         }
 
@@ -424,7 +424,7 @@ namespace CarRacer.Core.Items
                 if (_carPositions(player.PlayerId, out var position) && Hazards.TryFindTouched(position, now, out var hazard))
                 {
                     Hazards.Remove(hazard.EffectId);
-                    _session.Broadcast(new HazardGoneMessage { EffectId = hazard.EffectId }, reliable: true);
+                    _session.Broadcast(new HazardGoneMessage { EffectId = hazard.EffectId, Item = hazard.Item, Position = hazard.Position }, reliable: true);
                     Hit(hazard.OwnerId, player.PlayerId, hazard.Item == ItemKind.FakeBox ? ItemEffects.FakeBoxImpulse : ItemEffects.OilImpulse);
                 }
             }
@@ -493,7 +493,7 @@ namespace CarRacer.Core.Items
         public IReadOnlyList<ProjectileSnapshot> Projectiles => _snapshots;
 
         public event Action<ItemUsedMessage> ItemUsed;
-        public event Action<Vec3> BombExploded;
+        public event Action<ItemKind, Vec3> ProjectileEnded;
 
         public void Tick()
         {
@@ -588,15 +588,10 @@ namespace CarRacer.Core.Items
                 case HazardGoneMessage gone:
                     Hazards.Remove(gone.EffectId);
                     _gone.Add(gone.EffectId);
-                    int index = _snapshots.FindIndex(p => p.EffectId == gone.EffectId);
-                    if (index >= 0)
+                    _snapshots.RemoveAll(p => p.EffectId == gone.EffectId);
+                    if (!ItemEffects.IsDropped(gone.Item))
                     {
-                        if (_snapshots[index].Kind == ItemKind.Bomb)
-                        {
-                            BombExploded?.Invoke(_snapshots[index].Position);
-                        }
-
-                        _snapshots.RemoveAt(index);
+                        ProjectileEnded?.Invoke(gone.Item, gone.Position);
                     }
 
                     break;

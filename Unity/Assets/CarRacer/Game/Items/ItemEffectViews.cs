@@ -37,7 +37,6 @@ namespace CarRacer.Game.Items
         private readonly HashSet<ushort> _fakes = new HashSet<ushort>();
         private readonly Dictionary<ushort, Transform> _projectiles = new Dictionary<ushort, Transform>();
         private readonly HashSet<ushort> _seen = new HashSet<ushort>();
-        private readonly HashSet<ushort> _missiles = new HashSet<ushort>();
         private readonly List<ushort> _gone = new List<ushort>();
         private readonly List<(Transform Ring, float Age, float Radius)> _rings = new List<(Transform, float, float)>();
         private IItemView _items;
@@ -46,7 +45,7 @@ namespace CarRacer.Game.Items
         {
             _items = items;
             _items.ItemUsed += OnItemUsed;
-            _items.BombExploded += OnBombExploded;
+            _items.ProjectileEnded += OnProjectileEnded;
         }
 
         private void OnDestroy()
@@ -54,7 +53,7 @@ namespace CarRacer.Game.Items
             if (_items != null)
             {
                 _items.ItemUsed -= OnItemUsed;
-                _items.BombExploded -= OnBombExploded;
+                _items.ProjectileEnded -= OnProjectileEnded;
             }
         }
 
@@ -102,8 +101,15 @@ namespace CarRacer.Game.Items
             }
         }
 
-        private void OnBombExploded(CarRacer.Core.Numerics.Vec3 position)
+        /// <summary>A Bomb goes off with a ring; a Missile or Seeker has hit someone or run out of time, and either way bangs.</summary>
+        private void OnProjectileEnded(ItemKind kind, CarRacer.Core.Numerics.Vec3 position)
         {
+            if (kind != ItemKind.Bomb)
+            {
+                GameAudio.PlayAt("explosion", position.ToUnity(), 0.8f);
+                return;
+            }
+
             AddRing(position.ToUnity(), ProjectileRules.BombBlastRadius, BlastColour);
             GameAudio.PlayAt("explosion", position.ToUnity());
         }
@@ -159,11 +165,6 @@ namespace CarRacer.Game.Items
                         : SimpleMaterials.Part(PrimitiveType.Sphere, transform, Vector3.zero, Vector3.one * 0.8f, SimpleMaterials.Get(BombColour));
                     view.position = target;
                     _projectiles[snapshot.EffectId] = view;
-                    if (homing)
-                    {
-                        _missiles.Add(snapshot.EffectId);
-                    }
-
                     continue;
                 }
 
@@ -178,17 +179,7 @@ namespace CarRacer.Game.Items
                 view.position = next;
             }
 
-            // A Missile or Seeker that has gone has hit someone or run out of time: either way, a bang.
-            foreach (var pair in _projectiles)
-            {
-                if (!_seen.Contains(pair.Key) && _missiles.Contains(pair.Key))
-                {
-                    GameAudio.PlayAt("explosion", pair.Value.position, 0.8f);
-                }
-            }
-
             RemoveUnseen(_projectiles);
-            _missiles.IntersectWith(_projectiles.Keys);
         }
 
         private void SyncHazards()
