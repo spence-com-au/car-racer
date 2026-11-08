@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using CarRacer.Game;
+using CarRacer.Game.Net;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
 using UnityEditor.SceneManagement;
@@ -108,15 +109,12 @@ namespace CarRacer.Editor
             EditorApplication.Exit(succeeded ? 0 : 1);
         }
 
-        /// <summary>The tunes, copied as files beside the server, so ffmpeg can play them on the TV (design doc §2.4).</summary>
-        public const string ServerMusicFolder = "Music";
-
         private const string MusicSource = "Assets/CarRacer/Resources/Music";
 
         /// <summary>Copies every tune into a Music folder beside the server built at <paramref name="playerPath"/>.</summary>
         private static bool CopyServerMusic(string playerPath)
         {
-            string target = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(playerPath)), ServerMusicFolder);
+            string target = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(playerPath)), TvViewer.MusicFolder);
             Directory.CreateDirectory(target);
             int copied = 0;
             foreach (string file in Directory.GetFiles(MusicSource, "*.ogg"))

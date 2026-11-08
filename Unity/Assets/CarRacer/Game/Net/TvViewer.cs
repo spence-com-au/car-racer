@@ -21,6 +21,9 @@ namespace CarRacer.Game.Net
     /// </summary>
     public sealed class TvViewer : MonoBehaviour
     {
+        /// <summary>The folder beside the server that the build copies the tunes into, for ffmpeg to play.</summary>
+        public const string MusicFolder = "Music";
+
         private readonly TvCastPlan _plan = new TvCastPlan();
         private ServerOptions _options;
         private NetworkSession _session;
@@ -54,7 +57,7 @@ namespace CarRacer.Game.Net
             viewer._session = session;
             viewer._cars = cars;
             viewer.Music = options.TvMusic;
-            viewer._musicFolder = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Music"));
+            viewer._musicFolder = Path.GetFullPath(Path.Combine(Application.dataPath, "..", MusicFolder));
             if (!ViewerStream.IsAvailable(options.FfmpegPath, out string ffmpegError))
             {
                 Debug.LogWarning("TV viewer off: " + ffmpegError);
