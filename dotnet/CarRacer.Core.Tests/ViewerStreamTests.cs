@@ -236,21 +236,49 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void AnFfmpegThatRunsIsAvailable()
+        {
+            Assert.True(ViewerStream.IsAvailable("ffmpeg", out string error), error);
+            Assert.Null(error);
+        }
+
+        /// <summary>Output beyond a pipe's buffer blocks the program unless it is drained as it comes.</summary>
+        [Fact]
+        public void AnFfmpegThatPrintsALotIsAvailable()
+        {
+            WithShellScript("yes | head -c 1000000", script =>
+            {
+                Assert.True(ViewerStream.IsAvailable(script, out string error, timeoutMs: 2_000), error);
+            });
+        }
+
+        [Fact]
+        public void AnFfmpegThatFailsIsNotAvailable()
+        {
+            WithShellScript("exit 1", script =>
+            {
+                Assert.False(ViewerStream.IsAvailable(script, out string error));
+                Assert.Contains("didn't run", error);
+            });
+        }
+
+        [Fact]
         public void AnFfmpegThatHangsIsGivenUpOn()
         {
-            if (!File.Exists("/bin/sh"))
+            WithShellScript("sleep 30", script =>
             {
-                return;
-            }
+                var clock = Stopwatch.StartNew();
+                Assert.False(ViewerStream.IsAvailable(script, out string error, timeoutMs: 500));
+                Assert.True(clock.ElapsedMilliseconds < 5_000, clock.ElapsedMilliseconds + " ms");
+                Assert.Contains("didn't answer", error);
+            });
+        }
 
-            string script = Path.Combine(Path.GetTempPath(), "hanging-ffmpeg-" + Guid.NewGuid().ToString("N") + ".sh");
-            File.WriteAllText(script, "#!/bin/sh\nsleep 30\n");
-            Run("chmod", "+x \"" + script + "\"");
-            var clock = Stopwatch.StartNew();
-            Assert.False(ViewerStream.IsAvailable(script, out string error, timeoutMs: 500));
-            Assert.True(clock.ElapsedMilliseconds < 5_000, clock.ElapsedMilliseconds + " ms");
-            Assert.Contains("didn't answer", error);
-            File.Delete(script);
+        [Fact]
+        public void AnFfmpegThatIsMissingIsNotAvailable()
+        {
+            Assert.False(ViewerStream.IsAvailable("/nonexistent/ffmpeg", out string error));
+            Assert.Contains("ffmpeg not found", error);
         }
 
         [Fact]
@@ -363,6 +391,22 @@ namespace CarRacer.Core.Tests
             }
 
             Directory.Delete(folder, recursive: true);
+        }
+
+        /// <summary>Runs <paramref name="test"/> with a shell script of <paramref name="body"/> as ffmpeg.</summary>
+        private static void WithShellScript(string body, Action<string> test)
+        {
+            string script = Path.Combine(Path.GetTempPath(), "stub-ffmpeg-" + Guid.NewGuid().ToString("N") + ".sh");
+            File.WriteAllText(script, "#!/bin/sh\n" + body + "\n");
+            Run("chmod", "+x \"" + script + "\"");
+            try
+            {
+                test(script);
+            }
+            finally
+            {
+                File.Delete(script);
+            }
         }
 
         private static string RunErr(string file, string arguments)
