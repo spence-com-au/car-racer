@@ -28,7 +28,9 @@ namespace CarRacer.Core.Tests
         }
 
         public static IEnumerable<object[]> BuildFlags =>
-            typeof(CommandLineArguments.BuildFlag).GetFields().Select(field => new[] { field.GetRawConstantValue() });
+            typeof(CommandLineArguments.BuildFlag)
+                .GetFields()
+                .Select(constant => new[] { constant.GetRawConstantValue() });
 
         [Theory]
         [MemberData(nameof(BuildFlags))]
