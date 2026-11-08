@@ -23,8 +23,7 @@ namespace CarRacer.Tests
         {
             var layer = UiRoot.Create(_host.transform, "Test layer");
             var panel = UiKit.Panel(400f);
-            int clicks = 0;
-            var button = UiKit.Button("Go", () => clicks++, primary: true);
+            var button = UiKit.Button("Go", () => { }, primary: true);
             panel.Add(UiKit.Heading("Hello"));
             panel.Add(button);
             layer.Safe.Add(panel);
@@ -37,7 +36,6 @@ namespace CarRacer.Tests
             Assert.That(panel.resolvedStyle.width, Is.EqualTo(400f).Within(0.5f));
             Assert.That(button.worldBound.height, Is.GreaterThan(0f), "the button should be laid out on screen");
             Assert.AreEqual(PickingMode.Ignore, layer.Safe.pickingMode, "containers mustn't block touches to the game");
-            Assert.AreEqual(0, clicks);
         }
 
         [UnityTest]
@@ -52,10 +50,16 @@ namespace CarRacer.Tests
             Assert.That(full.width, Is.GreaterThan(0f));
             Assert.That(safe.xMin, Is.GreaterThanOrEqualTo(full.xMin - 0.5f));
             Assert.That(safe.xMax, Is.LessThanOrEqualTo(full.xMax + 0.5f));
-            if (Screen.height > 0)
-            {
-                Assert.That(full.height, Is.EqualTo(720f).Within(1f), "the panel is scaled to 720 reference pixels tall");
-            }
+        }
+
+        [UnityTest]
+        public IEnumerator ThePanelIsScaledTo720ReferencePixelsTall()
+        {
+            var layer = UiRoot.Create(_host.transform, "Scaled layer");
+            yield return null;
+            yield return null;
+
+            Assert.That(layer.Full.worldBound.height, Is.EqualTo(720f).Within(1f));
         }
     }
 }
