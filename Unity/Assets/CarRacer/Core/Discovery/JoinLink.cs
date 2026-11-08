@@ -15,11 +15,16 @@ namespace CarRacer.Core.Discovery
         public static string Make(string address, ushort port) =>
             $"{Scheme}://{Host}?host={Uri.EscapeDataString(address ?? string.Empty)}&port={port}";
 
-        /// <summary>Reads a join link; false for anything else (another link, a missing or bad host or port).</summary>
+        /// <summary>
+        /// Reads a join link; false for anything else (another link, a missing or bad host or port). Any page or app
+        /// can open a link, so the host must be an IPv4 address that <see cref="HostAddress.TryParse"/> accepts,
+        /// as if the guest had typed it.
+        /// </summary>
         public static bool TryParse(string link, out string address, out ushort port)
         {
             address = null;
             port = 0;
+            string host = null;
             string prefix = $"{Scheme}://{Host}?";
             if (string.IsNullOrEmpty(link) || !link.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
             {
@@ -38,7 +43,7 @@ namespace CarRacer.Core.Discovery
                 string value = Uri.UnescapeDataString(pair.Substring(equals + 1));
                 if (key == "host")
                 {
-                    address = value.Trim();
+                    host = value;
                 }
                 else if (key == "port" && ushort.TryParse(value, out ushort parsed))
                 {
@@ -46,7 +51,8 @@ namespace CarRacer.Core.Discovery
                 }
             }
 
-            return !string.IsNullOrEmpty(address) && port != 0;
+            // The port has its own field, so one inside the host value makes the link bad rather than a second port.
+            return port != 0 && host != null && host.IndexOf(':') < 0 && HostAddress.TryParse(host, out address, out _);
         }
     }
 }
