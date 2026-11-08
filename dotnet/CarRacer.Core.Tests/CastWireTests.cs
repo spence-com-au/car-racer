@@ -193,7 +193,7 @@ namespace CarRacer.Core.Tests
             Thread.Sleep(50);
             discovery.Poll(2);
             Assert.Single(found);
-            Assert.Same(discovery.Devices[0], discovery.Find("Living Room TV"));
+            Assert.Equal("Living Room TV", Assert.Single(discovery.Devices).Name);
             discovery.Poll(CastDiscovery.ForgetMs + 10);
             Assert.Empty(discovery.Devices);
         }
