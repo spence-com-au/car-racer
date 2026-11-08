@@ -90,16 +90,13 @@ namespace CarRacer.Game.Driving
             if (_useTilt)
             {
                 // Tilt is one more device: the strongest steer wins, so a thumb can still correct it.
-                float tilt = ReadTilt();
-                if (Mathf.Abs(tilt) > Mathf.Abs(devices.Steer))
-                {
-                    devices.Steer = tilt;
-                }
+                devices = DriverInput.Merge(devices, new DriverControls { Steer = ReadTilt() });
             }
 
-            _current = DriverInput.Combine(touch, devices, AutoAccelerateEnabled);
-            _itemPressed |= touch.UseItem || devices.UseItem;
-            LookingBack = touch.LookBack || devices.LookBack;
+            var controls = DriverInput.Merge(touch, devices);
+            _current = DriverInput.ToCarInput(controls, AutoAccelerateEnabled);
+            _itemPressed |= controls.UseItem;
+            LookingBack = controls.LookBack;
         }
 
 #if ENABLE_INPUT_SYSTEM
@@ -170,17 +167,15 @@ namespace CarRacer.Game.Driving
             var pad = Gamepad.current;
             if (pad != null)
             {
-                float steer = pad.leftStick.x.ReadValue();
-                if (Mathf.Abs(steer) > Mathf.Abs(controls.Steer))
+                controls = DriverInput.Merge(controls, new DriverControls
                 {
-                    controls.Steer = steer;
-                }
-
-                controls.Accelerate = Mathf.Max(controls.Accelerate, Mathf.Max(pad.rightTrigger.ReadValue(), pad.buttonSouth.isPressed ? 1f : 0f));
-                controls.Brake = Mathf.Max(controls.Brake, Mathf.Max(pad.leftTrigger.ReadValue(), pad.buttonEast.isPressed ? 1f : 0f));
-                controls.Drift |= pad.rightShoulder.isPressed || pad.leftShoulder.isPressed;
-                controls.UseItem |= pad.buttonNorth.wasPressedThisFrame || pad.buttonWest.wasPressedThisFrame;
-                controls.LookBack |= pad.leftStickButton.isPressed;
+                    Steer = pad.leftStick.x.ReadValue(),
+                    Accelerate = Mathf.Max(pad.rightTrigger.ReadValue(), pad.buttonSouth.isPressed ? 1f : 0f),
+                    Brake = Mathf.Max(pad.leftTrigger.ReadValue(), pad.buttonEast.isPressed ? 1f : 0f),
+                    Drift = pad.rightShoulder.isPressed || pad.leftShoulder.isPressed,
+                    UseItem = pad.buttonNorth.wasPressedThisFrame || pad.buttonWest.wasPressedThisFrame,
+                    LookBack = pad.leftStickButton.isPressed,
+                });
             }
 
             return controls;

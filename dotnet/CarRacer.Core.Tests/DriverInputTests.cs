@@ -13,45 +13,76 @@ namespace CarRacer.Core.Tests
         {
             var touch = new DriverControls { Steer = -0.3f };
             var pad = new DriverControls { Steer = 0.8f };
-            Assert.Equal(0.8f, DriverInput.Combine(touch, pad, true).Steer);
-            Assert.Equal(0.8f, DriverInput.Combine(pad, touch, true).Steer);
+            Assert.Equal(0.8f, DriverInput.Merge(touch, pad).Steer);
+            Assert.Equal(0.8f, DriverInput.Merge(pad, touch).Steer);
+        }
+
+        [Fact]
+        public void TheFirstDeviceWinsATiedSteer()
+        {
+            var touch = new DriverControls { Steer = -0.5f };
+            var tilt = new DriverControls { Steer = 0.5f };
+            Assert.Equal(-0.5f, DriverInput.Merge(touch, tilt).Steer);
+            Assert.Equal(0.5f, DriverInput.Merge(tilt, touch).Steer);
+        }
+
+        [Fact]
+        public void TheHarderPedalPressWins()
+        {
+            var keyboard = new DriverControls { Accelerate = 0.3f, Brake = 0.9f };
+            var pad = new DriverControls { Accelerate = 0.6f, Brake = 0.2f };
+            var merged = DriverInput.Merge(keyboard, pad);
+            Assert.Equal(0.6f, merged.Accelerate);
+            Assert.Equal(0.9f, merged.Brake);
+        }
+
+        [Fact]
+        public void ButtonsFromEitherDevice()
+        {
+            var drift = DriverInput.Merge(default, new DriverControls { Drift = true });
+            var item = DriverInput.Merge(new DriverControls { UseItem = true }, default);
+            var lookBack = DriverInput.Merge(default, new DriverControls { LookBack = true });
+            Assert.True(drift.Drift);
+            Assert.True(item.UseItem);
+            Assert.True(lookBack.LookBack);
+            var none = DriverInput.Merge(default, default);
+            Assert.False(none.Drift || none.UseItem || none.LookBack);
         }
 
         [Fact]
         public void AutoAccelerateDrivesAtFullThrottle()
         {
-            Assert.Equal(1f, DriverInput.Combine(default, default, true).Throttle);
-            Assert.Equal(0f, DriverInput.Combine(default, default, false).Throttle);
+            Assert.Equal(1f, DriverInput.ToCarInput(default, true).Throttle);
+            Assert.Equal(0f, DriverInput.ToCarInput(default, false).Throttle);
         }
 
         [Fact]
-        public void ManualThrottleUsesTheStrongestDevice()
+        public void ManualThrottleFollowsTheAccelerator()
         {
-            var pad = new DriverControls { Accelerate = 0.6f };
-            Assert.Equal(0.6f, DriverInput.Combine(default, pad, false).Throttle);
+            Assert.Equal(0.6f, DriverInput.ToCarInput(new DriverControls { Accelerate = 0.6f }, false).Throttle);
         }
 
         [Fact]
         public void BrakingOverridesAccelerating()
         {
-            var touch = new DriverControls { Brake = 1f };
-            var pad = new DriverControls { Accelerate = 1f };
-            Assert.Equal(-1f, DriverInput.Combine(touch, pad, false).Throttle);
-            Assert.Equal(-1f, DriverInput.Combine(touch, default, true).Throttle);
+            var controls = new DriverControls { Accelerate = 1f, Brake = 1f };
+            Assert.Equal(-1f, DriverInput.ToCarInput(controls, false).Throttle);
+            Assert.Equal(-1f, DriverInput.ToCarInput(controls, true).Throttle);
         }
 
         [Fact]
         public void ATriggerBarelyPressedDoesNotBrake()
         {
             var pad = new DriverControls { Brake = DriverInput.BrakeThreshold / 2f };
-            Assert.Equal(1f, DriverInput.Combine(default, pad, true).Throttle);
+            Assert.Equal(1f, DriverInput.ToCarInput(pad, true).Throttle);
         }
 
         [Fact]
-        public void DriftFromEitherDevice()
+        public void TheCarInputCarriesSteerAndDrift()
         {
-            Assert.True(DriverInput.Combine(default, new DriverControls { Drift = true }, true).Drift);
-            Assert.False(DriverInput.Combine(default, default, true).Drift);
+            var input = DriverInput.ToCarInput(new DriverControls { Steer = -0.4f, Drift = true }, true);
+            Assert.Equal(-0.4f, input.Steer);
+            Assert.True(input.Drift);
         }
     }
 
