@@ -26,8 +26,6 @@ namespace CarRacer.Core.Physics
         /// <summary>A fallback hit arrived from <paramref name="attackerId"/>. Returns true if it should be applied.</summary>
         public bool TryApplyRemoteHit(int attackerId, long nowMs) => TryRecord(attackerId, nowMs);
 
-        public void Clear() => _lastContactMs.Clear();
-
         private bool TryRecord(int otherPlayerId, long nowMs)
         {
             if (_lastContactMs.TryGetValue(otherPlayerId, out long last) && nowMs - last < _windowMs)
