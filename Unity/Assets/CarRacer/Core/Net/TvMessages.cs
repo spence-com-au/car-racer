@@ -98,7 +98,9 @@ namespace CarRacer.Core.Net
                 return value;
             }
 
-            int length = value.Length;
+            // Every char is at least a byte of UTF-8, so no more than MaxStringBytes of them can fit;
+            // starting there bounds the trim however long a name the network sent.
+            int length = Math.Min(value.Length, NetWriter.MaxStringBytes);
             while (length > 0 && System.Text.Encoding.UTF8.GetByteCount(value.Substring(0, length)) > NetWriter.MaxStringBytes)
             {
                 length--;
