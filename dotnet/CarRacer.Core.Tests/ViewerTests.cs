@@ -7,6 +7,7 @@ using CarRacer.Core.Arena;
 using CarRacer.Core.Art;
 using CarRacer.Core.Net;
 using CarRacer.Core.Numerics;
+using CarRacer.Core.Platform;
 using CarRacer.Core.Race;
 using CarRacer.Core.Session;
 using CarRacer.Core.Track;
@@ -323,6 +324,7 @@ namespace CarRacer.Core.Tests
                 },
             };
             yield return ("lobby", ViewerScene.Build(ViewerSceneTests.Lobby()));
+            yield return ("lobby-without-address", LobbyWithoutAnAddress());
             yield return ("countdown", ViewerScene.Build(ViewerSceneTests.Racing(new FakeRaceView { Phase = RacePhase.Countdown, StartAtLocalMs = 3_000 }, 1_200)));
             for (int track = 0; track < TrackCatalog.Count; track++)
             {
@@ -347,6 +349,123 @@ namespace CarRacer.Core.Tests
                     },
                 },
             }, 0)));
+        }
+
+        [Fact]
+        public void EveryPartOfAScreenIsDrawn()
+        {
+            foreach (var (part, scene, remove) in Parts())
+            {
+                var with = Render(scene);
+                remove(scene);
+                Assert.True(Differences(with, Render(scene)) > 1_000, part);
+            }
+        }
+
+        [Fact]
+        public void LobbyDrawsTheCodeUprightWithItsQuietZone()
+        {
+            var scene = ViewerScene.Build(ViewerSceneTests.Lobby());
+            var frame = Render(scene);
+            var qr = QrCode.Encode(scene.JoinLink);
+            var white = new Rgb(255, 255, 255);
+            var black = new Rgb(0, 0, 0);
+
+            // The card is the only pure white on the lobby screen.
+            int left = int.MaxValue, top = int.MaxValue, right = -1, bottom = -1;
+            for (int y = 0; y < frame.Height; y++)
+            {
+                for (int x = 0; x < frame.Width; x++)
+                {
+                    if (frame.Get(x, y).Equals(white))
+                    {
+                        left = Math.Min(left, x);
+                        top = Math.Min(top, y);
+                        right = Math.Max(right, x);
+                        bottom = Math.Max(bottom, y);
+                    }
+                }
+            }
+
+            // The code has four modules of white around it, each a whole number of pixels and big enough to scan from
+            // the sofa.
+            int modules = qr.Size + 2 * 4;
+            int card = right - left + 1;
+            Assert.Equal(card, bottom - top + 1);
+            Assert.Equal(0, card % modules);
+            int module = card / modules;
+            Assert.True(module >= 4, $"{module} pixels per module");
+            for (int y = 0; y < modules; y++)
+            {
+                for (int x = 0; x < modules; x++)
+                {
+                    var expected = qr.IsDark(x - 4, y - 4) ? black : white;
+                    Assert.Equal(expected, frame.Get(left + x * module + module / 2, top + y * module + module / 2));
+                }
+            }
+        }
+
+        [Fact]
+        public void LobbyWithoutAnAddressSaysWhereToFindTheGame()
+        {
+            var scene = LobbyWithoutAnAddress();
+            Assert.Null(scene.JoinLink);
+
+            // With everything else gone, what's left of the text is the card's.
+            scene.Rows.Clear();
+            scene.Title = string.Empty;
+            scene.Clock = string.Empty;
+            scene.Footer = string.Empty;
+            var frame = Render(scene);
+            Assert.Equal(0, Count(frame, new Rgb(255, 255, 255)));
+            Assert.True(Count(frame, ViewerRenderer.Text) > 1_000);
+        }
+
+        /// <summary>
+        /// Each part of a screen, with how to take it out of the scene: the frame must change when it is gone.
+        /// </summary>
+        private static IEnumerable<(string, ViewerScene, Action<ViewerScene>)> Parts()
+        {
+            yield return ("lobby rows", ViewerScene.Build(ViewerSceneTests.Lobby()), s => s.Rows.Clear());
+            yield return ("lobby footer", ViewerScene.Build(ViewerSceneTests.Lobby()), s => s.Footer = string.Empty);
+            yield return ("lobby join text", ViewerScene.Build(ViewerSceneTests.Lobby()), s => s.JoinText = string.Empty);
+            yield return ("countdown number", ViewerScene.Build(ViewerSceneTests.Racing(new FakeRaceView { Phase = RacePhase.Countdown, StartAtLocalMs = 3_000 }, 1_200)), s => s.Countdown = null);
+            yield return ("results rows", ViewerScene.Build(ViewerSceneTests.Racing(new FakeRaceView
+            {
+                Phase = RacePhase.Results,
+                Results = new RaceResultsMessage { Results = { new RaceResultEntry { PlayerId = 2, Name = "Bob", Position = 1, RaceTimeMs = 83_456 } } },
+            }, 0)), s => s.Rows.Clear());
+        }
+
+        private static ViewerScene LobbyWithoutAnAddress()
+        {
+            var inputs = ViewerSceneTests.Lobby();
+            inputs.JoinAddress = null;
+            return ViewerScene.Build(inputs);
+        }
+
+        private static RgbImage Render(ViewerScene scene)
+        {
+            var frame = new RgbImage(ViewerRenderer.Width, ViewerRenderer.Height);
+            new ViewerRenderer().Render(scene, frame);
+            return frame;
+        }
+
+        private static int Differences(RgbImage a, RgbImage b)
+        {
+            int count = 0;
+            for (int y = 0; y < a.Height; y++)
+            {
+                for (int x = 0; x < a.Width; x++)
+                {
+                    if (!a.Get(x, y).Equals(b.Get(x, y)))
+                    {
+                        count++;
+                    }
+                }
+            }
+
+            return count;
         }
 
         /// <summary>How many pixels are exactly <paramref name="colour"/> and where their centre is (NaN if there are none).</summary>
