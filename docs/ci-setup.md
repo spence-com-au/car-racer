@@ -119,7 +119,7 @@ is mostly automatic:
    `Packages/manifest.json`, accept the change.
 3. **Car Racer → Build → Development APK** writes `build/Android/CarRacer-dev.apk`.
 
-Leave what Unity generates uncommitted: the rest of `ProjectSettings/`,
+`.gitignore` keeps what Unity generates uncommitted: the rest of `ProjectSettings/`,
 `Packages/packages-lock.json` and `Assets/Scenes/`. Every build applies the player settings
 (**Car Racer → Apply Project Settings**) and creates the bootstrap scene (**Car Racer → Create
 Bootstrap Scene**) from code, so CI and other machines get the same configuration without them.
