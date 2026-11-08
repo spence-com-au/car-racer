@@ -646,4 +646,36 @@ namespace CarRacer.Core.Race
             return false;
         }
     }
+
+    /// <summary>
+    /// How a car this phone drives follows the event under way (design doc §7), the same for its own car and, on the
+    /// host, the bots: when it lines up, when it is a monster truck, and when it has just spun out.
+    /// </summary>
+    public static class EventCars
+    {
+        /// <summary>
+        /// Whether the phase moving from <paramref name="previous"/> to <paramref name="phase"/> lines the cars up for
+        /// the event: at the countdown, or straight away at GO if this phone never saw the countdown.
+        /// </summary>
+        public static bool LinesUp(RacePhase previous, RacePhase phase) =>
+            phase == RacePhase.Countdown || (phase == RacePhase.Racing && previous != RacePhase.Countdown);
+
+        /// <summary>Whether the cars are monster trucks in <paramref name="phase"/> of a <paramref name="mode"/> event: through Monster Jam, and cars again in the lobby.</summary>
+        public static bool AreTrucks(GameMode mode, RacePhase phase) => mode == GameMode.Monster && phase != RacePhase.Lobby;
+
+        /// <summary>How much more dramatic than the physics bumps are: a truck's, or else <paramref name="carExaggeration"/>.</summary>
+        public static float BumpExaggeration(bool trucks, float carExaggeration) => trucks ? MonsterRules.BumpExaggeration : carExaggeration;
+
+        /// <summary>
+        /// Whether a car that is <paramref name="spunOut"/> now has just spun out, from whether it
+        /// <paramref name="wasSpunOut"/> at the last check, which this moves on. The referee counts each spin-out once,
+        /// on its rising edge, as one costs a Battle life.
+        /// </summary>
+        public static bool SpinOutStarted(bool spunOut, ref bool wasSpunOut)
+        {
+            bool started = spunOut && !wasSpunOut;
+            wasSpunOut = spunOut;
+            return started;
+        }
+    }
 }

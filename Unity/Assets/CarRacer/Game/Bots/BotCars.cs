@@ -179,17 +179,12 @@ namespace CarRacer.Game.Bots
         /// <summary>Reports a bot's spin-outs (they cost a Battle life) and takes its controls away once it is out of an arena event.</summary>
         private static void FollowArenaState(Bot bot, HostRace race)
         {
-            bool spun = bot.Car.State.SpunOut;
-            if (spun && !bot.WasSpunOut)
+            if (EventCars.SpinOutStarted(bot.Car.State.SpunOut, ref bot.WasSpunOut))
             {
                 race.ReportSpinOut(bot.PlayerId);
             }
 
-            bot.WasSpunOut = spun;
-            if (race.Mode != GameMode.Race)
-            {
-                bot.Car.InputLocked = ArenaStandings.IsOut(race, bot.PlayerId);
-            }
+            bot.Car.InputLocked = ArenaStandings.IsOut(race, bot.PlayerId);
         }
 
         private void UseItem(Bot bot, HostItems items, HostRace race)
@@ -306,14 +301,13 @@ namespace CarRacer.Game.Bots
                 return;
             }
 
-            bool lineUp = phase == RacePhase.Countdown || (phase == RacePhase.Racing && _phase != RacePhase.Countdown);
+            bool lineUp = EventCars.LinesUp(_phase, phase);
             if (lineUp)
             {
                 _screen.FollowEventTrack(_session.Race);
             }
 
-            bool trucks = phase != RacePhase.Lobby && _session.Race.Mode == GameMode.Monster;
-            _bumpSettings.Exaggeration = trucks ? MonsterRules.BumpExaggeration : _carExaggeration;
+            _bumpSettings.Exaggeration = EventCars.BumpExaggeration(EventCars.AreTrucks(_session.Race.Mode, phase), _carExaggeration);
             foreach (var bot in _bots.Values)
             {
                 if (lineUp)
@@ -382,7 +376,7 @@ namespace CarRacer.Game.Bots
             var race = _session.Race;
 
             // Monster Jam's trucks for the event, back to cars for the lobby (this resets the handling, so it comes first).
-            DressAsTruck(bot, CurrentMode == GameMode.Monster);
+            DressAsTruck(bot, EventCars.AreTrucks(race.Mode, race.Phase));
             bot.Car.InputLocked = race.Phase != RacePhase.Racing;
             bot.Car.DamageEnabled = race.Rules.DamageIn(race.Mode, race.Phase);
             bot.Car.UseBodyStats(race.Rules.CarStatsIn(race.Phase));
