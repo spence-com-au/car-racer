@@ -50,12 +50,10 @@ namespace CarRacer.Core.Driving
         /// </summary>
         public static CarInput ToCarInput(DriverControls controls, bool autoAccelerate)
         {
-            float brake = Clamp01(controls.Brake);
-            float accelerate = autoAccelerate ? 1f : Clamp01(controls.Accelerate);
+            float brake = Math.Clamp(controls.Brake, 0f, 1f);
+            float accelerate = autoAccelerate ? 1f : Math.Clamp(controls.Accelerate, 0f, 1f);
             float throttle = brake > BrakeThreshold ? -brake : accelerate;
             return new CarInput(Math.Max(-1f, Math.Min(1f, controls.Steer)), throttle, controls.Drift);
         }
-
-        private static float Clamp01(float value) => Math.Max(0f, Math.Min(1f, value));
     }
 }

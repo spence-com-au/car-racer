@@ -43,15 +43,26 @@ namespace CarRacer.Core.Tests
             Assert.Equal(QualityLevel.Low, QualityPresets.Pick(null, 2048));
         }
 
+        // An unknown GPU doesn't hold the level down, so these isolate the memory cut-offs.
+        [Theory]
+        [InlineData(4499, QualityLevel.Low)]
+        [InlineData(4500, QualityLevel.Medium)]
+        [InlineData(6999, QualityLevel.Medium)]
+        [InlineData(7000, QualityLevel.High)]
+        public void TheMemoryCutOffsFallWhereDocumented(int memoryMb, QualityLevel expected)
+        {
+            Assert.Equal(expected, QualityPresets.Pick(null, memoryMb));
+        }
+
         [Fact]
         public void EachLevelHasItsDocumentedRenderSettings()
         {
             var low = QualityPresets.For(QualityLevel.Low);
             var medium = QualityPresets.For(QualityLevel.Medium);
             var high = QualityPresets.For(QualityLevel.High);
-            Assert.Equal((0.65f, 0), (low.RenderScale, low.Msaa));
-            Assert.Equal((0.75f, 2), (medium.RenderScale, medium.Msaa));
-            Assert.Equal((1f, 4), (high.RenderScale, high.Msaa));
+            Assert.Equal((0.65f, 0, 0.5f), (low.RenderScale, low.Msaa, low.TreeShare));
+            Assert.Equal((0.75f, 2, 1f), (medium.RenderScale, medium.Msaa, medium.TreeShare));
+            Assert.Equal((1f, 4, 1f), (high.RenderScale, high.Msaa, high.TreeShare));
         }
     }
 }

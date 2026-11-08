@@ -252,7 +252,21 @@ namespace CarRacer.Core.Session
                 return "Player";
             }
 
-            return trimmed.Length > MaxNameChars ? trimmed.Substring(0, MaxNameChars).TrimEnd() : trimmed;
+            return Cut(trimmed, MaxNameChars).TrimEnd();
+        }
+
+        /// <summary>
+        /// At most <paramref name="length"/> chars of <paramref name="text"/>, one fewer rather than split a surrogate
+        /// pair: a lone half would go out as U+FFFD, so the name others see wouldn't match the one kept here.
+        /// </summary>
+        private static string Cut(string text, int length)
+        {
+            if (text.Length <= length)
+            {
+                return text;
+            }
+
+            return text.Substring(0, char.IsHighSurrogate(text[length - 1]) ? length - 1 : length);
         }
 
         private string NextBotName()
@@ -276,7 +290,7 @@ namespace CarRacer.Core.Session
             for (int n = 2; NameTaken(unique); n++)
             {
                 string suffix = " " + n;
-                unique = clean.Substring(0, Math.Min(clean.Length, MaxNameChars - suffix.Length)).TrimEnd() + suffix;
+                unique = Cut(clean, MaxNameChars - suffix.Length).TrimEnd() + suffix;
             }
 
             return unique;

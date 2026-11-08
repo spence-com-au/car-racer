@@ -25,7 +25,7 @@ namespace CarRacer.Core.Tests
             // Masks are compared with the reference's choice fixed: python-qrcode scores masks a little
             // differently from the standard, and any mask reads the same.
             var reference = QrReference.Cases[index];
-            var code = QrCode.Encode(reference.Text, reference.Level, QrReference.ChosenMasks[index]);
+            var code = QrCode.Encode(reference.Text, reference.Level, reference.Mask);
             Assert.Equal(reference.Version, code.Version);
             Assert.Equal(reference.Rows.Length, code.Size);
 
@@ -96,6 +96,15 @@ namespace CarRacer.Core.Tests
         public void TooMuchTextIsRefused()
         {
             Assert.Throws<ArgumentException>(() => QrCode.Encode(new string('a', 272), QrErrorCorrection.Low));
+        }
+
+        // An unchecked 8 would be ORed into the format bits' level and read back as a different level and mask.
+        [Theory]
+        [InlineData(-2)]
+        [InlineData(8)]
+        public void AMaskOutsideTheEightPatternsIsRefused(int mask)
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(() => QrCode.Encode("HELLO", QrErrorCorrection.Medium, mask));
         }
 
         [Fact]

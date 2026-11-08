@@ -121,8 +121,9 @@ namespace CarRacer.Core.Bots
                 return false;
             }
 
-            foreach (var rival in rivals)
+            for (int i = 0; i < rivals.Count; i++)
             {
+                var rival = rivals[i];
                 var to = (rival - position).Flattened;
                 float distance = to.Length;
                 if (distance < best && distance > 1e-3f && Vec3.Dot(to / distance, state.Forward.Flattened.Normalized) > 0.6f)

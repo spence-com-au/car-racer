@@ -12,6 +12,7 @@ namespace CarRacer.Core.Tests
         private const ushort Version = 17;
 
         private long _now = 10_000;
+        private readonly HostLink _hostLink = new HostLink();
         private readonly HostSession _host;
         private readonly GuestSession _guest;
         private readonly List<byte> _takenOver = new List<byte>();
@@ -19,9 +20,8 @@ namespace CarRacer.Core.Tests
 
         public AwayTests()
         {
-            var hostLink = new HostLink();
-            _host = new HostSession(hostLink, "Host", Version, () => _now);
-            _guest = hostLink.Join(_host, "Guest", Version, () => _now);
+            _host = new HostSession(_hostLink, "Host", Version, () => _now);
+            _guest = _hostLink.Join(_host, "Guest", Version, () => _now);
             _host.PlayerTakenOver += _takenOver.Add;
             _host.PlayerReturned += _returned.Add;
         }
@@ -122,6 +122,29 @@ namespace CarRacer.Core.Tests
             Assert.True(_host.IsBot(GuestId));
             Assert.False(_host.IsAway(GuestId));
             Assert.Empty(_returned);
+        }
+
+        [Fact]
+        public void TheHostDropsTheReturningGuestsCarStatesUntilItHasTheCarBack()
+        {
+            var states = new List<CarStateMessage>();
+            _host.CarStateReceived += states.Add;
+            var handBack = new ControlReturnedMessage { PlayerId = GuestId, Position = new Vec3(5f, 0f, 5f) };
+            _host.PlayerReturned += _ => _host.SendControlReturned(handBack);
+            _host.EventInProgress = true;
+            Wait(HostSession.AwayAfterMs);
+
+            // Until the hand-back reaches the guest, its car is still where it was when the app went away.
+            _hostLink.Guest = null;
+            GuestSpeaks();
+            GuestSpeaks();
+            Assert.Equal(new[] { GuestId }, _returned);
+            Assert.Empty(states);
+
+            _hostLink.Guest = _guest;
+            _guest.OnMessage(handBack);
+            GuestSpeaks();
+            Assert.Single(states);
         }
 
         [Fact]

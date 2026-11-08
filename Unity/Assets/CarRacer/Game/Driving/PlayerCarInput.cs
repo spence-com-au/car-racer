@@ -41,12 +41,8 @@ namespace CarRacer.Game.Driving
         /// <summary>Auto-accelerate (design doc §5): on by default; the choice is remembered.</summary>
         public static bool AutoAccelerateEnabled
         {
-            get => _autoAccelerateEnabled ?? (bool)(_autoAccelerateEnabled = PlayerPrefs.GetInt(AutoAccelerateKey, 1) != 0);
-            set
-            {
-                _autoAccelerateEnabled = value;
-                PlayerPrefs.SetInt(AutoAccelerateKey, value ? 1 : 0);
-            }
+            get => Accessibility.Get(ref _autoAccelerateEnabled, AutoAccelerateKey, fallback: true);
+            set => Accessibility.Set(ref _autoAccelerateEnabled, AutoAccelerateKey, value);
         }
 
         public static string AutoAccelerateLabel => AutoAccelerateEnabled ? "Auto-accelerate: on" : "Auto-accelerate: off";

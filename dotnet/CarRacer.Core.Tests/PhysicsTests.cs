@@ -110,6 +110,15 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void ANonFiniteVelocityGivesNoImpulse()
+        {
+            var self = new CarBody(Vec3.Zero, new Vec3(0f, 0f, 10f));
+            var other = new CarBody(new Vec3(0f, 0f, 1.8f), new Vec3(float.NaN, 0f, 0f));
+            Assert.Equal(Vec3.Zero, BumpResolver.ComputeSelfImpulse(self, other, Settings));
+            Assert.Equal(Vec3.Zero, BumpResolver.ComputeSelfImpulse(other, self, Settings));
+        }
+
+        [Fact]
         public void TouchingUsesRadiiOnTheGroundPlane()
         {
             var a = new CarBody(Vec3.Zero, Vec3.Zero, radius: 1f);
@@ -210,6 +219,52 @@ namespace CarRacer.Core.Tests
             predictor.OnState(State(1, Vec3.Zero, Vec3.Zero), 0, 0f);
             predictor.OnState(State(2, new Vec3(50f, 0f, 0f), Vec3.Zero), 33, 0f);
             Assert.True(predictor.UpdateDisplayPosition(33, 0f, 0f).ApproximatelyEquals(new Vec3(50f, 0f, 0f)));
+        }
+
+        [Fact]
+        public void PredictorIgnoresNonFiniteStates()
+        {
+            var predictor = new RemoteCarPredictor();
+            Assert.True(predictor.OnState(State(1, Vec3.Zero, Vec3.Zero), 0, 0f));
+
+            Assert.False(predictor.OnState(State(2, new Vec3(float.NaN, 0f, 0f), Vec3.Zero), 10, 0f));
+            Assert.False(predictor.OnState(State(3, Vec3.Zero, new Vec3(0f, 0f, float.PositiveInfinity)), 20, 0f));
+            var badHeading = State(4, Vec3.Zero, Vec3.Zero);
+            badHeading.HeadingRadians = float.NaN;
+            Assert.False(predictor.OnState(badHeading, 30, 0f));
+
+            // The car still follows the next good state.
+            Assert.True(predictor.OnState(State(5, new Vec3(1f, 0f, 0f), Vec3.Zero), 40, 0f));
+            Vec3 shown = predictor.UpdateDisplayPosition(1040, 0f, 1f);
+            Assert.True(shown.ApproximatelyEquals(new Vec3(1f, 0f, 0f), 0.01f), $"got {shown}");
+        }
+
+        [Fact]
+        public void PredictorIgnoresStatesThatOverflowWhenExtrapolated()
+        {
+            var predictor = new RemoteCarPredictor();
+            Assert.True(predictor.OnState(State(1, Vec3.Zero, Vec3.Zero), 0, 0f));
+
+            // Finite, but 250 ms ahead is past float range.
+            var huge = new Vec3(3e38f, 0f, 0f);
+            Assert.False(predictor.OnState(State(2, huge, huge), 10, 250f));
+            Assert.False(predictor.OnState(State(3, huge, huge), 20, 250f));
+
+            Vec3 shown = predictor.UpdateDisplayPosition(20, 250f, 0f);
+            Assert.True(shown.ApproximatelyEquals(Vec3.Zero), $"got {shown}");
+        }
+
+        [Fact]
+        public void PredictorSnapsWhenTheCorrectionOverflows()
+        {
+            var predictor = new RemoteCarPredictor();
+            Assert.True(predictor.OnState(State(1, new Vec3(3e38f, 0f, 0f), Vec3.Zero), 0, 0f));
+
+            // Each state is finite to draw, but the correction between them overflows to infinity, which must snap.
+            Assert.True(predictor.OnState(State(2, new Vec3(-3e38f, 0f, 0f), Vec3.Zero), 10, 0f));
+
+            Vec3 shown = predictor.UpdateDisplayPosition(10, 0f, 0f);
+            Assert.True(shown.ApproximatelyEquals(new Vec3(-3e38f, 0f, 0f)), $"got {shown}");
         }
     }
 }

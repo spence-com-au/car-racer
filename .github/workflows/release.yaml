@@ -101,6 +101,15 @@ jobs:
             exit 1
           fi
 
+      # GameCI can't parse a version that isn't strict semver, such as `v0.14` or `v0.013.0` (a leading zero), and gives
+      # it version code 1: an APK Android refuses as a downgrade.
+      - name: 'Check the version'
+        run: |
+          if [[ ! "${TAG}" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "::error::Version '${TAG}' should look like v0.13.0, with no leading zeros."
+            exit 1
+          fi
+
       # A manual run tags the commit it ran on. Pushes made with the workflow's token start no workflows, so this run
       # does the release itself. An existing tag (a re-run) is kept.
       - name: 'Tag master'
@@ -108,10 +117,6 @@ jobs:
         env:
           GH_TOKEN: '${{ github.token }}'
         run: |
-          if [[ ! "${TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::Version '${TAG}' should look like v0.13.0."
-            exit 1
-          fi
           if [ "${GITHUB_REF}" != refs/heads/master ]; then
             echo "::error::Run the release on master, not ${GITHUB_REF}."
             exit 1
@@ -120,6 +125,18 @@ jobs:
             echo "Tag ${TAG} already exists; releasing it."
           else
             gh api "repos/${GITHUB_REPOSITORY}/git/refs" -f "ref=refs/tags/${TAG}" -f "sha=${GITHUB_SHA}"
+          fi
+
+      # Only reviewed code ships. A pushed tag, or an existing one a manual run keeps, can be on any commit, so `master`
+      # must already have the tagged commit.
+      - name: 'Check the tag is on master'
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        run: |
+          status=$(gh api "repos/${GITHUB_REPOSITORY}/compare/master...${TAG}" --jq .status)
+          if [ "${status}" != identical ] && [ "${status}" != behind ]; then
+            echo "::error::Tag ${TAG} is on a commit master doesn't have. Delete the tag and tag a commit on master."
+            exit 1
           fi
 
   linux-server:
@@ -164,8 +181,7 @@ jobs:
       - name: 'Package the server'
         run: |
           sudo chown -R "$(id -u):$(id -g)" build
-          cp server/run-server.sh server/Dockerfile build/StandaloneLinux64/
-          tar -czf "CarRacer-server-${TAG}-linux-x86_64.tar.gz" --transform "s,^build/StandaloneLinux64,car-racer-server," build/StandaloneLinux64
+          server/package.sh "CarRacer-server-${TAG}-linux-x86_64.tar.gz"
 
       - uses: 'softprops/action-gh-release@v2.6.2'
         with:

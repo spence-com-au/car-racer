@@ -69,6 +69,27 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void OtherProtocolVersionsAreListedByAddressAndStatusOnly()
+        {
+            var current = Sample(session: 1);
+            var future = Sample(session: 2);
+            future.ProtocolVersion = DiscoveryConstants.ProtocolVersion + 1;
+            var list = new DiscoveredHostList();
+            foreach (var (announcement, address) in new[] { (current, "10.0.0.4"), (future, "10.0.0.5") })
+            {
+                byte[] bytes = announcement.Encode();
+                Assert.True(DiscoveryAnnouncement.TryDecode(bytes, bytes.Length, out var decoded));
+                list.Observe(decoded, address, 0);
+            }
+
+            var hosts = list.Hosts.ToDictionary(h => h.Address);
+            Assert.Equal("Josh's Pixel", hosts["10.0.0.4"].Title);
+            Assert.Equal("2/6 players · Open", hosts["10.0.0.4"].Details);
+            Assert.Equal("10.0.0.5", hosts["10.0.0.5"].Title);
+            Assert.Equal("Update this app to join", hosts["10.0.0.5"].Details);
+        }
+
+        [Fact]
         public void OtherProtocolVersionsKeepTheirSessionId()
         {
             var future = Sample(session: 7);

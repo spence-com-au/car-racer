@@ -1,4 +1,5 @@
 using CarRacer.Core.Audio;
+using CarRacer.Game.Platform;
 using UnityEngine;
 
 namespace CarRacer.Game.Audio
@@ -13,6 +14,7 @@ namespace CarRacer.Game.Audio
         public const string VolumeKey = "musicVolume";
 
         private static MusicPlayer _instance;
+        private static int? _volumeStep;
         private AudioSource _source;
         private string _playing;
         private string _wanted;
@@ -22,8 +24,8 @@ namespace CarRacer.Game.Audio
 
         public static int VolumeStep
         {
-            get => SoundRules.ClampVolumeStep(PlayerPrefs.GetInt(VolumeKey, SoundRules.DefaultMusicStep));
-            private set => PlayerPrefs.SetInt(VolumeKey, value);
+            get => SoundRules.ClampVolumeStep(Accessibility.Get(ref _volumeStep, VolumeKey, SoundRules.DefaultMusicStep));
+            private set => Accessibility.Set(ref _volumeStep, VolumeKey, value);
         }
 
         public static float Volume => SoundRules.VolumeSteps[VolumeStep];

@@ -423,6 +423,16 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void TheRearViewKeepsTheChaseCamerasDistanceAndHeightAtAnySpeed()
+        {
+            float speed = Settings.TopSpeed / 2f;
+            var chase = ChaseCameraRig.Step(default, Vec3.Zero, 0f, speed, Dt, Settings);
+            var rear = ChaseCameraRig.RearView(chase, Vec3.Zero, 0f, speed, Settings);
+            Assert.Equal(chase.Position.Y, rear.Position.Y, 3);
+            Assert.Equal(-chase.Position.Z, rear.Position.Z, 3);
+        }
+
+        [Fact]
         public void SmoothingDoesNotDependOnFrameRate()
         {
             var start = ChaseCameraRig.Step(default, Vec3.Zero, 0f, 0f, Dt, Settings);
