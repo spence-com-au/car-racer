@@ -66,7 +66,8 @@ namespace CarRacer.Game.Platform
             strip.style.justifyContent = Justify.Center;
             _readout = UiKit.Centred(UiKit.Text(string.Empty, 16, Color.white, wrap: true));
 
-            // A fixed size for a testing tool, as before, so it needn't rebuild when large text changes.
+            // `UiKit.Text` scales with large text; undo that, as this testing tool's readout is a fixed size and so
+            // needn't rebuild when large text changes.
             _readout.style.fontSize = 16;
             _readout.style.backgroundColor = new Color(0f, 0f, 0f, 0.55f);
             _readout.style.paddingLeft = _readout.style.paddingRight = 8f;
