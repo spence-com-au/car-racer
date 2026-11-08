@@ -312,6 +312,20 @@ namespace CarRacer.Core.Arena
         public static float StartRadiusFor(GameMode mode) =>
             mode == GameMode.Battle ? BattleRules.BowlRadius : mode == GameMode.Monster ? MonsterRules.StadiumRadius : SumoRules.StartRadius;
 
+        /// <summary>The Sumo catch floor reaches this far from below the platform's centre, to catch cars flung off it.</summary>
+        private const float SumoCatchFloorReach = 100f;
+
+        /// <summary>A walled arena's floor reaches this far past its radius, so no gap shows beneath the wall.</summary>
+        private const float WalledFloorOverhang = 2f;
+
+        /// <summary>
+        /// How far the ground under <paramref name="mode"/>'s arena (Sumo, Battle or Monster) reaches
+        /// from its centre along X and Z: the Sumo catch floor, or a walled arena's floor. It stays
+        /// clear of every track's ground.
+        /// </summary>
+        public static float GroundReach(GameMode mode) =>
+            mode == GameMode.Battle || mode == GameMode.Monster ? StartRadiusFor(mode) + WalledFloorOverhang : SumoCatchFloorReach;
+
         /// <summary>
         /// The Monster Jam stadium's ramps: four kickers round a ring halfway out, each facing along
         /// the ring so a truck lapping the stadium hits them in turn, and a spine in the middle (two

@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using CarRacer.Core.Arena;
 using CarRacer.Core.Net;
 using CarRacer.Core.Numerics;
@@ -44,24 +43,23 @@ namespace CarRacer.Core.Tests
             Assert.Equal(0, TrackCatalog.Clamp(TrackCatalog.Count));
         }
 
-        /// <summary>Each track's patch of ground reaches this far beyond its road.</summary>
-        private const float GroundMargin = 60f;
-
         [Fact]
         public void TracksAndArenasKeepToTheirOwnGround()
         {
             var areas = new List<(string Name, float MinX, float MaxX, float MinZ, float MaxZ)>();
             foreach (var layout in TrackCatalog.Layouts)
             {
-                var samples = layout.Spline.SampleEvenly(2f);
-                areas.Add((layout.Definition.Id,
-                    samples.Min(s => s.Position.X) - GroundMargin, samples.Max(s => s.Position.X) + GroundMargin,
-                    samples.Min(s => s.Position.Z) - GroundMargin, samples.Max(s => s.Position.Z) + GroundMargin));
+                var (minX, maxX, minZ, maxZ) = TrackCatalog.Ground(layout);
+                areas.Add((layout.Definition.Id, minX, maxX, minZ, maxZ));
             }
 
-            AddArena(areas, "sumo", ArenaLayout.SumoCentre, SumoRules.StartRadius + 30f);
-            AddArena(areas, "battle", ArenaLayout.BattleCentre, BattleRules.BowlRadius + 10f);
-            AddArena(areas, "monster", ArenaLayout.MonsterCentre, MonsterRules.StadiumRadius + 10f);
+            foreach (var mode in new[] { GameMode.Sumo, GameMode.Battle, GameMode.Monster })
+            {
+                var centre = ArenaLayout.CentreFor(mode);
+                float reach = ArenaLayout.GroundReach(mode);
+                areas.Add((mode.ToString(), centre.X - reach, centre.X + reach, centre.Z - reach, centre.Z + reach));
+            }
+
             for (int a = 0; a < areas.Count; a++)
             {
                 for (int b = a + 1; b < areas.Count; b++)
@@ -72,9 +70,6 @@ namespace CarRacer.Core.Tests
                 }
             }
         }
-
-        private static void AddArena(List<(string, float, float, float, float)> areas, string name, Vec3 centre, float reach) =>
-            areas.Add((name, centre.X - reach, centre.X + reach, centre.Z - reach, centre.Z + reach));
     }
 
     public class TrackChoiceTests
