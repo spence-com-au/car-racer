@@ -115,16 +115,21 @@ jobs:
           buildMethod: 'CarRacer.Editor.BuildScript.BuildLinuxServerFromCommandLine'
           versioning: 'Semantic'
 
-      # Start the host for a few seconds: it should begin hosting and say so (design doc §2.3).
+      # Start the host for a few seconds: it should begin hosting, say so and still be running when `timeout` stops it,
+      # which exits 124 (design doc §2.3). A crash or a stop after the start line exits with anything else.
       - name: 'Smoke-test the server'
         run: |
           sudo chown -R "$(id -u):$(id -g)" build
           cp server/run-server.sh build/StandaloneLinux64/
           ls -la build/StandaloneLinux64
-          timeout 30 build/StandaloneLinux64/run-server.sh -port 47901 -name "CI" > server.log 2>&1 || true
+          status=0
+          timeout 30 build/StandaloneLinux64/run-server.sh -port 47901 -name "CI" > server.log 2>&1 || status=$?
           tail -n 40 server.log
           grep -q 'Car Racer server "CI" on port 47901' server.log
-          ! grep -q 'Hosting stopped' server.log
+          if [ "${status}" -ne 124 ]; then
+            echo "::error::The server exited with status ${status} before the smoke test stopped it."
+            exit 1
+          fi
 
       - uses: 'actions/upload-artifact@v4.6.2'
         with:
