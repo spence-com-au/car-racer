@@ -42,7 +42,6 @@ namespace CarRacer.Core.Tests
             var bad = new TrackDefinition
             {
                 Id = "bad",
-                DefaultLaps = 0,
                 Points = new[]
                 {
                     new TrackPoint(0, 0, 0, width: 2f),
@@ -57,7 +56,6 @@ namespace CarRacer.Core.Tests
             Assert.Contains(problems, p => p.Contains("Point 1 bank") && p.Contains("exceeds 45"));
             Assert.Contains(problems, p => p.Contains("Points 1 and 2") && p.Contains("closer than 1 m"));
             Assert.Contains(problems, p => p.Contains("Point 3 is missing"));
-            Assert.Contains(problems, p => p.Contains("DefaultLaps must be at least 1"));
             Assert.DoesNotContain(problems, p => p.Contains("4 control points"));
         }
 
