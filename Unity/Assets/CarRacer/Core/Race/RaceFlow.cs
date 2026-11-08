@@ -130,6 +130,9 @@ namespace CarRacer.Core.Race
         /// <summary>The Monster Jam scorer; null otherwise.</summary>
         public StuntTracker Stunts { get; private set; }
 
+        /// <summary>Raised by <see cref="Start"/> as each event's countdown begins.</summary>
+        public event Action CountdownStarted;
+
         /// <summary>
         /// Starts the countdown for everyone in the roster, after filling the grid with bots. A race
         /// is on track <paramref name="trackIndex"/>. Players start in order of
@@ -187,6 +190,7 @@ namespace CarRacer.Core.Race
             Phase = RacePhase.Countdown;
             Rules = _session.Settings.Rules.For(mode);
             _session.Broadcast(new RaceCountdownMessage { StartAtHostMs = StartAtLocalMs, LapCount = (byte)laps, Mode = mode, TrackIndex = (byte)trackIndex, GridOrder = new List<byte>(_gridOrder), Rules = Rules.ToByte() }, reliable: true);
+            CountdownStarted?.Invoke();
             return true;
         }
 
