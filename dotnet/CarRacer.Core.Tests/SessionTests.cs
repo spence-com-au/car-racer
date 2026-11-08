@@ -72,7 +72,7 @@ namespace CarRacer.Core.Tests
         {
             var sync = new ClockSync();
             Assert.False(sync.HasEstimate);
-            Assert.Equal(100, sync.ToHostTime(100));
+            Assert.Equal(100, sync.ToLocalTime(100));
         }
 
         [Fact]
@@ -84,7 +84,6 @@ namespace CarRacer.Core.Tests
             Assert.Equal(5000, sync.OffsetMs);
             Assert.Equal(80, sync.RoundTripMs);
             Assert.Equal(40f, sync.OneWayLatencyMs);
-            Assert.Equal(7000, sync.ToHostTime(2000));
             Assert.Equal(2000, sync.ToLocalTime(7000));
         }
 

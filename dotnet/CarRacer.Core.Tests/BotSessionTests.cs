@@ -224,12 +224,9 @@ namespace CarRacer.Core.Tests
         public void LeavingMidRaceHandsTheCarToABot()
         {
             StartRacing();
-            var takenOver = new List<byte>();
             var left = new List<byte>();
-            _host.PlayerTakenOver += takenOver.Add;
             _host.PlayerLeft += (id, name) => left.Add(id);
             _host.OnDisconnected(5);
-            Assert.Equal(new[] { _guest }, takenOver);
             Assert.Empty(left);
             var player = _host.Roster.Find(_guest);
             Assert.True(player.IsBot);

@@ -524,12 +524,12 @@ namespace CarRacer.Tests
 
             // The host's clock is real time, so wait for it.
             float deadline = Time.realtimeSinceStartup + HostSession.AwayAfterMs / 1000f + 5f;
-            while (!session.HostSide.IsAway(guest) && Time.realtimeSinceStartup < deadline)
+            while (!session.HostSide.IsBot(guest) && Time.realtimeSinceStartup < deadline)
             {
                 yield return null;
             }
 
-            Assert.IsTrue(session.HostSide.IsAway(guest), "the host gives up on a silent guest");
+            Assert.IsTrue(session.HostSide.IsBot(guest), "the host gives up on a silent guest");
             yield return null;
             yield return null;
             Assert.IsTrue(bots.TryGetPosition(guest, out _), "a bot drives the car");

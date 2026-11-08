@@ -337,7 +337,7 @@ namespace CarRacer.Core.Tests
             // One away, a bot at the wheel, leads nobody but hasn't left, so the results wait for her too.
             _now += HostSession.AwayAfterMs;
             _host.Tick();
-            Assert.True(_host.IsAway(alice));
+            Assert.True(_host.IsBot(alice));
             Assert.Equal(HostSession.NoPlayer, _host.LeaderId);
             Tick();
             Assert.Equal(RacePhase.Results, _race.Phase);

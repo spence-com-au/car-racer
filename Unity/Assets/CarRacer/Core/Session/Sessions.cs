@@ -205,14 +205,11 @@ namespace CarRacer.Core.Session
         /// <summary>A joined guest reported a Monster Jam stunt by its own truck (see <c>HostRace</c>).</summary>
         public event Action<StuntMessage> StuntReceived;
 
-        /// <summary>A joined guest left (disconnected), with the name they had. Raised before the roster updates.</summary>
-        public event Action<byte, string> PlayerLeft;
-
         /// <summary>
-        /// A guest left mid-event and a bot took over their car (design doc §12): same id, name and
-        /// colour, now marked <see cref="LobbyPlayer.IsBot"/>. Raised instead of <see cref="PlayerLeft"/>.
+        /// A joined guest left (disconnected) between events, with the name they had. Raised before the roster updates.
+        /// Mid-event a bot takes their car over instead, marking them <see cref="LobbyPlayer.IsBot"/> (design doc §12).
         /// </summary>
-        public event Action<byte> PlayerTakenOver;
+        public event Action<byte, string> PlayerLeft;
 
         /// <summary>
         /// A guest whose car a bot took over while they were away (their app in the background,
@@ -291,7 +288,6 @@ namespace CarRacer.Core.Session
                 // The car carries on under a bot until the guest is back (OnMessage), like a takeover.
                 _away.Add(playerId);
                 player.IsBot = true;
-                PlayerTakenOver?.Invoke(playerId);
                 changed = true;
             }
 
@@ -300,9 +296,6 @@ namespace CarRacer.Core.Session
                 BroadcastRoster();
             }
         }
-
-        /// <summary>Whether <paramref name="playerId"/> is a guest away from the game, their car driven by a bot.</summary>
-        public bool IsAway(byte playerId) => _away.Contains(playerId);
 
         /// <summary>
         /// Tells a returning guest where their car got to under the bot, so they carry on from there. Their car states
@@ -331,17 +324,13 @@ namespace CarRacer.Core.Session
                 _handingBack.Remove(playerId);
 
                 // Gone for good: an away player's bot keeps the car for the rest of the event.
-                bool wasAway = _away.Remove(playerId);
+                _away.Remove(playerId);
                 var player = Roster.Find(playerId);
                 if (EventInProgress && player != null)
                 {
                     // A bot takes the car over for the rest of the event, and leaves with the other bots.
                     player.IsBot = true;
                     player.Ready = true;
-                    if (!wasAway)
-                    {
-                        PlayerTakenOver?.Invoke(playerId);
-                    }
                 }
                 else
                 {
@@ -628,9 +617,6 @@ namespace CarRacer.Core.Session
         public bool IsLeader => State == GuestState.Joined && Roster.LeaderId == PlayerId;
 
         public event Action RosterChanged;
-
-        /// <summary>The host's settings or saved cup changed.</summary>
-        public event Action LobbyChanged;
         public event Action<CarStateMessage> CarStateReceived;
 
         /// <summary>Race messages from the host (countdown, standings, finishes, results, back to lobby); see <c>GuestRace</c>.</summary>
@@ -718,11 +704,9 @@ namespace CarRacer.Core.Session
                     break;
                 case LobbySettingsMessage lobby:
                     Lobby = lobby;
-                    LobbyChanged?.Invoke();
                     break;
                 case TvStatusMessage tv:
                     TvStatus = tv;
-                    LobbyChanged?.Invoke();
                     break;
                 case ClockPongMessage pong:
                     Clock.AddSample(pong.GuestSentMs, pong.HostMs, _clockMs());
