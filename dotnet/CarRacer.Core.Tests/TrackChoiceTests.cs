@@ -28,12 +28,26 @@ namespace CarRacer.Core.Tests
         [Fact]
         public void MovingATrackMovesEveryPointAndKeepsTheRest()
         {
-            var oval = SampleTracks.Oval();
-            var moved = TrackCatalog.Moved(oval, new Vec3(10f, 2f, -5f));
-            Assert.Equal(oval.Points[3].Position + new Vec3(10f, 2f, -5f), moved.Points[3].Position);
-            Assert.Equal(oval.Points[3].Width, moved.Points[3].Width);
-            Assert.Equal(oval.Points[3].BankDegrees, moved.Points[3].BankDegrees);
-            Assert.Equal(oval.Points[0].Position, SampleTracks.Oval().Points[0].Position);
+            var offset = new Vec3(10f, 2f, -5f);
+            foreach (var original in SampleTracks.All())
+            {
+                var before = original.Points.Select(p => p.Position).ToArray();
+                var moved = TrackCatalog.Moved(original, offset);
+                Assert.Equal(before.Length, moved.Points.Length);
+                for (int i = 0; i < before.Length; i++)
+                {
+                    Assert.Equal(before[i], original.Points[i].Position);
+                    Assert.Equal(before[i] + offset, moved.Points[i].Position);
+                    Assert.Equal(original.Points[i].Width, moved.Points[i].Width);
+                    Assert.Equal(original.Points[i].BankDegrees, moved.Points[i].BankDegrees);
+                }
+
+                // Found by reflection, so a field added to `TrackDefinition` cannot be dropped by `Moved` unnoticed.
+                foreach (var field in typeof(TrackDefinition).GetFields().Where(f => f.Name != nameof(TrackDefinition.Points)))
+                {
+                    Assert.Equal(field.GetValue(original), field.GetValue(moved));
+                }
+            }
         }
 
         [Fact]

@@ -65,10 +65,7 @@ namespace CarRacer.Core.Driving
     {
         public static ChaseCameraState Step(ChaseCameraState state, Vec3 target, float targetHeading, float speed, float deltaSeconds, ChaseCameraSettings settings)
         {
-            float t = settings.TopSpeed > 0f ? Math.Clamp(Math.Abs(speed) / settings.TopSpeed, 0f, 1f) : 0f;
-            float distance = Lerp(settings.Distance, settings.DistanceAtTopSpeed, t);
-            float height = Lerp(settings.Height, settings.HeightAtTopSpeed, t);
-            float fov = Lerp(settings.FieldOfView, settings.FieldOfViewAtTopSpeed, t);
+            var (distance, height, fov) = Framing(speed, settings);
 
             if (!state.Initialised)
             {
@@ -77,14 +74,14 @@ namespace CarRacer.Core.Driving
             }
             else
             {
-                state.Heading = Angles.WrapSigned(state.Heading + Angles.WrapSigned(targetHeading - state.Heading) * Blend(settings.HeadingSharpness, deltaSeconds));
-                state.FieldOfView = Lerp(state.FieldOfView, fov, Blend(settings.FieldOfViewSharpness, deltaSeconds));
+                state.Heading = Angles.WrapSigned(state.Heading + Angles.WrapSigned(targetHeading - state.Heading) * Interpolation.Blend(settings.HeadingSharpness, deltaSeconds));
+                state.FieldOfView = Interpolation.Lerp(state.FieldOfView, fov, Interpolation.Blend(settings.FieldOfViewSharpness, deltaSeconds));
             }
 
             var forward = Angles.Forward(state.Heading);
             Vec3 desired = target - forward * distance + Vec3.Up * height;
             state.Position = state.Initialised
-                ? Vec3.Lerp(state.Position, desired, Blend(settings.PositionSharpness, deltaSeconds))
+                ? Vec3.Lerp(state.Position, desired, Interpolation.Blend(settings.PositionSharpness, deltaSeconds))
                 : desired;
             state.LookAt = target + forward * settings.LookAhead + Vec3.Up * settings.LookHeight;
             state.Initialised = true;
@@ -98,17 +95,25 @@ namespace CarRacer.Core.Driving
         /// </summary>
         public static ChaseCameraState RearView(ChaseCameraState chase, Vec3 target, float targetHeading, float speed, ChaseCameraSettings settings)
         {
-            float t = settings.TopSpeed > 0f ? Math.Clamp(Math.Abs(speed) / settings.TopSpeed, 0f, 1f) : 0f;
+            var (distance, height, _) = Framing(speed, settings);
             var forward = Angles.Forward(targetHeading);
-            chase.Position = target + forward * Lerp(settings.Distance, settings.DistanceAtTopSpeed, t) + Vec3.Up * Lerp(settings.Height, settings.HeightAtTopSpeed, t);
+            chase.Position = target + forward * distance + Vec3.Up * height;
             chase.LookAt = target - forward * settings.LookAhead + Vec3.Up * settings.LookHeight;
             chase.Heading = Angles.WrapSigned(targetHeading + MathF.PI);
             return chase;
         }
 
-        /// <summary>Fraction of the remaining gap closed in <paramref name="dt"/> seconds.</summary>
-        private static float Blend(float sharpness, float dt) => 1f - MathF.Exp(-sharpness * dt);
-
-        private static float Lerp(float a, float b, float t) => a + (b - a) * t;
+        /// <summary>
+        /// The distance, height and field of view the camera settles at for <paramref name="speed"/>: each runs from
+        /// its resting value to its top-speed one as the speed, whichever way the car is going, nears the top speed.
+        /// </summary>
+        private static (float Distance, float Height, float FieldOfView) Framing(float speed, ChaseCameraSettings settings)
+        {
+            float t = settings.TopSpeed > 0f ? Math.Clamp(Math.Abs(speed) / settings.TopSpeed, 0f, 1f) : 0f;
+            return (
+                Interpolation.Lerp(settings.Distance, settings.DistanceAtTopSpeed, t),
+                Interpolation.Lerp(settings.Height, settings.HeightAtTopSpeed, t),
+                Interpolation.Lerp(settings.FieldOfView, settings.FieldOfViewAtTopSpeed, t));
+        }
     }
 }

@@ -54,8 +54,6 @@ namespace CarRacer.Core.Art
             var uvs = new List<Vec2>();
             ObjPart part = null;
             var corners = new List<(int V, int T, int N)>();
-            var min = new Vec3(float.MaxValue, float.MaxValue, float.MaxValue);
-            var max = new Vec3(float.MinValue, float.MinValue, float.MinValue);
 
             // Kenney's Racing Kit models repeat a group with an identical copy of its faces; drawing both doubles the cost.
             var seenFaces = new HashSet<string>();
@@ -72,10 +70,7 @@ namespace CarRacer.Core.Art
                 switch (f[0])
                 {
                     case "v":
-                        var p = new Vec3(-Float(f[1]), Float(f[2]), Float(f[3]));
-                        positions.Add(p);
-                        min = new Vec3(Math.Min(min.X, p.X), Math.Min(min.Y, p.Y), Math.Min(min.Z, p.Z));
-                        max = new Vec3(Math.Max(max.X, p.X), Math.Max(max.Y, p.Y), Math.Max(max.Z, p.Z));
+                        positions.Add(new Vec3(-Float(f[1]), Float(f[2]), Float(f[3])));
                         break;
                     case "vn":
                         normals.Add(new Vec3(-Float(f[1]), Float(f[2]), Float(f[3])));
@@ -132,9 +127,24 @@ namespace CarRacer.Core.Art
             }
 
             model.Parts.RemoveAll(p => p.Triangles.Count == 0);
-            model.Min = positions.Count > 0 ? min : Vec3.Zero;
-            model.Max = positions.Count > 0 ? max : Vec3.Zero;
+            (model.Min, model.Max) = BoundsOf(positions);
             return model;
+        }
+
+        /// <summary>The box around <paramref name="points"/>, or both corners at the origin when there are none.</summary>
+        internal static (Vec3 Min, Vec3 Max) BoundsOf(IEnumerable<Vec3> points)
+        {
+            var min = new Vec3(float.MaxValue, float.MaxValue, float.MaxValue);
+            var max = new Vec3(float.MinValue, float.MinValue, float.MinValue);
+            bool any = false;
+            foreach (var p in points)
+            {
+                min = new Vec3(Math.Min(min.X, p.X), Math.Min(min.Y, p.Y), Math.Min(min.Z, p.Z));
+                max = new Vec3(Math.Max(max.X, p.X), Math.Max(max.Y, p.Y), Math.Max(max.Z, p.Z));
+                any = true;
+            }
+
+            return any ? (min, max) : (Vec3.Zero, Vec3.Zero);
         }
 
         private static void AddCorner(ObjPart part, (int V, int T, int N) c, List<Vec3> positions, List<Vec2> uvs, List<Vec3> normals)

@@ -141,6 +141,15 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void StandingsShowAPlayerWhoLeftInGrey()
+        {
+            var standings = new StandingsMessage { Order = { new StandingsEntry { PlayerId = 9 } } };
+            var row = ViewerScene.Build(Racing(new FakeRaceView { Standings = standings }, 0)).Rows.Single();
+            Assert.Equal("?", row.Name);
+            Assert.Equal(new Rgb(128, 128, 128), row.Colour);
+        }
+
+        [Fact]
         public void ArenasShowLivesPointsAndTimeLeft()
         {
             var battle = new FakeRaceView
@@ -241,17 +250,45 @@ namespace CarRacer.Core.Tests
         {
             var race = new FakeRaceView { Mode = mode, TrackIndex = track, Standings = new StandingsMessage { Order = { new StandingsEntry { PlayerId = 1 } } } };
             var scene = ViewerScene.Build(ViewerSceneTests.Racing(race, 5_000));
+
+            // A standings row has a swatch in its car's colour too, so drop the rows and the other cars: then the only
+            // pixels of that colour are the one dot.
+            scene.Rows.Clear();
+            scene.Cars.RemoveAll(c => c.PlayerId != 1);
+            var car = scene.Cars.Single();
+            var colour = CarPalette.ForIndex(0);
             var frame = new RgbImage(ViewerRenderer.Width, ViewerRenderer.Height);
             var renderer = new ViewerRenderer();
-            renderer.Render(scene, frame);
-            int yellow = Count(frame, CarPalette.ForIndex(0));
-            Assert.InRange(yellow, 300, 1200);
+
+            // Where the dot's centre is drawn, in pixels from the frame's top left, with the car moved by `shift`.
+            (double X, double Y) DotAfter(Vec3 shift)
+            {
+                var moved = car;
+                moved.Position += shift;
+                scene.Cars[0] = moved;
+                renderer.Render(scene, frame);
+                var (pixels, x, y) = Locate(frame, colour);
+                Assert.InRange(pixels, 300, 1200);
+                return (x, y);
+            }
+
+            // Move the car east and then north, one axis at a time. East is right on the map and north is up, and a
+            // metre is the same number of pixels both ways, so swapped, flipped or unevenly scaled axes all show.
+            const float step = 5f;
+            var home = DotAfter(new Vec3(0f, 0f, 0f));
+            var east = DotAfter(new Vec3(step, 0f, 0f));
+            var north = DotAfter(new Vec3(0f, 0f, step));
+            double right = east.X - home.X;
+            double up = home.Y - north.Y;
+            Assert.True(right > 4, $"East moved the dot {right} pixels right");
+            Assert.Equal(home.Y, east.Y, 1.5);
+            Assert.Equal(home.X, north.X, 1.5);
+            Assert.Equal(right, up, 1.5);
 
             // Without the cars, that colour is gone from the map.
             scene.Cars.Clear();
-            scene.Rows.Clear();
             renderer.Render(scene, frame);
-            Assert.True(Count(frame, CarPalette.ForIndex(0)) < 20);
+            Assert.True(Count(frame, colour) < 20);
         }
 
         [Fact]
@@ -312,9 +349,11 @@ namespace CarRacer.Core.Tests
             }, 0)));
         }
 
-        private static int Count(RgbImage image, Rgb colour)
+        /// <summary>How many pixels are exactly <paramref name="colour"/> and where their centre is (NaN if there are none).</summary>
+        private static (int Pixels, double X, double Y) Locate(RgbImage image, Rgb colour)
         {
             int count = 0;
+            double sumX = 0, sumY = 0;
             for (int y = 0; y < image.Height; y++)
             {
                 for (int x = 0; x < image.Width; x++)
@@ -322,12 +361,16 @@ namespace CarRacer.Core.Tests
                     if (image.Get(x, y).Equals(colour))
                     {
                         count++;
+                        sumX += x;
+                        sumY += y;
                     }
                 }
             }
 
-            return count;
+            return (count, sumX / count, sumY / count);
         }
+
+        private static int Count(RgbImage image, Rgb colour) => Locate(image, colour).Pixels;
     }
 
     /// <summary>Writes an <see cref="RgbImage"/> as a PNG, to look at the viewer's frames.</summary>

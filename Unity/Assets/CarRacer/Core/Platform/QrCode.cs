@@ -72,6 +72,11 @@ namespace CarRacer.Core.Platform
         /// </summary>
         public static QrCode Encode(string text, QrErrorCorrection level = QrErrorCorrection.Medium, int mask = -1)
         {
+            if (mask < -1 || mask > 7)
+            {
+                throw new ArgumentOutOfRangeException(nameof(mask), mask, "A mask pattern is 0–7, or -1 for the automatic choice.");
+            }
+
             byte[] data = Encoding.UTF8.GetBytes(text ?? string.Empty);
             int version = MinVersion;
             while (DataCapacityBytes(version, level) < data.Length)

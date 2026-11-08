@@ -87,11 +87,34 @@ namespace CarRacer.Core.Tests
             var stunts = new StuntTracker(new[] { 1, 2 });
             Assert.Equal(10, stunts.AddAir(1, 1000, 5_000));
 
-            // 1.5 s since the last jump landed can't hold a 2 s jump.
-            Assert.Equal(0, stunts.AddAir(1, 2000, 6_500));
+            // 1.5 s since the last jump landed can't hold a jump any longer than that and the slack.
+            Assert.Equal(0, stunts.AddAir(1, 1500 + MonsterRules.AirSlackMs + 1, 6_500));
             Assert.Equal(15, stunts.AddAir(1, 1500, 6_500));
             Assert.Equal(0, stunts.AddAir(9, 1000, 20_000));
             Assert.Equal(25, stunts.Points(1));
+        }
+
+        [Fact]
+        public void AJumpStillScoresWhenTheReportBeforeItRanLate()
+        {
+            var stunts = new StuntTracker(new[] { 1 });
+
+            // A hop lands at 5 s and its report reaches the host 60 ms late. 40 ms later the truck
+            // takes off for 1.5 s, and that report arrives on time: the host sees 1.48 s between them.
+            Assert.Equal(0, stunts.AddAir(1, 100, 5_060));
+            Assert.Equal(15, stunts.AddAir(1, 1500, 6_540));
+        }
+
+        [Fact]
+        public void TheSlackNeverAddsUpToMoreAirThanTime()
+        {
+            var stunts = new StuntTracker(new[] { 1 });
+            for (long now = 1_000; now <= 60_000; now += 1_000)
+            {
+                stunts.AddAir(1, 1_000 + MonsterRules.AirSlackMs, now);
+            }
+
+            Assert.True(stunts.Points(1) <= (60_000 + MonsterRules.AirSlackMs) / MonsterRules.MsPerAirPoint);
         }
 
         [Fact]
@@ -168,6 +191,16 @@ namespace CarRacer.Core.Tests
             _guestRace.ReportOwnStunt(StuntKind.Air, 1_000, 0);
             _race.ReportOwnStunt(StuntKind.Air, 1_000, 0);
             Assert.Null(_race.Stunts);
+        }
+
+        [Fact]
+        public void AGuestCannotScoreStuntsForAnotherPlayer()
+        {
+            Start();
+            _now += 3_000;
+            _host.OnMessage(GuestLink.Connection, new StuntMessage { PlayerId = HostId, Kind = StuntKind.Air, AirMs = 1_500 });
+            Assert.Equal(0, _race.Stunts.Points(HostId));
+            Assert.Equal(0, _race.Stunts.Points(GuestId));
         }
 
         [Fact]
@@ -258,6 +291,14 @@ namespace CarRacer.Core.Tests
                 var truck = MonsterTruck.Build(ObjModel.Parse(File.ReadAllText(ModelFiles.Resolve(body.Name + ".obj.bytes"))));
                 Assert.Equal(4, truck.Parts.Count(MonsterTruck.IsRoadWheel));
                 Assert.True(truck.Max.Y > truck.Min.Y);
+
+                // The grown wheels may meet between the axles but not cut through each other.
+                foreach (string side in new[] { "left", "right" })
+                {
+                    float frontWheelBack = truck.Parts.Single(p => p.Name == "wheel-front-" + side).Positions.Min(v => v.Z);
+                    float backWheelFront = truck.Parts.Single(p => p.Name == "wheel-back-" + side).Positions.Max(v => v.Z);
+                    Assert.True(frontWheelBack >= backWheelFront - 0.001f, $"{body.Name}'s {side} wheels overlap");
+                }
             }
         }
 
