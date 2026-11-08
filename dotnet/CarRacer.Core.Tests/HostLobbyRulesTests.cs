@@ -218,7 +218,7 @@ namespace CarRacer.Core.Tests
         public void AServerWithNobodyLeftGoesBackToTheLobbyOnceTheResultsAreIn()
         {
             Create(HostSession.Dedicated(new RecordingTransport(), Version, () => _now));
-            Join(1, "Alice");
+            byte alice = Join(1, "Alice");
             byte bob = Join(2, "Bob");
             _host.OnMessage(2, new SetReadyMessage { Ready = true });
             Choose(mode: GameMode.Battle);
@@ -239,8 +239,15 @@ namespace CarRacer.Core.Tests
             Tick();
             Assert.Equal(RacePhase.Results, _race.Phase);
 
-            _host.OnDisconnected(1);
+            // One away, a bot at the wheel, leads nobody but hasn't left, so the results wait for her too.
+            _now += HostSession.AwayAfterMs;
+            _host.Tick();
+            Assert.True(_host.IsAway(alice));
             Assert.Equal(HostSession.NoPlayer, _host.LeaderId);
+            Tick();
+            Assert.Equal(RacePhase.Results, _race.Phase);
+
+            _host.OnDisconnected(1);
             Tick();
             Assert.Equal(RacePhase.Lobby, _race.Phase);
         }
