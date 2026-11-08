@@ -53,6 +53,23 @@ namespace CarRacer.Core.Net
             }
         }
 
+        /// <summary>
+        /// Whether <see cref="RacingAhead"/> would list anyone, without allocating its iterator: a bot holding an item
+        /// asks on every physics tick.
+        /// </summary>
+        public bool HasRacingAhead(byte playerId)
+        {
+            for (int i = 0; i < Order.Count && Order[i].PlayerId != playerId; i++)
+            {
+                if (Order[i].FinishPosition == 0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         public void Write(NetWriter w)
         {
             w.WriteByte((byte)Order.Count);

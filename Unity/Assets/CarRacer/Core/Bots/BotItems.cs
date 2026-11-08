@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using CarRacer.Core.Items;
 using CarRacer.Core.Net;
 using CarRacer.Core.Numerics;
@@ -64,7 +63,7 @@ namespace CarRacer.Core.Bots
                 NearestAhead = float.PositiveInfinity,
                 NearestBehind = float.PositiveInfinity,
                 OnStraight = curvatureAhead < StraightCurvature,
-                HasCarAhead = standings != null && standings.RacingAhead(playerId).Any(),
+                HasCarAhead = standings != null && standings.HasRacingAhead(playerId),
             };
 
             // Indexed rather than `foreach`, which would box the list's enumerator on every call.

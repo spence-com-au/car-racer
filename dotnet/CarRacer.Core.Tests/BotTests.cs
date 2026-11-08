@@ -280,6 +280,19 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void HasRacingAheadSkipsCarsThatHaveFinished()
+        {
+            var standings = new StandingsMessage();
+            standings.Order.Add(new StandingsEntry { PlayerId = 1, FinishPosition = 1 });
+            standings.Order.Add(new StandingsEntry { PlayerId = 2 });
+            standings.Order.Add(new StandingsEntry { PlayerId = 3 });
+
+            Assert.False(standings.HasRacingAhead(1)); // the winner: nobody ahead at all
+            Assert.False(standings.HasRacingAhead(2)); // only the finished winner ahead
+            Assert.True(standings.HasRacingAhead(3)); // a 2nd still racing ahead
+        }
+
+        [Fact]
         public void AnItemHeldTooLongIsUsedAnyway()
         {
             Assert.True(BotItems.ShouldUse(ItemKind.Missile, BotItems.GiveUpSeconds, Normal, Nobody));
