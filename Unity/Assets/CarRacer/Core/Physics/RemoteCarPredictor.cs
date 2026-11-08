@@ -40,15 +40,18 @@ namespace CarRacer.Core.Physics
         public CarStateMessage Latest => _latest;
 
         /// <summary>
-        /// Accepts a state whose numbers are all finite if it's newer than the current one (sequence
-        /// numbers wrap safely), or if it comes from a different driver. <paramref name="oneWayLatencyMs"/>
-        /// is the current estimate, typically RTT / 2.
+        /// Accepts a state whose numbers, and whose furthest extrapolation, are all finite if it's newer than the
+        /// current one (sequence numbers wrap safely), or if it comes from a different driver.
+        /// <paramref name="oneWayLatencyMs"/> is the current estimate, typically RTT / 2.
         /// </summary>
         public bool OnState(CarStateMessage state, long receivedAtMs, float oneWayLatencyMs)
         {
-            // The state comes from another phone. A NaN would stick in the error offset, freezing the car on
-            // screen, and reach this car's physics through bumps.
-            if (!state.Position.IsFinite || !state.Velocity.IsFinite || !float.IsFinite(state.HeadingRadians))
+            // The state comes from another phone. A NaN or infinity would be drawn, stick in the error offset,
+            // freezing the car on screen, and reach this car's physics through bumps. A huge but finite state can
+            // overflow once extrapolated, so the furthest prediction must be finite too.
+            Vec3 furthest = state.Position + state.Velocity * (_settings.MaxExtrapolationMs / 1000f);
+            if (!state.Position.IsFinite || !state.Velocity.IsFinite || !furthest.IsFinite
+                || !float.IsFinite(state.HeadingRadians))
             {
                 return false;
             }
@@ -77,9 +80,7 @@ namespace CarRacer.Core.Physics
 
             _errorOffset = shownBefore - predictedAfter;
 
-            // Extrapolating a huge but finite state can overflow to infinity, and infinity minus infinity is a NaN
-            // that no distance exceeds, so it would stick.
-            if (!_errorOffset.IsFinite || _errorOffset.Length > _settings.SnapDistance)
+            if (_errorOffset.Length > _settings.SnapDistance)
             {
                 _errorOffset = Vec3.Zero;
             }
