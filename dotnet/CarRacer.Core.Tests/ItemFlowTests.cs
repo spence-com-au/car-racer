@@ -901,14 +901,20 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
-        public void ANewRaceClearsProjectiles()
+        public void TheEndOfARaceClearsProjectiles()
         {
             StartRacing();
             _cars[GuestId] = Vec3.Zero;
             GiveAndUse(GuestId, ItemKind.Bomb, Vec3.Zero);
             Advance(100);
+            Assert.NotEmpty(_hostItems.Projectiles);
+            Assert.NotEmpty(_guestItems.Projectiles);
             _hostRace.Tracker.FinishRemaining(_ => 0f, 0);
             Tick();
+            Assert.Equal(RacePhase.Results, _hostRace.Phase);
+            Assert.Equal(RacePhase.Results, _guestRace.Phase);
+            Assert.Empty(_hostItems.Projectiles);
+            Assert.Empty(_guestItems.Projectiles);
             Assert.True(_hostRace.ReturnToLobby());
 
             // Checked as the countdown begins, before the bomb's fuse could have run out on its own.
