@@ -629,6 +629,30 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void AMissileHitsTheFirstCarInItsPathNotJustItsTarget()
+        {
+            StartRacing();
+            var (leader, second) = Standings();
+            var bystander = _host.Roster.AddBot().PlayerId;
+            var botHits = new List<HitMessage>();
+            _host.BotHitReceived += botHits.Add;
+            _cars[second] = new Vec3(0f, 0.6f, 0f);
+            _cars[bystander] = new Vec3(0f, 0.6f, 15f);
+            _cars[leader] = new Vec3(0f, 0.6f, 60f);
+            GiveAndUse(second, ItemKind.Missile, _cars[second]);
+
+            Advance(2000);
+
+            var hit = Assert.Single(botHits);
+            Assert.Equal(bystander, hit.TargetId);
+            Assert.Equal(second, hit.AttackerId);
+            Assert.True(hit.IsItemHit);
+            Assert.Empty(_hostHits);
+            Assert.Empty(_guestHits);
+            Assert.Empty(_hostItems.Projectiles);
+        }
+
+        [Fact]
         public void TheLeadersMissileFliesStraightAndRunsOut()
         {
             StartRacing();
@@ -732,6 +756,35 @@ namespace CarRacer.Core.Tests
             Assert.Empty(second == _host.HostPlayerId ? _hostHits : _guestHits);
             Assert.Empty(_hostItems.Projectiles);
             Assert.Empty(_guestItems.Projectiles);
+        }
+
+        [Fact]
+        public void ASeekersBlastCatchesEveryCarNearTheLeaderButNotItsOwner()
+        {
+            StartRacing();
+            var (leader, second) = Standings();
+            var near = _host.Roster.AddBot().PlayerId;
+            var far = _host.Roster.AddBot().PlayerId;
+            var botHits = new List<HitMessage>();
+            _host.BotHitReceived += botHits.Add;
+            _cars[second] = new Vec3(0f, 0.6f, 0f);
+            _cars[leader] = new Vec3(0f, 0.6f, 200f);
+            _cars[near] = _cars[leader] + new Vec3(ProjectileRules.SeekerBlastRadius - 1f, 0f, 0f);
+            _cars[far] = _cars[leader] + new Vec3(ProjectileRules.SeekerBlastRadius + 1f, 0f, 0f);
+            GiveAndUse(second, ItemKind.Seeker, _cars[second]);
+
+            // The owner drives up beside the leader before the Seeker lands: inside the blast, but never hit by its own Seeker.
+            Advance(100);
+            _cars[second] = _cars[leader] - new Vec3(0f, 0f, 2f);
+            Advance(5000);
+
+            Assert.Single(leader == _host.HostPlayerId ? _hostHits : _guestHits);
+            Assert.Empty(second == _host.HostPlayerId ? _hostHits : _guestHits);
+            var hit = Assert.Single(botHits);
+            Assert.Equal(near, hit.TargetId);
+            Assert.Equal(second, hit.AttackerId);
+            Assert.True(hit.IsItemHit);
+            Assert.Empty(_hostItems.Projectiles);
         }
 
         [Fact]
