@@ -24,11 +24,21 @@ namespace CarRacer.Game.Net
         private string _lastRoster;
         private RacePhase _lastPhase = RacePhase.Lobby;
 
-        /// <summary>Starts hosting with <paramref name="options"/>; returns null (after logging why) if the options are bad.</summary>
+        /// <summary>
+        /// Starts hosting with <paramref name="options"/>; returns null, after printing the usage or logging why the
+        /// options are bad, if it doesn't.
+        /// </summary>
         public static DedicatedServer Run(ServerOptions options)
         {
             Application.SetStackTraceLogType(LogType.Log, StackTraceLogType.None);
             Application.SetStackTraceLogType(LogType.Warning, StackTraceLogType.None);
+            if (options.Help)
+            {
+                Debug.Log(ServerOptions.Usage);
+                Application.Quit(0);
+                return null;
+            }
+
             if (options.Error != null)
             {
                 Debug.LogError(options.Error);
