@@ -164,6 +164,27 @@ namespace CarRacer.Core.Tests
             Assert.Equal("127.0.0.1", host.Address);
             Assert.True(host.CanJoin);
         }
+
+        [Fact]
+        public void ListenerSkipsAnEmptyDatagram()
+        {
+            using var listener = new DiscoveryListener(port: 0, joinMulticast: false);
+            using var announcer = new DiscoveryAnnouncer(new[] { new IPEndPoint(IPAddress.Loopback, listener.Port) });
+            using var probe = new System.Net.Sockets.UdpClient();
+            var hosts = new DiscoveredHostList();
+
+            probe.Send(new byte[0], 0, new IPEndPoint(IPAddress.Loopback, listener.Port));
+            announcer.SendNow(Sample());
+
+            var clock = Stopwatch.StartNew();
+            while (hosts.Hosts.Count == 0 && clock.ElapsedMilliseconds < 2000)
+            {
+                listener.Poll(hosts, 0);
+                Thread.Sleep(10);
+            }
+
+            Assert.Single(hosts.Hosts);
+        }
     }
 }
 
