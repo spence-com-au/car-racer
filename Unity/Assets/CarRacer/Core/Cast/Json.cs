@@ -63,9 +63,6 @@ namespace CarRacer.Core.Cast
         public static bool Bool(Dictionary<string, object> obj, string key) =>
             obj != null && obj.TryGetValue(key, out var v) && v is bool b && b;
 
-        public static long Long(Dictionary<string, object> obj, string key, long fallback = 0) =>
-            obj != null && obj.TryGetValue(key, out var v) && v is double d ? (long)d : fallback;
-
         private const int MaxDepth = 32;
 
         private static object ReadValue(string s, ref int i, int depth)

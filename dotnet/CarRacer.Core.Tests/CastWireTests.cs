@@ -19,7 +19,7 @@ namespace CarRacer.Core.Tests
         {
             var obj = Json.TryParseObject("{\"type\":\"RECEIVER_STATUS\",\"requestId\":3,\"status\":{\"applications\":[{\"appId\":\"CC1AD845\",\"isIdleScreen\":false,\"n\":-1.5e2}],\"x\":null,\"s\":\"a\\\"b\\u00e9\\n\"}}");
             Assert.Equal("RECEIVER_STATUS", Json.String(obj, "type"));
-            Assert.Equal(3, Json.Long(obj, "requestId"));
+            Assert.Equal(3.0, obj["requestId"]);
             var status = Json.Object(obj, "status");
             var app = (Dictionary<string, object>)Json.Array(status, "applications")[0];
             Assert.Equal("CC1AD845", Json.String(app, "appId"));
@@ -85,7 +85,7 @@ namespace CarRacer.Core.Tests
 
             stream.Position = 0;
             var first = CastMessage.ReadFrom(stream);
-            Assert.Equal("PING", first.PayloadType);
+            Assert.Equal("PING", first.PayloadType());
             Assert.Equal("receiver-0", first.DestinationId);
             var second = CastMessage.ReadFrom(stream);
             Assert.Equal(longPayload, second.Payload);

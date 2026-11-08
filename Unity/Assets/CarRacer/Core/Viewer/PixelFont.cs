@@ -156,13 +156,11 @@ namespace CarRacer.Core.Viewer
 
             foreach (char c in text)
             {
-                int glyph = GlyphIndex(c) * GlyphWidth;
                 for (int column = 0; column < GlyphWidth; column++)
                 {
-                    int bits = Glyphs[glyph + column];
                     for (int row = 0; row < GlyphHeight + DescenderRows; row++)
                     {
-                        if ((bits & (1 << row)) != 0)
+                        if (IsSet(c, column, row))
                         {
                             image.FillRect(x + column * scale, y + row * scale, scale, scale, colour);
                         }

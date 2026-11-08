@@ -30,7 +30,7 @@ namespace CarRacer.Core.Tests
         {
             var session = new CastSession("Lounge", takeOver: false);
             var begin = session.Begin(Url, 0);
-            Assert.Equal(new[] { "CONNECT", "GET_STATUS" }, begin.Select(m => m.PayloadType));
+            Assert.Equal(new[] { "CONNECT", "GET_STATUS" }, begin.Select(m => m.PayloadType()));
 
             var launch = Assert.Single(session.Handle(Status(App("E8C28D3C", "Backdrop", idle: true)), 10));
             Assert.Equal(CastState.Launching, session.State);
@@ -39,7 +39,7 @@ namespace CarRacer.Core.Tests
             // A status before the player is up changes nothing.
             Assert.Empty(session.Handle(Status(App("E8C28D3C", "Backdrop", idle: true)), 20));
             var load = session.Handle(Status(App(CastSession.MediaReceiverAppId, "Default Media Receiver", idle: false)), 30);
-            Assert.Equal(new[] { "CONNECT", "LOAD" }, load.Select(m => m.PayloadType));
+            Assert.Equal(new[] { "CONNECT", "LOAD" }, load.Select(m => m.PayloadType()));
             Assert.All(load, m => Assert.Equal("t1", m.DestinationId));
             var media = Json.Object(Json.TryParseObject(load[1].Payload), "media");
             Assert.Equal(Url, Json.String(media, "contentId"));
@@ -63,12 +63,12 @@ namespace CarRacer.Core.Tests
 
             var leader = new CastSession("Lounge", takeOver: true);
             leader.Begin(Url, 0);
-            Assert.Equal("LAUNCH", Assert.Single(leader.Handle(Status(App("233637DE", "YouTube", idle: false)), 1)).PayloadType);
+            Assert.Equal("LAUNCH", Assert.Single(leader.Handle(Status(App("233637DE", "YouTube", idle: false)), 1)).PayloadType());
 
             // Nothing running at all counts as idle.
             var empty = new CastSession("Lounge", takeOver: false);
             empty.Begin(Url, 0);
-            Assert.Equal("LAUNCH", Assert.Single(empty.Handle(Status(), 1)).PayloadType);
+            Assert.Equal("LAUNCH", Assert.Single(empty.Handle(Status(), 1)).PayloadType());
         }
 
         [Fact]
@@ -76,10 +76,10 @@ namespace CarRacer.Core.Tests
         {
             var session = Playing();
             var pong = Assert.Single(session.Handle(new CastMessage(CastSession.ReceiverId, CastSession.SenderId, CastMessage.HeartbeatNamespace, "{\"type\":\"PING\"}"), 100));
-            Assert.Equal("PONG", pong.PayloadType);
+            Assert.Equal("PONG", pong.PayloadType());
             Assert.Equal(CastSession.ReceiverId, pong.DestinationId);
             Assert.Empty(session.Tick(CastSession.HeartbeatMs - 1));
-            Assert.Equal("PING", Assert.Single(session.Tick(CastSession.HeartbeatMs)).PayloadType);
+            Assert.Equal("PING", Assert.Single(session.Tick(CastSession.HeartbeatMs)).PayloadType());
             Assert.Empty(session.Tick(CastSession.HeartbeatMs + 10));
         }
 
@@ -174,7 +174,7 @@ namespace CarRacer.Core.Tests
         {
             var session = Playing();
             var stop = Assert.Single(session.Stop());
-            Assert.Equal("STOP", stop.PayloadType);
+            Assert.Equal("STOP", stop.PayloadType());
             Assert.Contains("\"sessionId\":\"s1\"", stop.Payload);
             Assert.Equal(CastState.Stopped, session.State);
             Assert.Empty(session.Stop());
@@ -196,7 +196,7 @@ namespace CarRacer.Core.Tests
             Assert.False(session.Finished);
 
             var stop = Assert.Single(session.Handle(Status(App(CastSession.MediaReceiverAppId, "Default Media Receiver", idle: false, session: "s9")), 2));
-            Assert.Equal("STOP", stop.PayloadType);
+            Assert.Equal("STOP", stop.PayloadType());
             Assert.Contains("\"sessionId\":\"s9\"", stop.Payload);
             Assert.Equal(CastState.Stopped, session.State);
         }
@@ -358,11 +358,11 @@ namespace CarRacer.Core.Tests
                         {
                             lock (seen)
                             {
-                                seen.Add(m.PayloadType);
+                                seen.Add(m.PayloadType());
                             }
                         }
 
-                        switch (m.PayloadType)
+                        switch (m.PayloadType())
                         {
                             case "GET_STATUS":
                                 Send(CastSessionTests.Status(CastSessionTests.App("E8C28D3C", "Backdrop", idle: true)));
