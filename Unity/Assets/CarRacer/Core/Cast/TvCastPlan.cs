@@ -109,7 +109,7 @@ namespace CarRacer.Core.Cast
                 }
             }
 
-            bool finished = cast == CastState.Busy || cast == CastState.Stopped || cast == CastState.Failed;
+            bool finished = cast.HasValue && cast.Value.IsFinished();
             if (cast.HasValue && !(finished && Wanted == null))
             {
                 status.CastingTo = castDevice ?? string.Empty;

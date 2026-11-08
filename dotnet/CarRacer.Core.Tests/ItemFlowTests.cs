@@ -434,6 +434,28 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void AHostThatStallsThroughTheCountdownStillStartsTheNextRaceWithEmptySlots()
+        {
+            StartRacing();
+            Assert.True(_guestItems.ClaimTouchedBox(BoxPositions[0]));
+            Assert.True(_hostItems.ClaimTouchedBox(BoxPositions[1]));
+            _hostRace.Tracker.FinishRemaining(_ => 0f, 0);
+            Tick();
+            Assert.True(_hostRace.ReturnToLobby());
+
+            // Nothing ticks from the start of the countdown until the race is under way.
+            Assert.True(_hostRace.Start(3));
+            _now += HostRace.StartLeadMs + HostRace.CountdownMs;
+            Tick();
+
+            Assert.Equal(RacePhase.Racing, _hostRace.Phase);
+            Assert.Equal(ItemKind.None, _hostItems.Held);
+            Assert.Equal(ItemKind.None, _hostItems.Slots.Held(GuestId));
+            Assert.True(_guestItems.ClaimTouchedBox(BoxPositions[0]));
+            Assert.NotEqual(ItemKind.None, _guestItems.Held);
+        }
+
+        [Fact]
         public void APlayerWhoLeavesTheLobbyLosesTheirSlot()
         {
             _hostItems.Slots.Give(GuestId, ItemKind.Bomb);
@@ -811,7 +833,11 @@ namespace CarRacer.Core.Tests
             var seen = Assert.Single(_guestItems.Projectiles);
             Assert.Equal(ItemKind.Missile, seen.Kind);
             Assert.True(seen.Position.Z > ProjectileRules.MissileLaunchAhead);
-            Assert.True(_hostLink.Sent.OfType<ProjectilesMessage>().Count() >= 3);
+
+            // One broadcast per 50 ms throttle window, on the 20 ms ticks at 20, 80, 140 and 200 ms, never reliably.
+            var broadcasts = _hostLink.Sent.OfType<ProjectilesMessage>().ToList();
+            Assert.Equal(4, broadcasts.Count);
+            Assert.Equal(broadcasts, _hostLink.SentUnreliably.OfType<ProjectilesMessage>());
         }
 
         [Fact]

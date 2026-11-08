@@ -70,14 +70,7 @@ namespace CarRacer.Core.Cast
             }
         }
 
-        public bool Finished
-        {
-            get
-            {
-                var state = State;
-                return state == CastState.Busy || state == CastState.Stopped || state == CastState.Failed;
-            }
-        }
+        public bool Finished => State.IsFinished();
 
         /// <summary>Ends the cast, closing the media player on the TV; returns at once.</summary>
         public void Stop() => _stopRequested = true;

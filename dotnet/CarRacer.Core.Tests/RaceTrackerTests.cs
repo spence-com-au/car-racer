@@ -91,6 +91,59 @@ namespace CarRacer.Core.Tests
             Assert.Equal(new[] { 3, 2, 1 }, tracker.ComputeStandings(p => fractions[p]));
         }
 
+        [Theory]
+        [InlineData(1f)]
+        [InlineData(1.5f)]
+        public void StandingsKeepAFractionAtOrPastOneBehindTheNextCheckpoint(float fraction)
+        {
+            var tracker = new RaceTracker(4, 3, new[] { 1, 2 });
+            tracker.ReportCheckpoint(1, 0, 0);
+            tracker.ReportCheckpoint(2, 0, 0);
+            tracker.ReportCheckpoint(2, 1, 0);
+
+            // Player 1's geometry has reached checkpoint 1 before its report arrived, so it must not outrank player 2,
+            // who has passed it. Player 1 has the lower id, so an unclamped tie at fraction 1 would also favour it.
+            Assert.Equal(new[] { 2, 1 }, tracker.ComputeStandings(p => p == 1 ? fraction : 0f));
+        }
+
+        [Fact]
+        public void StandingsTreatANegativeFractionAsZero()
+        {
+            var tracker = new RaceTracker(4, 3, new[] { 1, 2 });
+            tracker.ReportCheckpoint(1, 0, 0);
+            tracker.ReportCheckpoint(1, 1, 0);
+            tracker.ReportCheckpoint(2, 0, 0);
+
+            // Player 1 is a checkpoint ahead however far its geometry has slipped back.
+            Assert.Equal(new[] { 1, 2 }, tracker.ComputeStandings(p => p == 1 ? -5f : 0.9f));
+        }
+
+        [Fact]
+        public void StandingsBreakEqualTotalsByPlayerId()
+        {
+            // Not in id order, so the result cannot come from the order the racers were added in.
+            var tracker = new RaceTracker(4, 3, new[] { 3, 1, 2 });
+            foreach (int p in new[] { 3, 1, 2 })
+            {
+                tracker.ReportCheckpoint(p, 0, 0);
+            }
+
+            Assert.Equal(new[] { 1, 2, 3 }, tracker.ComputeStandings(_ => 0.5f));
+        }
+
+        [Fact]
+        public void OvershootingTheNextCheckpointStillRanksBehindPassingIt()
+        {
+            var tracker = new RaceTracker(4, 3, new[] { 1, 2 });
+            tracker.ReportCheckpoint(1, 0, 0);
+            tracker.ReportCheckpoint(2, 0, 0);
+            tracker.ReportCheckpoint(2, 1, 0);
+
+            // Player 1 is past checkpoint 1 without having passed it; player 2 has just passed it.
+            var fractions = new[] { 0f, 1.5f, 0f };
+            Assert.Equal(new[] { 2, 1 }, tracker.ComputeStandings(p => fractions[p]));
+        }
+
         [Fact]
         public void FinishRemainingAssignsPositionsAndMarksDnf()
         {

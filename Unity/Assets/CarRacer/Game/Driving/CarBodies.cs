@@ -7,17 +7,21 @@ namespace CarRacer.Game.Driving
     /// <summary>
     /// Kenney Car Kit bodies (design doc §13), built from the OBJ and palette in
     /// <c>Resources/Models</c> by <see cref="ObjModel"/> rather than a model importer, and painted
-    /// in each player's colour (<see cref="PaintRecolour"/>). Each model's mesh and each colour's
-    /// material are made once and shared. In Monster Jam each body is drawn as a monster truck
-    /// (<see cref="MonsterTruck"/>): the same model raised on big wheels, with its own shared mesh.
+    /// in each player's colour (<see cref="PaintRecolour"/>). Each model's mesh, and each paint
+    /// strip's material in each colour, are made once and shared. In Monster Jam each body is drawn
+    /// as a monster truck (<see cref="MonsterTruck"/>): the same model raised on big wheels, with
+    /// its own shared mesh.
     /// </summary>
     public static class CarBodies
     {
         private static readonly Dictionary<string, Mesh> Meshes = new Dictionary<string, Mesh>();
-        private static readonly Dictionary<(string, Color), Material> Materials = new Dictionary<(string, Color), Material>();
         private static Color32[] _palette;
         private static int _paletteWidth;
         private static int _paletteHeight;
+
+        // Keyed by the paint strip rather than the model, since the bodies share a handful of strips
+        // and each material keeps its own copy of the palette texture for good.
+        private static readonly Dictionary<(UvRect, Color), Material> Materials = new Dictionary<(UvRect, Color), Material>();
 
         /// <summary>Puts <paramref name="model"/> under <paramref name="visual"/> in <paramref name="colour"/>, as a monster truck if <paramref name="monster"/>; false if its files can't be loaded.</summary>
         public static bool TryBuild(Transform visual, Color colour, CarModel model, bool monster = false)
@@ -108,7 +112,8 @@ namespace CarRacer.Game.Driving
 
         private static Material MaterialFor(CarModel model, Color colour)
         {
-            if (Materials.TryGetValue((model.Name, colour), out var material))
+            var key = (model.Paint, colour);
+            if (Materials.TryGetValue(key, out var material))
             {
                 return material;
             }
@@ -121,7 +126,7 @@ namespace CarRacer.Game.Driving
 
             var texture = new Texture2D(width, height, TextureFormat.RGBA32, false)
             {
-                name = $"{model.Name} {ColorUtility.ToHtmlStringRGB(colour)}",
+                name = $"{CarModels.Palette} {ColorUtility.ToHtmlStringRGB(colour)}",
                 wrapMode = TextureWrapMode.Clamp,
                 filterMode = FilterMode.Bilinear,
             };
@@ -129,7 +134,7 @@ namespace CarRacer.Game.Driving
             texture.Apply(false, true);
 
             material = SimpleMaterials.Textured(texture);
-            Materials[(model.Name, colour)] = material;
+            Materials[key] = material;
             return material;
         }
 

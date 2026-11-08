@@ -442,6 +442,7 @@ namespace CarRacer.Core.Tests
             Assert.False(_session.EventInProgress);
             Assert.False(_session.Roster.Find(1).Ready);
             Assert.False(_guest.Roster.Players.Single(p => p.PlayerId == 1).Ready);
+            Assert.False(_guest.Ready);
 
             Assert.True(_race.Start(laps: 1)); // rematch
             Assert.Null(_guestRace.Results);

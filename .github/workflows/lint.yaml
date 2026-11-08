@@ -46,7 +46,7 @@ jobs:
     runs-on: 'ubuntu-latest'
     steps:
       - uses: 'actions/checkout@v4.4.0'
-      - run: 'shellcheck server/run-server.sh'
+      - run: 'shellcheck server/*.sh'
 
       # actionlint also runs shellcheck over each workflow's `run:` scripts.
       - run: 'docker run --rm -v "${PWD}:/repo" -w /repo rhysd/actionlint:1.7.7 -color'

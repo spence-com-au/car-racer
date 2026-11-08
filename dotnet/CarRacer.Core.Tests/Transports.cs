@@ -26,6 +26,7 @@ namespace CarRacer.Core.Tests
     internal sealed class HostLink : ISessionTransport
     {
         public readonly List<IGameMessage> Sent = new List<IGameMessage>();
+        public readonly List<IGameMessage> SentUnreliably = new List<IGameMessage>();
         public GuestSession Guest;
         public bool HoldBack;
 
@@ -34,6 +35,11 @@ namespace CarRacer.Core.Tests
         public void Send(ulong connection, IGameMessage message, bool reliable)
         {
             Sent.Add(message);
+            if (!reliable)
+            {
+                SentUnreliably.Add(message);
+            }
+
             if (HoldBack)
             {
                 _held.Add(message);
