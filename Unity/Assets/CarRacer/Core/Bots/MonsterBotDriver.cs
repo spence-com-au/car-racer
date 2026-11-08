@@ -53,7 +53,7 @@ namespace CarRacer.Core.Bots
         public CarInput Drive(CarState state, Vec3 position, IReadOnlyList<Vec3> rivals)
         {
             Vec3 target = Target(state, position, rivals);
-            float turn = WrapAngle(Heading(target - position) - state.Heading);
+            float turn = Angles.WrapSigned(Angles.Heading(target - position) - state.Heading);
             float steer = Math.Max(-1f, Math.Min(1f, turn / BotDriver.FullLockAngle));
 
             // Flat out up a ramp and at a rival; otherwise ease off for a tight turn.
@@ -133,23 +133,6 @@ namespace CarRacer.Core.Bots
             }
 
             return best < RamRange;
-        }
-
-        private static float Heading(Vec3 v) => MathF.Atan2(v.X, v.Z);
-
-        private static float WrapAngle(float radians)
-        {
-            while (radians > MathF.PI)
-            {
-                radians -= 2f * MathF.PI;
-            }
-
-            while (radians < -MathF.PI)
-            {
-                radians += 2f * MathF.PI;
-            }
-
-            return radians;
         }
     }
 }

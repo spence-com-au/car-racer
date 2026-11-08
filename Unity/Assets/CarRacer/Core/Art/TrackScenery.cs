@@ -69,7 +69,7 @@ namespace CarRacer.Core.Art
 
             // The gantry spans the start line at the road's height, its posts just outside the walls.
             var start = spline.SampleAtDistance(0f);
-            float heading = Heading(start.Forward);
+            float heading = Angles.Heading(start.Forward);
             float gantryWidth = modelWidth(Gantry);
             if (gantryWidth > 0f)
             {
@@ -89,7 +89,7 @@ namespace CarRacer.Core.Art
                 var spot = s.Position - s.Right * (s.Width / 2f + Clearance + StandRadius + 0.5f);
 
                 // A stand's seats face its -z, so its +z points away from the road (to the left).
-                TryAdd(placements, footprints, road, StandModel, spot, Heading(s.Forward) - MathF.PI / 2f, StandScale, StandRadius);
+                TryAdd(placements, footprints, road, StandModel, spot, Angles.Heading(s.Forward) - MathF.PI / 2f, StandScale, StandRadius);
             }
 
             for (float d = TreeSpacing / 2f; d < spline.Length; d += TreeSpacing)
@@ -172,8 +172,6 @@ namespace CarRacer.Core.Art
             footprints.Add((ground, radius));
             placements.Add(new PropPlacement { Model = model, Position = ground, Yaw = yaw, Scale = scale });
         }
-
-        private static float Heading(Vec3 forward) => MathF.Atan2(forward.X, forward.Z);
     }
 
     /// <summary>

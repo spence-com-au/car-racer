@@ -75,7 +75,7 @@ namespace CarRacer.Core.Bots
                 target = centre + around * (safe * 0.5f) + tangent * 6f;
             }
 
-            float turn = WrapAngle(Heading(target - position) - state.Heading);
+            float turn = Angles.WrapSigned(Angles.Heading(target - position) - state.Heading);
             float steer = Math.Max(-1f, Math.Min(1f, turn / BotDriver.FullLockAngle));
 
             // Heading outwards near the edge at speed: lift off and let the turn bring it round.
@@ -108,23 +108,6 @@ namespace CarRacer.Core.Bots
             }
 
             return best < float.MaxValue;
-        }
-
-        private static float Heading(Vec3 v) => MathF.Atan2(v.X, v.Z);
-
-        private static float WrapAngle(float radians)
-        {
-            while (radians > MathF.PI)
-            {
-                radians -= 2f * MathF.PI;
-            }
-
-            while (radians < -MathF.PI)
-            {
-                radians += 2f * MathF.PI;
-            }
-
-            return radians;
         }
     }
 }

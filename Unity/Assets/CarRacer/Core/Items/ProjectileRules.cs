@@ -74,7 +74,7 @@ namespace CarRacer.Core.Items
 
         public static Projectile LaunchMissile(ItemUsedMessage used, byte targetId, long nowMs)
         {
-            var forward = Forward(used.HeadingRadians);
+            var forward = Angles.Forward(used.HeadingRadians);
             return new Projectile
             {
                 EffectId = used.EffectId,
@@ -91,7 +91,7 @@ namespace CarRacer.Core.Items
 
         public static Projectile LaunchSeeker(ItemUsedMessage used, byte targetId, long nowMs)
         {
-            var forward = Forward(used.HeadingRadians);
+            var forward = Angles.Forward(used.HeadingRadians);
             return new Projectile
             {
                 EffectId = used.EffectId,
@@ -108,7 +108,7 @@ namespace CarRacer.Core.Items
 
         public static Projectile LaunchBomb(ItemUsedMessage used, long nowMs)
         {
-            var forward = Forward(used.HeadingRadians);
+            var forward = Angles.Forward(used.HeadingRadians);
             return new Projectile
             {
                 EffectId = used.EffectId,
@@ -141,7 +141,7 @@ namespace CarRacer.Core.Items
                     var toTarget = (targetPosition - p.Position).Flattened;
                     if (toTarget.LengthSquared > 1e-4f)
                     {
-                        float turn = WrapAngle(Heading(toTarget) - Heading(direction));
+                        float turn = Angles.WrapSigned(Angles.Heading(toTarget) - Angles.Heading(direction));
                         float maxTurn = turnRate * (MathF.PI / 180f) * deltaSeconds;
                         direction = Vec3.RotateAroundUp(direction, Math.Max(-maxTurn, Math.Min(maxTurn, turn)));
                     }
@@ -180,25 +180,6 @@ namespace CarRacer.Core.Items
             var away = (target - blast).Flattened;
             var direction = away.LengthSquared > 1e-4f ? away.Normalized : Vec3.Forward;
             return direction * push + Vec3.Up * ItemEffects.HitPop;
-        }
-
-        private static Vec3 Forward(float headingRadians) => new Vec3(MathF.Sin(headingRadians), 0f, MathF.Cos(headingRadians));
-
-        private static float Heading(Vec3 v) => MathF.Atan2(v.X, v.Z);
-
-        private static float WrapAngle(float radians)
-        {
-            while (radians > MathF.PI)
-            {
-                radians -= 2f * MathF.PI;
-            }
-
-            while (radians < -MathF.PI)
-            {
-                radians += 2f * MathF.PI;
-            }
-
-            return radians;
         }
     }
 }

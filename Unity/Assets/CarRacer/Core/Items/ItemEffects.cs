@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using CarRacer.Core.Net;
 using CarRacer.Core.Numerics;
@@ -43,7 +42,7 @@ namespace CarRacer.Core.Items
         /// <summary>Where an oil slick or Fake box dropped by a car at <paramref name="carPosition"/> facing <paramref name="headingRadians"/> lands.</summary>
         public static Vec3 OilPosition(Vec3 carPosition, float headingRadians)
         {
-            var forward = new Vec3(MathF.Sin(headingRadians), 0f, MathF.Cos(headingRadians));
+            var forward = Angles.Forward(headingRadians);
             return carPosition - forward * OilDropBehind;
         }
 

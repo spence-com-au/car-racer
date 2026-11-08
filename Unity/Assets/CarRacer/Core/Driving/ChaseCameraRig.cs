@@ -77,11 +77,11 @@ namespace CarRacer.Core.Driving
             }
             else
             {
-                state.Heading = WrapAngle(state.Heading + WrapAngle(targetHeading - state.Heading) * Blend(settings.HeadingSharpness, deltaSeconds));
+                state.Heading = Angles.WrapSigned(state.Heading + Angles.WrapSigned(targetHeading - state.Heading) * Blend(settings.HeadingSharpness, deltaSeconds));
                 state.FieldOfView = Lerp(state.FieldOfView, fov, Blend(settings.FieldOfViewSharpness, deltaSeconds));
             }
 
-            var forward = new Vec3(MathF.Sin(state.Heading), 0f, MathF.Cos(state.Heading));
+            var forward = Angles.Forward(state.Heading);
             Vec3 desired = target - forward * distance + Vec3.Up * height;
             state.Position = state.Initialised
                 ? Vec3.Lerp(state.Position, desired, Blend(settings.PositionSharpness, deltaSeconds))
@@ -99,10 +99,10 @@ namespace CarRacer.Core.Driving
         public static ChaseCameraState RearView(ChaseCameraState chase, Vec3 target, float targetHeading, float speed, ChaseCameraSettings settings)
         {
             float t = settings.TopSpeed > 0f ? Math.Max(0f, Math.Min(1f, Math.Abs(speed) / settings.TopSpeed)) : 0f;
-            var forward = new Vec3(MathF.Sin(targetHeading), 0f, MathF.Cos(targetHeading));
+            var forward = Angles.Forward(targetHeading);
             chase.Position = target + forward * Lerp(settings.Distance, settings.DistanceAtTopSpeed, t) + Vec3.Up * Lerp(settings.Height, settings.HeightAtTopSpeed, t);
             chase.LookAt = target - forward * settings.LookAhead + Vec3.Up * settings.LookHeight;
-            chase.Heading = WrapAngle(targetHeading + MathF.PI);
+            chase.Heading = Angles.WrapSigned(targetHeading + MathF.PI);
             return chase;
         }
 
@@ -110,21 +110,5 @@ namespace CarRacer.Core.Driving
         private static float Blend(float sharpness, float dt) => 1f - MathF.Exp(-sharpness * dt);
 
         private static float Lerp(float a, float b, float t) => a + (b - a) * t;
-
-        private static float WrapAngle(float radians)
-        {
-            const float twoPi = 2f * MathF.PI;
-            radians %= twoPi;
-            if (radians > MathF.PI)
-            {
-                radians -= twoPi;
-            }
-            else if (radians < -MathF.PI)
-            {
-                radians += twoPi;
-            }
-
-            return radians;
-        }
     }
 }

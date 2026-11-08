@@ -118,7 +118,7 @@ namespace CarRacer.Core.Bots
                 target = rival;
             }
 
-            float turn = WrapAngle(Heading(target - position) - state.Heading);
+            float turn = Angles.WrapSigned(Angles.Heading(target - position) - state.Heading);
             float steer = Math.Max(-1f, Math.Min(1f, turn / FullLockAngle));
 
             float targetSpeed = TargetSpeed(state, speed);
@@ -132,7 +132,7 @@ namespace CarRacer.Core.Bots
             var here = _spline.SampleAtDistance(_trackDistance);
             float span = 10f + Math.Max(0f, speed) * BrakeLookSeconds;
             var there = _spline.SampleAtDistance(_trackDistance + span);
-            CurvatureAhead = Math.Abs(WrapAngle(Heading(there.Forward) - Heading(here.Forward))) / span;
+            CurvatureAhead = Math.Abs(Angles.WrapSigned(Angles.Heading(there.Forward) - Angles.Heading(here.Forward))) / span;
             float straight = _tuning.MaxSpeed * _skill.TopSpeedFactor;
             if (CurvatureAhead < 1e-4f)
             {
@@ -158,7 +158,7 @@ namespace CarRacer.Core.Bots
             {
                 var offset = (rival - position).Flattened;
                 float distance = offset.LengthSquared;
-                if (distance < best && distance > 1e-4f && Math.Abs(WrapAngle(Heading(offset) - state.Heading)) <= RamCone)
+                if (distance < best && distance > 1e-4f && Math.Abs(Angles.WrapSigned(Angles.Heading(offset) - state.Heading)) <= RamCone)
                 {
                     best = distance;
                     target = rival;
@@ -167,23 +167,6 @@ namespace CarRacer.Core.Bots
             }
 
             return found;
-        }
-
-        private static float Heading(Vec3 v) => MathF.Atan2(v.X, v.Z);
-
-        private static float WrapAngle(float radians)
-        {
-            while (radians > MathF.PI)
-            {
-                radians -= 2f * MathF.PI;
-            }
-
-            while (radians < -MathF.PI)
-            {
-                radians += 2f * MathF.PI;
-            }
-
-            return radians;
         }
     }
 }
