@@ -103,8 +103,12 @@ cars exactly.
 3. **Fallback:** if A detects contact that B might miss because of timing, A sends `HitMessage`
    with the impulse for B. B applies it unless it already handled contact with A in the last
    **100 ms** (`HitDeduplicator`), so contacts are neither missed nor doubled. B clamps the
-   impulse to the same max × reduced mass (and matching pop) and drops a non-finite one, so a
-   modified phone can't fling other cars off the map.
+   impulse to the same max × reduced mass (and matching pop), drops a non-finite one, ignores
+   one from a car it last saw more than **8 m** away (`BumpMonitor.FallbackReach`), and takes
+   at most one from the same car every **1.5 s** (`BumpMonitor.FallbackCooldownMs`), by when
+   the hardest bump has worn off. So a modified phone can't fling other cars off the map, from
+   afar or by bumping over and over. The cost is a second contact with the same car within
+   1.5 s that B also missed, which only A's car then feels.
 4. Feel helpers that hide small disagreements: slightly larger car-to-car colliders, a short
    wobble or spin-out, crunch sound scaled by impact, screen shake, and haptics.
 
@@ -627,7 +631,7 @@ leader).
 |---|---|
 | Guest drops mid-race | A bot takes over the car (`HostSession.PlayerTakenOver`): the same id, name, colour, race progress and held item, now marked as a bot. The host's `BotCars` carries on from where the car was last seen, at its speed, with its laps (`CheckpointDetector.Resume`). Other phones just see the car carry on. The bot leaves with the others when the lobby reopens. Leaving in the lobby is still just leaving. |
 | Guest rejoins | Lobby only (no joining mid-race); reclaims their championship slot. |
-| App goes to the background | 10 s grace with the car coasting, then a bot takes over; control returns if the race is still running. Built: the host's `HostSession` takes over any guest it hasn't heard from for 10 s during an event (`PlayerTakenOver`, as for a drop). The first message from them afterwards gives the car back (`PlayerReturned`): the host's `BotCars` sends a `ControlReturnedMessage` (protocol 12) with where the car got to and its checkpoint count, and the guest carries on from there. A guest still away when the event ends is back in the lobby as a player. |
+| App goes to the background | 10 s grace with the car coasting, then a bot takes over; control returns if the race is still running. Built: the host's `HostSession` takes over any guest it hasn't heard from for 10 s during an event (`PlayerTakenOver`, as for a drop). The first message from them afterwards gives the car back (`PlayerReturned`): the host's `BotCars` sends a `ControlReturnedMessage` (protocol 12) with where the car got to and its checkpoint count, and the guest carries on from there. The guest echoes the message back once its car is there (protocol 28), and until then the host neither relays nor uses that guest's car states: they come from where the car stood when the app went away, which could snap the car back for everyone or, in Sumo, put it off the shrunken platform. A guest still away when the event ends is back in the lobby as a player. |
 | Host leaves | Session ends: "Host left". The host gets a confirmation before leaving. The screen is kept awake during sessions. |
 | Wi-Fi drops | "Reconnecting…" until the NGO timeout (~5–10 s), then back to the menu. Built: a guest that hasn't heard from the host for 2.5 s (long enough to ride out one lost clock ping or reply, which may be all a lone guest on a dedicated server hears between races) shows "Reconnecting…" (`GuestSession.HostQuiet`). After 10 s it gives up (`HostLost`), shows why, and is back at the main menu 4 s later with the reason under the title. The transport's own timeout stays long so a guest can come back from the background (row above), and time in the background doesn't count as silence. The same 4 s return applies whenever a session ends ("The host left"). |
 
@@ -712,7 +716,8 @@ leader).
   `adb install` worked.
 - **Baseline device: Pixel 2 XL** (Snapdragon 835 / Adreno 540, 1440×2880). Low/Medium presets
   aim for **60 fps** and never drop below 30, rendering at **0.65–0.75 of native resolution**.
-- Vulkan by default, **GLES3 on Adreno 5xx** (Vulkan device filter list).
+- Vulkan by default, GLES3 as the fallback. **Not built yet:** steering Adreno 5xx to GLES3 with a
+  Vulkan device filter list, so for now the Pixel 2 XL runs Vulkan.
 - Frame rate capped at 60. Quality preset is picked automatically on first launch, with a
   manual override. Built (`QualityPresets`, `GraphicsQuality`): the level is the lower of what
   the GPU and the memory allow. Adreno 5xx, Mali before G72 or under 4.5 GB is **Low** (0.65 of
@@ -740,7 +745,8 @@ leader).
   push and PR. Unity-only C# (`Game`, `Editor`, Unity tests) can't be compiled outside Unity, so
   it gets only the whitespace check; the analyser and naming rules cover `Core` and its tests.
 - **`Build` workflow** (GameCI): Unity tests and a **development APK artifact** on every PR.
-  Needs `UNITY_LICENSE`, `UNITY_EMAIL`, `UNITY_PASSWORD`; skipped with a notice if they're absent.
+  Needs `UNITY_LICENSE`, `UNITY_EMAIL` and `UNITY_PASSWORD`, and fails without them rather than
+  skipping, since its jobs are required checks and a skipped job would pass one.
 - **`Release` workflow:** pushing a `v*` tag (or running it by hand with a version, which tags
   `master`) builds a **release-signed APK** and publishes it to **GitHub Releases**
   (Obtainium-friendly). Needs the Android keystore secrets too. Releases are immutable, so the
