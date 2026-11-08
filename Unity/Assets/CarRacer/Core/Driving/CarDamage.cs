@@ -72,7 +72,7 @@ namespace CarRacer.Core.Driving
             }
 
             float t = (speedIntoWall - WallMinSpeed) / (WallFullSpeed - WallMinSpeed);
-            return Add(WallMinDamage + (WallMaxDamage - WallMinDamage) * Clamp01(t));
+            return Add(WallMinDamage + (WallMaxDamage - WallMinDamage) * Math.Clamp(t, 0f, 1f));
         }
 
         /// <summary>An item hit that landed. True if it wrecked the car.</summary>
@@ -130,7 +130,5 @@ namespace CarRacer.Core.Driving
             WreckSecondsLeft = 0f;
             _sinceHit = RepairDelaySeconds;
         }
-
-        private static float Clamp01(float value) => Math.Max(0f, Math.Min(1f, value));
     }
 }

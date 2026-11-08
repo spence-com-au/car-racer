@@ -24,8 +24,6 @@ namespace CarRacer.Core.Cast
         /// <summary>When it last answered, in the caller's clock.</summary>
         public long SeenAtMs;
 
-        public IPEndPoint EndPoint => new IPEndPoint(Address, Port);
-
         /// <summary>
         /// Whether <paramref name="wanted"/> (from <c>-cast</c>, or a leader's pick) means this
         /// device: its id, its name or its address, ignoring case and spaces at the ends.
@@ -352,20 +350,6 @@ namespace CarRacer.Core.Cast
             }
 
             _devices.RemoveAll(d => nowMs - d.SeenAtMs > ForgetMs);
-        }
-
-        /// <summary>The device <paramref name="wanted"/> names (see <see cref="CastDevice.Matches"/>), or null.</summary>
-        public CastDevice Find(string wanted)
-        {
-            foreach (var device in _devices)
-            {
-                if (device.Matches(wanted))
-                {
-                    return device;
-                }
-            }
-
-            return null;
         }
 
         private void Observe(CastDevice device, long nowMs)

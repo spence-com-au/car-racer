@@ -37,7 +37,7 @@ namespace CarRacer.Core.Net
         /// <summary>Why it is busy or failed, or empty.</summary>
         public string Detail = string.Empty;
 
-        /// <summary>Whether the TV plays the music (design doc §2.4); phones fade theirs while it does. Reserved: set and used by TV music, the next PR.</summary>
+        /// <summary>Whether the TV plays the music (design doc §2.4); phones fade theirs while it does.</summary>
         public bool Music;
 
         public MessageType Type => MessageType.TvStatus;
@@ -98,7 +98,9 @@ namespace CarRacer.Core.Net
                 return value;
             }
 
-            int length = value.Length;
+            // Every char is at least a byte of UTF-8, so no more than MaxStringBytes of them can fit;
+            // starting there bounds the trim however long a name the network sent.
+            int length = Math.Min(value.Length, NetWriter.MaxStringBytes);
             while (length > 0 && System.Text.Encoding.UTF8.GetByteCount(value.Substring(0, length)) > NetWriter.MaxStringBytes)
             {
                 length--;

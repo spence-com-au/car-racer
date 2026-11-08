@@ -134,7 +134,7 @@ TEMPLATES = {
 
 
 def template_for(path: Path) -> str:
-    if path.suffix in AUDIO_SUFFIXES and "Music" in path.parts:
+    if path.suffix in AUDIO_SUFFIXES and "Music" in path.relative_to(ASSETS).parts:
         return MUSIC
     return TEMPLATES.get(path.suffix, DEFAULT)
 

@@ -36,7 +36,7 @@ namespace CarRacer.Core.Cast
         public bool Request(string wanted, bool takeOver, CastDevice castDevice = null, CastState? cast = null)
         {
             Wanted = wanted ?? string.Empty;
-            bool casting = cast.HasValue && !Finished(cast);
+            bool casting = cast.HasValue && !cast.Value.IsFinished();
             bool showing = casting && castDevice.Matches(Wanted) && (!takeOver || _castTakesOver || cast != CastState.Connecting);
             _pending = !showing;
             _takeOver = takeOver && !showing;
@@ -119,7 +119,7 @@ namespace CarRacer.Core.Cast
                 }
             }
 
-            bool finished = Finished(cast);
+            bool finished = cast.HasValue && cast.Value.IsFinished();
             if (cast.HasValue && !(finished && Wanted == null))
             {
                 status.CastingTo = castDevice ?? string.Empty;
@@ -144,7 +144,5 @@ namespace CarRacer.Core.Cast
 
             return status;
         }
-
-        private static bool Finished(CastState? cast) => cast == CastState.Busy || cast == CastState.Stopped || cast == CastState.Failed;
     }
 }

@@ -125,7 +125,7 @@ namespace CarRacer.Core.Tests
         {
             var spline = TrackCatalog.Layouts[0].Spline;
             var stands = TrackScenery.Place(spline, Width).Where(p => p.Model == TrackScenery.StandModel).ToList();
-            Assert.NotEmpty(stands);
+            Assert.Equal(3, stands.Count);
             foreach (var stand in stands)
             {
                 // Seats face the stand's -z; that should point at the road.
@@ -189,9 +189,11 @@ v 2 0 0
 v 2 0 1
 vn 0 1 0
 vt 0 0
-f 1/1/1 3/1/1 2/1/1
+vt 1 0
+vt 0 1
+f 1/1/1 3/3/1 2/2/1
 usemtl blue
-f 1/1/1 2/1/1 3/1/1
+f 1/1/1 2/2/1 3/3/1
 ";
 
         [Fact]
@@ -207,6 +209,12 @@ f 1/1/1 2/1/1 3/1/1
             Assert.Equal(2, meshes.Count);
             Assert.Equal(6, meshes[0].Mesh.Vertices.Count); // three corners, twice
             Assert.Equal(new Vec3(1f, 0f, 0f), meshes[0].Colour);
+
+            // The second piece's triangle points at its own corners, after the first piece's.
+            Assert.Equal(new[] { 0, 1, 2, 3, 4, 5 }, meshes[0].Mesh.Triangles);
+            Assert.Equal(new[] { 0, 1, 2, 3, 4, 5 }, meshes[1].Mesh.Triangles);
+            Assert.Equal(new[] { new Vec2(0f, 0f), new Vec2(1f, 0f), new Vec2(0f, 1f), new Vec2(0f, 0f), new Vec2(1f, 0f), new Vec2(0f, 1f) }, meshes[0].Mesh.Uvs);
+            Assert.Equal(new[] { new Vec2(0f, 0f), new Vec2(0f, 1f), new Vec2(1f, 0f), new Vec2(0f, 0f), new Vec2(0f, 1f), new Vec2(1f, 0f) }, meshes[1].Mesh.Uvs);
         }
 
         [Fact]

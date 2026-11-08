@@ -46,8 +46,8 @@ namespace CarRacer.Editor
             // from the Files app were abandoned ("Cancelling") though adb worked. Internal-only matches.
             PlayerSettings.Android.preferredInstallLocation = AndroidPreferredInstallLocation.ForceInternal;
 
-            // Vulkan first, GLES3 fallback. Adreno 5xx (Pixel 2 XL) should be steered to GLES3
-            // with a Vulkan device filter list; that's set up with the rendering work in M1.
+            // Vulkan first, GLES3 fallback. Design doc §14 plans to steer Adreno 5xx (Pixel 2 XL)
+            // to GLES3 with a Vulkan device filter list; none is set up yet, so those run Vulkan.
             PlayerSettings.SetUseDefaultGraphicsAPIs(BuildTarget.Android, false);
             PlayerSettings.SetGraphicsAPIs(BuildTarget.Android, new[] { GraphicsDeviceType.Vulkan, GraphicsDeviceType.OpenGLES3 });
 
