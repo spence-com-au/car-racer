@@ -458,7 +458,7 @@ namespace CarRacer.Core.Tests
             var held = _guestItems.Held;
             _now += HostSession.AwayAfterMs;
             _host.Tick();
-            Assert.True(_host.IsAway(GuestId));
+            Assert.True(_host.IsBot(GuestId));
             Assert.Equal(held, _hostItems.UseHeldForBot(GuestId, Vec3.Zero, Vec3.Zero, 0f));
 
             Assert.Equal(ItemKind.None, _guestItems.Held);

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using CarRacer.Core.Net;
 using CarRacer.Core.Numerics;
 using CarRacer.Core.Session;
@@ -12,21 +13,21 @@ namespace CarRacer.Core.Tests
         private const ushort Version = 17;
 
         private long _now = 10_000;
+        private readonly HostLink _hostLink = new HostLink();
         private readonly HostSession _host;
         private readonly GuestSession _guest;
-        private readonly List<byte> _takenOver = new List<byte>();
         private readonly List<byte> _returned = new List<byte>();
 
         public AwayTests()
         {
-            var hostLink = new HostLink();
-            _host = new HostSession(hostLink, "Host", Version, () => _now);
-            _guest = hostLink.Join(_host, "Guest", Version, () => _now);
-            _host.PlayerTakenOver += _takenOver.Add;
+            _host = new HostSession(_hostLink, "Host", Version, () => _now);
+            _guest = _hostLink.Join(_host, "Guest", Version, () => _now);
             _host.PlayerReturned += _returned.Add;
         }
 
         private byte GuestId => _guest.PlayerId;
+
+        private int RostersSent => _hostLink.Sent.OfType<RosterMessage>().Count();
 
         /// <summary>Anything from the guest counts as a sign of life; a car state is the usual one.</summary>
         private void GuestSpeaks() => _guest.SendCarState(new CarStateMessage { PlayerId = GuestId, SentAtMs = _now });
@@ -43,23 +44,21 @@ namespace CarRacer.Core.Tests
             _host.EventInProgress = true;
             GuestSpeaks();
             Wait(HostSession.AwayAfterMs - 1);
-            Assert.Empty(_takenOver);
+            Assert.False(_host.IsBot(GuestId));
 
             Wait(1);
-            Assert.Equal(new[] { GuestId }, _takenOver);
             Assert.True(_host.IsBot(GuestId));
-            Assert.True(_host.IsAway(GuestId));
             Assert.Contains(_guest.Roster.Players, p => p.PlayerId == GuestId && p.IsBot);
 
+            int rosters = RostersSent;
             Wait(HostSession.AwayAfterMs);
-            Assert.Single(_takenOver);
+            Assert.Equal(rosters, RostersSent);
         }
 
         [Fact]
         public void SilenceInTheLobbyIsFine()
         {
             Wait(HostSession.AwayAfterMs * 3);
-            Assert.Empty(_takenOver);
             Assert.False(_host.IsBot(GuestId));
         }
 
@@ -70,10 +69,9 @@ namespace CarRacer.Core.Tests
             for (int i = 0; i < 5; i++)
             {
                 Wait(HostSession.AwayAfterMs - 1000);
+                Assert.False(_host.IsBot(GuestId));
                 GuestSpeaks();
             }
-
-            Assert.Empty(_takenOver);
         }
 
         [Fact]
@@ -81,12 +79,11 @@ namespace CarRacer.Core.Tests
         {
             _host.EventInProgress = true;
             Wait(HostSession.AwayAfterMs);
-            Assert.True(_host.IsAway(GuestId));
+            Assert.True(_host.IsBot(GuestId));
 
             GuestSpeaks();
             Assert.Equal(new[] { GuestId }, _returned);
             Assert.False(_host.IsBot(GuestId));
-            Assert.False(_host.IsAway(GuestId));
             Assert.Contains(_guest.Roster.Players, p => p.PlayerId == GuestId && !p.IsBot);
 
             GuestSpeaks();
@@ -100,15 +97,17 @@ namespace CarRacer.Core.Tests
             Wait(HostSession.AwayAfterMs);
 
             _host.EventInProgress = false;
-            int changes = 0;
-            _host.RosterChanged += () => changes++;
+            int rosters = RostersSent;
             _host.RemoveBots();
             var player = _host.Roster.Find(GuestId);
             Assert.NotNull(player);
             Assert.False(player.IsBot);
             Assert.False(player.Ready);
-            Assert.False(_host.IsAway(GuestId));
-            Assert.Equal(1, changes);
+            Assert.Equal(rosters + 1, RostersSent);
+
+            // No longer away, so hearing from them hands nothing back.
+            GuestSpeaks();
+            Assert.Empty(_returned);
         }
 
         [Fact]
@@ -118,10 +117,13 @@ namespace CarRacer.Core.Tests
             Wait(HostSession.AwayAfterMs);
             _host.OnDisconnected(GuestLink.Connection);
 
-            Assert.Single(_takenOver);
             Assert.True(_host.IsBot(GuestId));
-            Assert.False(_host.IsAway(GuestId));
             Assert.Empty(_returned);
+
+            // Gone for good rather than away, so the bot leaves with the others when the lobby reopens.
+            _host.EventInProgress = false;
+            _host.RemoveBots();
+            Assert.Null(_host.Roster.Find(GuestId));
         }
 
         [Fact]

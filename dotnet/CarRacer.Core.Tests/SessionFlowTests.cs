@@ -78,16 +78,15 @@ namespace CarRacer.Core.Tests
         {
             Join(7, "Alice");
             Join(9, "Bob");
-            int changes = 0;
-            _host.RosterChanged += () => changes++;
+            int rosters = _hostSide.To<RosterMessage>(9).Count;
 
             _host.OnDisconnected(7);
-            Assert.Equal(1, changes);
+            Assert.Equal(rosters + 1, _hostSide.To<RosterMessage>(9).Count);
             Assert.Equal(new[] { "Host", "Bob" }, _hostSide.To<RosterMessage>(9).Last().Players.Select(p => p.Name));
             Assert.Equal(1, Join(11, "Carol"));
 
             _host.OnDisconnected(42); // never joined: nothing happens
-            Assert.Equal(2, changes);
+            Assert.Equal(rosters + 2, _hostSide.To<RosterMessage>(9).Count);
         }
 
         [Fact]
