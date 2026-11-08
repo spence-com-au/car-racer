@@ -289,7 +289,7 @@ namespace CarRacer.Core.Viewer
             var bytes = new byte[pcm.Length * 2];
             try
             {
-                using (var client = _audioListener.AcceptTcpClient())
+                using (var client = AcceptFfmpeg())
                 {
                     _audioListener.Stop();
                     var stream = client.GetStream();
@@ -319,6 +319,82 @@ namespace CarRacer.Core.Viewer
                 }
             }
         }
+
+        /// <summary>
+        /// ffmpeg's connection for the sound. Every user on the host can find the port and reach it, so a connection
+        /// that isn't a live one from this server's own user is hung up on, and the wait for ffmpeg's goes on.
+        /// </summary>
+        private TcpClient AcceptFfmpeg()
+        {
+            while (true)
+            {
+                var client = _audioListener.AcceptTcpClient();
+                if (FromThisUser(client))
+                {
+                    return client;
+                }
+
+                client.Dispose();
+            }
+        }
+
+        private static bool FromThisUser(TcpClient client)
+        {
+            try
+            {
+                return ConnectedBySameUser(File.ReadLines("/proc/net/tcp"), (IPEndPoint)client.Client.LocalEndPoint, (IPEndPoint)client.Client.RemoteEndPoint);
+            }
+            catch (SocketException)
+            {
+                // Hung up already, which ffmpeg doesn't.
+                return false;
+            }
+            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
+            {
+                // No table to read, as off Linux, so there's no telling whose it is.
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Whether the far end of the loopback connection from <paramref name="remote"/> to <paramref name="local"/>
+        /// is still connected and belongs to the user who owns this end, going by <paramref name="table"/>, the lines
+        /// of Linux's <c>/proc/net/tcp</c>. An end it doesn't list, such as an IPv6 socket's, is a stranger's. So is
+        /// one already closed: the kernel lists it as root's whoever opened it, which would pass for ours on a server
+        /// run as root.
+        /// </summary>
+        public static bool ConnectedBySameUser(IEnumerable<string> table, IPEndPoint local, IPEndPoint remote)
+        {
+            const string established = "01";
+            string ours = TcpTableEndPoint(local);
+            string theirs = TcpTableEndPoint(remote);
+            string ourUser = null;
+            string theirUser = null;
+            foreach (string line in table)
+            {
+                // sl local_address rem_address st tx_queue:rx_queue tr:tm->when retrnsmt uid timeout inode ...
+                string[] fields = line.Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
+                if (fields.Length < 8)
+                {
+                    continue;
+                }
+
+                if (fields[1] == ours && fields[2] == theirs)
+                {
+                    ourUser = fields[7];
+                }
+                else if (fields[1] == theirs && fields[2] == ours && fields[3] == established)
+                {
+                    theirUser = fields[7];
+                }
+            }
+
+            return ourUser != null && ourUser == theirUser;
+        }
+
+        /// <summary>An endpoint as <c>/proc/net/tcp</c> writes it: the address as a native-endian number, then the port, in hex.</summary>
+        private static string TcpTableEndPoint(IPEndPoint endPoint) =>
+            BitConverter.ToUInt32(endPoint.Address.GetAddressBytes(), 0).ToString("X8", CultureInfo.InvariantCulture) + ":" + endPoint.Port.ToString("X4", CultureInfo.InvariantCulture);
 
         public void Dispose()
         {
