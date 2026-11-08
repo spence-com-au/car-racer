@@ -49,7 +49,7 @@ bugs and differs between phone makers, and it can't be tested on desktop.
   on a first launch it asks for a name first. The game itself needs no QR scanner. The encoder
   is byte mode, versions 1–10, and is checked module for module against python-qrcode.
 
-Implemented in `Core/Discovery`. PR 1 ships a temporary on-device discovery test screen.
+Implemented in `Core/Discovery`.
 
 ## 2. Network authority model
 
@@ -287,6 +287,12 @@ takes touches, and it sits under the performance readout.
   | Hatchback sports | 2 | 5 | 2 |
   | SUV luxury | 3 | 2 | 4 |
   | Van | 2 | 3 | 4 |
+  | Sedan | 3 | 4 | 2 |
+  | SUV | 2 | 2 | 5 |
+  | Taxi | 4 | 2 | 3 |
+  | Pickup | 4 | 1 | 4 |
+  | Delivery truck | 1 | 3 | 5 |
+  | Kart | 2 | 4 | 3 |
 
 ## 5. Controls
 
@@ -408,11 +414,12 @@ takes touches, and it sits under the performance readout.
   spin-out (`ReportSpinOut`), which costs a life, so a hit the Shield soaks up costs nothing.
   Standings reuse the race message: `LapsCompleted` carries lives and `FinishPosition` a place
   once out. Results carry how long each player lasted as the race time.
-- **Venues** (`ArenaLayout`, `ArenaVenues`): both arenas sit in the track scene, far enough off
-  either end of it that nothing overlaps: the Sumo platform floats 40 m up, with a catch floor
-  30 m below it for the cars that fall off, and the Battle bowl sits at ground level. The Battle
-  item boxes share the track's box list; each event only reaches its own. Every phone sizes the
-  shrinking platform from the shared start time. The host picks the mode in the lobby (remembered).
+- **Venues** (`ArenaLayout`, `ArenaVenues`): the Sumo and Battle arenas sit in the track scene,
+  far enough off either end of it that nothing overlaps: the Sumo platform floats 40 m up, with a
+  catch floor 30 m below it for the cars that fall off, and the Battle bowl sits at ground level.
+  The Battle item boxes share the track's box list; each event only reaches its own. Every phone
+  sizes the shrinking platform from the shared start time. The host picks the mode in the lobby
+  (remembered).
   Out players lose their controls; the host reports spin-outs for its own car, for guests (the
   rising edge of their `SpunOut` flag) and for bots, which an `ArenaBotDriver` drives in arenas.
 
@@ -634,7 +641,7 @@ leader).
 - **Everything else is generated** from it: road and wall meshes (`RoadMeshBuilder`),
   checkpoint gates, start grid (two staggered columns behind the line), item box positions and
   the bot racing line (`TrackLayout`). Arenas will work the same way (platform shape + edge type).
-- Content: **8 tracks** and **2 arenas** (Sumo platform, Battle bowl):
+- Content: **8 tracks** and **3 arenas** (Sumo platform, Battle bowl, Monster Jam stadium):
   - **Pebble Oval** (`oval`, ~390 m): an easy rounded rectangle.
   - **Canyon Hairpins** (`canyon`, ~590 m): a jump over a crest on the opening straight, two
     hairpins, a chicane and a fast sweeper.
@@ -685,7 +692,7 @@ leader).
   separate music and sound-effects volume (Off, Low, Medium, High; music starts at Medium).
   - **Music** (`MusicChoice`): CC0 tunes from OpenGameArt in `Resources/Music`, streamed. The menus
     and a session's lobby play the menu tune; each track has its own tune while racing or
-    practising on it, and both arenas share one. A change of tune fades out and in over 0.6 s, and
+    practising on it, and every arena shares one. A change of tune fades out and in over 0.6 s, and
     the music carries on across screens.
   - **Engines** are made in code, not recorded, so they loop without a click (`EngineTone`): a
     stack of harmonics pulsing like an engine's firing. Every car has one, its pitch and loudness
