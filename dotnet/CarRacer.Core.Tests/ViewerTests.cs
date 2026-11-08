@@ -141,6 +141,15 @@ namespace CarRacer.Core.Tests
         }
 
         [Fact]
+        public void StandingsShowAPlayerWhoLeftInGrey()
+        {
+            var standings = new StandingsMessage { Order = { new StandingsEntry { PlayerId = 9 } } };
+            var row = ViewerScene.Build(Racing(new FakeRaceView { Standings = standings }, 0)).Rows.Single();
+            Assert.Equal("?", row.Name);
+            Assert.Equal(new Rgb(128, 128, 128), row.Colour);
+        }
+
+        [Fact]
         public void ArenasShowLivesPointsAndTimeLeft()
         {
             var battle = new FakeRaceView
