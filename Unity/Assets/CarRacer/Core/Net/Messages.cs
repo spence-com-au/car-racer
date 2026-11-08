@@ -374,7 +374,10 @@ namespace CarRacer.Core.Net
                     throw new NetFormatException($"Unknown message type {(byte)type}.");
             }
 
-            if (reader.Remaining != 0)
+            // The join handshake has to read across protocol versions, so a guest on another version is still told why
+            // it can't join: a newer peer may have appended fields this build doesn't know.
+            bool handshake = type == MessageType.JoinRequest || type == MessageType.JoinReply;
+            if (reader.Remaining != 0 && !handshake)
             {
                 throw new NetFormatException($"{reader.Remaining} unexpected trailing bytes after {type}.");
             }
