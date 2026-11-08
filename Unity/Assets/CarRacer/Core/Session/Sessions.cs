@@ -33,6 +33,7 @@ namespace CarRacer.Core.Session
         private LobbySettings _settings = LobbySettings.Default;
         private byte _savedCup;
         private byte _savedCupDone;
+        private RosterMessage _rosterMessage;
         private readonly HashSet<byte> _away = new HashSet<byte>();
         private readonly ISessionTransport _transport;
         private readonly Func<long> _clockMs;
@@ -496,16 +497,24 @@ namespace CarRacer.Core.Session
 
         private void BroadcastRoster()
         {
+            _rosterMessage = null;
             Broadcast(RosterMessage(), reliable: true);
             RosterChanged?.Invoke();
         }
 
-        /// <summary>The roster as the guests get it, with the room leader.</summary>
+        /// <summary>
+        /// The roster as the guests get it, with the room leader. It is built once per roster change, so the per-frame
+        /// readers don't allocate, and the instance is shared: don't modify it.
+        /// </summary>
         public RosterMessage RosterMessage()
         {
-            var message = Roster.ToMessage();
-            message.LeaderId = LeaderId;
-            return message;
+            if (_rosterMessage == null)
+            {
+                _rosterMessage = Roster.ToMessage();
+                _rosterMessage.LeaderId = LeaderId;
+            }
+
+            return _rosterMessage;
         }
 
         private LobbySettingsMessage SettingsMessage() => new LobbySettingsMessage { Settings = _settings, SavedCup = _savedCup, SavedCupDone = _savedCupDone };
